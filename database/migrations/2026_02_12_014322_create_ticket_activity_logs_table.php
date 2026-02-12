@@ -13,8 +13,18 @@ return new class extends Migration
     {
         Schema::create('ticket_activity_logs', function (Blueprint $table) {
             $table->id();
-            $table->timestamps();
+            $table->foreignId('ticket_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('user_id')->constrained()->restrictOnDelete();
+            $table->string('action', 80);
+            $table->string('old_value')->nullable();
+            $table->string('new_value')->nullable();
+            $table->json('details')->nullable();
+            $table->timestamp('created_at')->useCurrent();
+            $table->softDeletes();
+
+            $table->index(['ticket_id', 'created_at']);
         });
+
     }
 
     /**

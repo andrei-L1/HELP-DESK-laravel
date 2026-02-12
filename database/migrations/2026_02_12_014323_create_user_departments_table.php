@@ -12,9 +12,13 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('user_departments', function (Blueprint $table) {
-            $table->id();
-            $table->timestamps();
+            $table->foreignId('user_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('department_id')->constrained()->cascadeOnDelete();
+            $table->boolean('is_primary')->default(false);
+            $table->timestamp('joined_at')->useCurrent();
+            $table->primary(['user_id', 'department_id']);
         });
+
     }
 
     /**

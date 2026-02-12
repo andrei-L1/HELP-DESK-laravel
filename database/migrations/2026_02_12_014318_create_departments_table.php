@@ -13,8 +13,15 @@ return new class extends Migration
     {
         Schema::create('departments', function (Blueprint $table) {
             $table->id();
+            $table->string('name', 80);
+            $table->string('short_code', 20)->unique()->nullable();
+            $table->text('description')->nullable();
+            $table->foreignId('manager_id')->nullable()->constrained('users')->nullOnDelete();
+            $table->boolean('is_active')->default(true);
             $table->timestamps();
+            $table->softDeletes();
         });
+
     }
 
     /**

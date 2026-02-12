@@ -13,8 +13,17 @@ return new class extends Migration
     {
         Schema::create('ticket_statuses', function (Blueprint $table) {
             $table->id();
-            $table->timestamps();
+            $table->string('name', 40)->unique();
+            $table->string('title', 80);
+            $table->boolean('is_active')->default(true);
+            $table->boolean('is_closed')->default(false);
+            $table->boolean('is_resolved')->default(false);
+            $table->smallInteger('sort_order')->default(100);
+            $table->char('color_hex', 7)->nullable();
+            $table->timestamp('created_at')->useCurrent();
+            $table->softDeletes();
         });
+
     }
 
     /**

@@ -13,7 +13,11 @@ return new class extends Migration
     {
         Schema::create('permissions', function (Blueprint $table) {
             $table->id();
-            $table->timestamps();
+            $table->string('name', 80)->unique();
+            $table->string('title', 120);
+            $table->string('category', 50)->nullable();
+            $table->timestamp('created_at')->useCurrent();
+            $table->softDeletes();
         });
     }
 

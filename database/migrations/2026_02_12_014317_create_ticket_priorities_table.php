@@ -13,8 +13,14 @@ return new class extends Migration
     {
         Schema::create('ticket_priorities', function (Blueprint $table) {
             $table->id();
-            $table->timestamps();
+            $table->string('name', 40)->unique();
+            $table->unsignedTinyInteger('level');
+            $table->char('color_hex', 7)->nullable();
+            $table->smallInteger('sort_order')->default(100);
+            $table->timestamp('created_at')->useCurrent();
+            $table->softDeletes();
         });
+
     }
 
     /**

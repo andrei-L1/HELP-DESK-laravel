@@ -13,8 +13,14 @@ return new class extends Migration
     {
         Schema::create('ticket_categories', function (Blueprint $table) {
             $table->id();
-            $table->timestamps();
+            $table->string('name', 50)->unique();
+            $table->string('title', 100);
+            $table->boolean('is_active')->default(true);
+            $table->smallInteger('sort_order')->default(100);
+            $table->timestamp('created_at')->useCurrent();
+            $table->softDeletes();
         });
+
     }
 
     /**
