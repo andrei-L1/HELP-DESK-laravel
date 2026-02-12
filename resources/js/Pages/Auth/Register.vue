@@ -7,7 +7,12 @@ import TextInput from '@/Components/TextInput.vue';
 import { Head, Link, useForm } from '@inertiajs/vue3';
 
 const form = useForm({
-    name: '',
+    username: '',
+    first_name: '',
+    last_name: '',
+    middle_name: '',
+    display_name: '',
+    phone: '',
     email: '',
     password: '',
     password_confirmation: '',
@@ -26,24 +31,83 @@ const submit = () => {
 
         <form @submit.prevent="submit">
             <div>
-                <InputLabel for="name" value="Name" />
-
+                <InputLabel for="username" value="Username" />
                 <TextInput
-                    id="name"
+                    id="username"
                     type="text"
                     class="mt-1 block w-full"
-                    v-model="form.name"
+                    v-model="form.username"
                     required
                     autofocus
-                    autocomplete="name"
+                    autocomplete="username"
                 />
+                <InputError class="mt-2" :message="form.errors.username" />
+            </div>
 
-                <InputError class="mt-2" :message="form.errors.name" />
+            <div class="mt-4">
+                <InputLabel for="first_name" value="First Name" />
+                <TextInput
+                    id="first_name"
+                    type="text"
+                    class="mt-1 block w-full"
+                    v-model="form.first_name"
+                    required
+                    autocomplete="given-name"
+                />
+                <InputError class="mt-2" :message="form.errors.first_name" />
+            </div>
+
+            <div class="mt-4">
+                <InputLabel for="last_name" value="Last Name" />
+                <TextInput
+                    id="last_name"
+                    type="text"
+                    class="mt-1 block w-full"
+                    v-model="form.last_name"
+                    required
+                    autocomplete="family-name"
+                />
+                <InputError class="mt-2" :message="form.errors.last_name" />
+            </div>
+
+            <div class="mt-4">
+                <InputLabel for="middle_name" value="Middle Name (optional)" />
+                <TextInput
+                    id="middle_name"
+                    type="text"
+                    class="mt-1 block w-full"
+                    v-model="form.middle_name"
+                    autocomplete="additional-name"
+                />
+                <InputError class="mt-2" :message="form.errors.middle_name" />
+            </div>
+
+            <div class="mt-4">
+                <InputLabel for="display_name" value="Display Name (optional)" />
+                <TextInput
+                    id="display_name"
+                    type="text"
+                    class="mt-1 block w-full"
+                    v-model="form.display_name"
+                    autocomplete="nickname"
+                />
+                <InputError class="mt-2" :message="form.errors.display_name" />
+            </div>
+
+            <div class="mt-4">
+                <InputLabel for="phone" value="Phone Number (optional)" />
+                <TextInput
+                    id="phone"
+                    type="tel"
+                    class="mt-1 block w-full"
+                    v-model="form.phone"
+                    autocomplete="tel"
+                />
+                <InputError class="mt-2" :message="form.errors.phone" />
             </div>
 
             <div class="mt-4">
                 <InputLabel for="email" value="Email" />
-
                 <TextInput
                     id="email"
                     type="email"
@@ -52,13 +116,11 @@ const submit = () => {
                     required
                     autocomplete="username"
                 />
-
                 <InputError class="mt-2" :message="form.errors.email" />
             </div>
 
             <div class="mt-4">
                 <InputLabel for="password" value="Password" />
-
                 <TextInput
                     id="password"
                     type="password"
@@ -67,16 +129,11 @@ const submit = () => {
                     required
                     autocomplete="new-password"
                 />
-
                 <InputError class="mt-2" :message="form.errors.password" />
             </div>
 
             <div class="mt-4">
-                <InputLabel
-                    for="password_confirmation"
-                    value="Confirm Password"
-                />
-
+                <InputLabel for="password_confirmation" value="Confirm Password" />
                 <TextInput
                     id="password_confirmation"
                     type="password"
@@ -85,14 +142,10 @@ const submit = () => {
                     required
                     autocomplete="new-password"
                 />
-
-                <InputError
-                    class="mt-2"
-                    :message="form.errors.password_confirmation"
-                />
+                <InputError class="mt-2" :message="form.errors.password_confirmation" />
             </div>
 
-            <div class="mt-4 flex items-center justify-end">
+            <div class="mt-6 flex items-center justify-end">
                 <Link
                     :href="route('login')"
                     class="rounded-md text-sm text-gray-600 underline hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
