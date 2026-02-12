@@ -12,12 +12,21 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        // Append to the default 'web' group (Inertia + preload assets)
         $middleware->web(append: [
             \App\Http\Middleware\HandleInertiaRequests::class,
             \Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets::class,
         ]);
 
-        //
+        // Register your custom middleware alias
+        $middleware->alias([
+            'admin' => \App\Http\Middleware\IsAdmin::class,
+        ]);
+
+        // Optional: you can add more config here in the future, e.g.
+        // $middleware->append(...);
+        // $middleware->prepend(...);
+        // $middleware->priority([...]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

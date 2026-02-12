@@ -36,16 +36,43 @@ class User extends Authenticatable
         'email_verified' => 'boolean',
         'is_active'      => 'boolean',
         'last_login'     => 'datetime',
+        'role_id'        => 'integer',          // ← added (helps with comparisons)
     ];
 
-    // If you kept 'password_hash' instead of 'password':
-    // public function getAuthPassword()
-    // {
-    //     return $this->password_hash;
-    // }
+    /**
+     * The attributes that should be mutated to dates.
+     *
+     * @var array
+     */
+    protected $dates = [
+        'last_login',
+        'deleted_at',
+    ];
 
     public function role()
     {
-        return $this->belongsTo(Role::class);  // assuming you have a Role model
+        return $this->belongsTo(Role::class);
+    }
+
+    // Optional but very useful helpers
+    public function isAdmin(): bool
+    {
+        return $this->role?->name === 'admin';
+    }
+
+    public function isManager(): bool
+    {
+        return $this->role?->name === 'manager';
+    }
+
+    public function hasRole(string $roleName): bool
+    {
+        return $this->role?->name === $roleName;
+    }
+
+    // Optional: scope for active users
+    public function scopeActive($query)
+    {
+        return $query->where('is_active', true);
     }
 }

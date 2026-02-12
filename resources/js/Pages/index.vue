@@ -14,13 +14,13 @@
 
           <div class="mt-10 flex flex-col sm:flex-row justify-center gap-4">
             <a
-              href="/HELP-DESK%20laravel/public/login"
+              href="/login"
               class="inline-block px-8 py-4 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition text-lg"
             >
               Login to Dashboard
             </a>
             <a
-              href="/HELP-DESK%20laravel/public/register"
+              href="/register"
               class="inline-block px-8 py-4 bg-white dark:bg-gray-800 text-gray-900 dark:text-white font-medium rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 transition text-lg"
             >
               Create Account
