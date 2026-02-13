@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\AdminDashboardController;
+use App\Http\Controllers\Admin\AdminTicketController;
 use App\Http\Controllers\ProfileController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
@@ -33,6 +34,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
         Route::get('/admindashboard', [AdminDashboardController::class, 'index'])
             ->name('admindashboard');
+
+        // Tickets
+        Route::get('/tickets', [AdminTicketController::class, 'index'])
+            ->name('tickets.index');
 
         // Future admin routes examples:
         // Route::get('/users', ...)->name('users.index');

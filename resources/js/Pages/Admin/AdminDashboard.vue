@@ -23,9 +23,7 @@ const props = defineProps({
 });
 
 const viewAllTickets = () => {
-    // Navigate to tickets page when route is created
-    // For now, just show a message
-    alert('Tickets page coming soon!');
+    router.visit(route('admin.tickets.index'));
 };
 
 const createTicket = () => {
