@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\AdminDashboardController;
 use App\Http\Controllers\ProfileController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
@@ -30,9 +31,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // ── Admin area (extra 'admin' middleware + prefix + name prefix) ──
     Route::middleware('admin')->prefix('admin')->name('admin.')->group(function () {
 
-        Route::get('/admindashboard', function () {
-            return Inertia::render('Admin/AdminDashboard');
-        })->name('admindashboard');   // full name: admin.dashboard
+        Route::get('/admindashboard', [AdminDashboardController::class, 'index'])
+            ->name('admindashboard');
 
         // Future admin routes examples:
         // Route::get('/users', ...)->name('users.index');
