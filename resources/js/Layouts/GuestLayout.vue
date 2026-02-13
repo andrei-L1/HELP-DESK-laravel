@@ -7,33 +7,33 @@ import { Link } from '@inertiajs/vue3';
     <div class="flex min-h-screen">
         <!-- Left side - Branding (hidden on mobile) -->
         <div
-            class="hidden lg:flex lg:w-1/2 lg:flex-col lg:items-center lg:justify-center lg:bg-gradient-to-br lg:from-indigo-600 lg:via-purple-600 lg:to-pink-500 lg:p-12"
+            class="hidden lg:flex lg:w-1/2 lg:flex-col lg:items-center lg:justify-center lg:bg-slate-800 lg:p-12"
         >
             <div class="max-w-md text-center text-white">
                 <Link href="/" class="mb-8 inline-block">
                     <div
-                        class="flex h-20 w-20 items-center justify-center rounded-2xl bg-white/20 backdrop-blur-sm"
+                        class="flex h-20 w-20 items-center justify-center rounded-2xl bg-slate-700/50 backdrop-blur-sm"
                     >
                         <ApplicationLogo class="h-12 w-12 fill-current text-white" />
                     </div>
                 </Link>
                 <h2 class="mb-4 text-4xl font-bold">Help Desk System</h2>
-                <p class="text-lg text-indigo-100">
+                <p class="text-lg text-slate-300">
                     Streamline your support operations and deliver exceptional customer
                     service with our comprehensive help desk solution.
                 </p>
                 <div class="mt-8 flex justify-center gap-6">
                     <div class="text-center">
                         <div class="text-3xl font-bold">24/7</div>
-                        <div class="text-sm text-indigo-200">Support</div>
+                        <div class="text-sm text-slate-400">Support</div>
                     </div>
                     <div class="text-center">
                         <div class="text-3xl font-bold">99%</div>
-                        <div class="text-sm text-indigo-200">Uptime</div>
+                        <div class="text-sm text-slate-400">Uptime</div>
                     </div>
                     <div class="text-center">
                         <div class="text-3xl font-bold">1000+</div>
-                        <div class="text-sm text-indigo-200">Tickets</div>
+                        <div class="text-sm text-slate-400">Tickets</div>
                     </div>
                 </div>
             </div>
@@ -47,7 +47,7 @@ import { Link } from '@inertiajs/vue3';
             <div class="mb-8 lg:hidden">
                 <Link href="/">
                     <div
-                        class="flex h-16 w-16 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-600 to-purple-600"
+                        class="flex h-16 w-16 items-center justify-center rounded-xl bg-slate-700"
                     >
                         <ApplicationLogo class="h-10 w-10 fill-current text-white" />
                     </div>

@@ -78,9 +78,9 @@ const submit = () => {
                                 class="flex h-10 w-10 items-center justify-center rounded-full text-sm font-semibold transition-colors"
                                 :class="
                                     currentStep === step
-                                        ? 'bg-indigo-600 text-white'
+                                        ? 'bg-slate-700 text-white'
                                         : currentStep > step
-                                          ? 'bg-indigo-100 text-indigo-600'
+                                          ? 'bg-slate-100 text-slate-700'
                                           : 'bg-gray-200 text-gray-500'
                                 "
                                 @click="currentStep = step"
@@ -250,7 +250,7 @@ const submit = () => {
                         <button
                             v-if="currentStep > 1"
                             type="button"
-                            class="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+                            class="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2"
                             @click="back"
                         >
                             Back

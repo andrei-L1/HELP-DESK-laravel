@@ -38,7 +38,7 @@ const submit = () => {
             <div class="mb-8 text-center">
                 <div class="mb-2 flex justify-center">
                     <div
-                        class="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-600 to-purple-600 shadow-lg"
+                        class="flex h-16 w-16 items-center justify-center rounded-2xl bg-slate-700 shadow-lg"
                     >
                         <svg
                             class="h-8 w-8 text-white"
@@ -112,7 +112,7 @@ const submit = () => {
                         <TextInput
                             id="email"
                             type="email"
-                            class="block w-full rounded-lg border-gray-300 pl-10 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                            class="block w-full rounded-lg border-gray-300 pl-10 shadow-sm focus:border-slate-500 focus:ring-slate-500"
                             v-model="form.email"
                             required
                             autofocus
@@ -147,7 +147,7 @@ const submit = () => {
                         <TextInput
                             id="password"
                             type="password"
-                            class="block w-full rounded-lg border-gray-300 pl-10 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                            class="block w-full rounded-lg border-gray-300 pl-10 shadow-sm focus:border-slate-500 focus:ring-slate-500"
                             v-model="form.password"
                             required
                             autocomplete="current-password"
@@ -163,7 +163,7 @@ const submit = () => {
                         <Checkbox
                             name="remember"
                             v-model:checked="form.remember"
-                            class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                            class="rounded border-gray-300 text-slate-700 focus:ring-slate-500"
                         />
                         <span class="ms-2 text-sm text-gray-600">
                             Remember me
@@ -173,7 +173,7 @@ const submit = () => {
                     <Link
                         v-if="canResetPassword"
                         :href="route('password.request')"
-                        class="text-sm font-medium text-indigo-600 hover:text-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 rounded"
+                        class="text-sm font-medium text-slate-700 hover:text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2 rounded"
                     >
                         Forgot password?
                     </Link>
@@ -182,7 +182,7 @@ const submit = () => {
                 <!-- Submit Button -->
                 <div>
                     <PrimaryButton
-                        class="w-full justify-center rounded-lg bg-gradient-to-r from-indigo-600 to-purple-600 px-4 py-3 text-base font-semibold text-white shadow-lg transition-all hover:from-indigo-700 hover:to-purple-700 hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50"
+                        class="w-full justify-center rounded-lg bg-slate-700 px-4 py-3 text-base font-semibold text-white shadow-md transition-all hover:bg-slate-800 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2 disabled:opacity-50"
                         :class="{ 'opacity-50 cursor-not-allowed': form.processing }"
                         :disabled="form.processing"
                     >
@@ -234,7 +234,7 @@ const submit = () => {
                     Don't have an account?
                     <Link
                         :href="route('register')"
-                        class="font-semibold text-indigo-600 hover:text-indigo-500"
+                        class="font-semibold text-slate-700 hover:text-slate-900"
                     >
                         Sign up
                     </Link>
