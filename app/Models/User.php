@@ -29,6 +29,7 @@ class User extends Authenticatable implements MustVerifyEmail, CanResetPasswordC
         'timezone',
         'is_active',
         'email_verified',
+        'email_verified_at', // ← added (for compatibility with Laravel's built-in verification)
     ];
 
     protected $hidden = [
@@ -40,6 +41,7 @@ class User extends Authenticatable implements MustVerifyEmail, CanResetPasswordC
         'email_verified' => 'boolean',
         'is_active'      => 'boolean',
         'last_login'     => 'datetime',
+        'email_verified_at' => 'datetime', // ← added (for compatibility with Laravel's built-in verification)
         'role_id'        => 'integer',          // ← added (helps with comparisons)
     ];
 
@@ -52,7 +54,10 @@ class User extends Authenticatable implements MustVerifyEmail, CanResetPasswordC
         'last_login',
         'deleted_at',
     ];
-
+    public function sendEmailVerificationNotification()
+    {
+        $this->notify(new \App\Notifications\CustomVerifyEmail());
+    }
     /**
      * Determine if the user has verified their email address.
      */
@@ -72,6 +77,7 @@ class User extends Authenticatable implements MustVerifyEmail, CanResetPasswordC
 
         $this->forceFill([
             'email_verified' => true,
+            'email_verified_at' => now(), // ← added (for compatibility with Laravel's built-in verification)
         ])->save();
 
         return true;
