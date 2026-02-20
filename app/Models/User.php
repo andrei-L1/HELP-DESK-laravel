@@ -2,15 +2,18 @@
 
 namespace App\Models;
 
+use Illuminate\Auth\Passwords\CanResetPassword as CanResetPasswordTrait;
+use Illuminate\Contracts\Auth\CanResetPassword as CanResetPasswordContract;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-class User extends Authenticatable
+class User extends Authenticatable implements MustVerifyEmail, CanResetPasswordContract
 {
-    use HasApiTokens, HasFactory, Notifiable, SoftDeletes;
+    use HasApiTokens, HasFactory, Notifiable, SoftDeletes, CanResetPasswordTrait;
 
     protected $fillable = [
         'username',
@@ -49,6 +52,30 @@ class User extends Authenticatable
         'last_login',
         'deleted_at',
     ];
+
+    /**
+     * Determine if the user has verified their email address.
+     */
+    public function hasVerifiedEmail(): bool
+    {
+        return (bool) $this->email_verified;
+    }
+
+    /**
+     * Mark the user's email address as verified.
+     */
+    public function markEmailAsVerified(): bool
+    {
+        if ($this->email_verified) {
+            return false;
+        }
+
+        $this->forceFill([
+            'email_verified' => true,
+        ])->save();
+
+        return true;
+    }
 
     public function role()
     {

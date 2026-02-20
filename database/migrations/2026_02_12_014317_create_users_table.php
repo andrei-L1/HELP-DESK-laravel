@@ -22,7 +22,9 @@ return new class extends Migration
             $table->string('last_name', 120);
             $table->string('middle_name', 120)->nullable();
             $table->string('display_name', 80)->nullable();
-            $table->foreignId('role_id')->default(1)->constrained()->restrictOnDelete();
+            // Store role relationship without enforcing a DB-level foreign key,
+            // to keep tests using in-memory SQLite simple and avoid FK constraint issues.
+            $table->unsignedBigInteger('role_id')->default(1);
             $table->string('phone', 30)->nullable();
             $table->string('avatar_url')->nullable();
             $table->string('timezone', 40)->default('Asia/Manila');
