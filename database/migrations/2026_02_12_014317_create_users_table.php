@@ -13,8 +13,10 @@ return new class extends Migration
     {
         Schema::create('users', function (Blueprint $table) {
             $table->id();
+            $table->string('name')->nullable(); // legacy column for auth scaffolding/tests
             $table->string('username', 60)->unique();
             $table->string('email', 120)->unique();
+            $table->timestamp('email_verified_at')->nullable(); // legacy column
             $table->string('password');
             $table->string('first_name', 120);
             $table->string('last_name', 120);
@@ -27,6 +29,7 @@ return new class extends Migration
             $table->dateTime('last_login')->nullable();
             $table->boolean('is_active')->default(true);
             $table->boolean('email_verified')->default(false);
+            $table->rememberToken();
             $table->timestamps();
             $table->softDeletes();
 

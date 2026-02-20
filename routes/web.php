@@ -7,42 +7,46 @@ use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
-Route::get('/', function () {
-    return Inertia::render('Index', [
-        'canLogin'    => Route::has('login'),
-        'canRegister' => Route::has('register'),
-        'laravelVersion' => Application::VERSION,
-        'phpVersion'     => PHP_VERSION,
-    ]);
-});
+Route::get('/', fn () => Inertia::render('Index', [
+    'canLogin'       => Route::has('login'),
+    'canRegister'    => Route::has('register'),
+    'laravelVersion' => Application::VERSION,
+    'phpVersion'     => PHP_VERSION,
+]));
 
-// ── Protected routes (auth + verified) ────────────────────────────────
+// ────────────────────────────────────────────────
+// Authenticated + Verified Routes
+// ────────────────────────────────────────────────
 Route::middleware(['auth', 'verified'])->group(function () {
 
-    // Normal user dashboard
-    Route::get('/dashboard', function () {
-        return Inertia::render('Dashboard');
-    })->name('dashboard');
+    // ── User Area ───────────────────────────────────
+    Route::get('/dashboard', fn () => Inertia::render('Dashboard'))
+        ->name('dashboard');
 
-    // Profile routes (already auth-only, but you can keep them here or separate)
-    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
-    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
-    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
-
-    // ── Admin area (extra 'admin' middleware + prefix + name prefix) ──
-    Route::middleware('admin')->prefix('admin')->name('admin.')->group(function () {
-
-        Route::get('/admindashboard', [AdminDashboardController::class, 'index'])
-            ->name('admindashboard');
-
-        // Tickets
-        Route::get('/tickets', [AdminTicketController::class, 'index'])
-            ->name('tickets.index');
-
-        // Future admin routes examples:
-        // Route::get('/users', ...)->name('users.index');
-        // Route::get('/settings', fn() => Inertia::render('Admin/Settings'))->name('settings');
+    // Profile management
+    Route::controller(ProfileController::class)->group(function () {
+        Route::get('/profile', 'edit')->name('profile.edit');
+        Route::patch('/profile', 'update')->name('profile.update');
+        Route::delete('/profile', 'destroy')->name('profile.destroy');
     });
+
+    // ── Admin Area ──────────────────────────────────
+    Route::middleware('admin')
+        ->prefix('admin')
+        ->name('admin.')
+        ->group(function () {
+
+            Route::get('/dashboard', [AdminDashboardController::class, 'index'])
+                ->name('dashboard');
+
+            // Tickets
+            Route::get('/tickets', [AdminTicketController::class, 'index'])
+                ->name('tickets.index');
+
+            // Add more admin routes here in the future, e.g.:
+            // Route::get('/users',    [AdminUserController::class, 'index'])->name('users.index');
+            // Route::get('/settings', fn () => Inertia::render('Admin/Settings'))->name('settings');
+        });
 });
 
-require __DIR__.'/auth.php';
+require __DIR__ . '/auth.php';
