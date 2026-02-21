@@ -21,7 +21,7 @@ class AdminUserSeeder extends Seeder
             'first_name'     => 'System',
             'last_name'      => 'Administrator',
             'display_name'   => 'Admin',
-            'role_id'        => 3, // admin role
+            'role_id'        => 4, // admin role
             'phone'          => '09123456789',
             'timezone'       => 'Asia/Manila',
             'is_active'      => true,
