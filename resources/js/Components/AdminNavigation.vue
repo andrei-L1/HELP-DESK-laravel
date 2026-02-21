@@ -21,7 +21,7 @@ const navigation = [
         children: [
             { name: 'All Tickets', href: route('admin.tickets.index') },
             { name: 'Open Tickets', href: route('admin.tickets.open') },
-           // { name: 'Assigned to Me', href: route('admin.tickets.assigned') },
+            { name: 'Assigned to Me', href: route('admin.tickets.assigned') },
            // { name: 'Ticket Categories', href: route('admin.tickets.categories') },
         ],
     },

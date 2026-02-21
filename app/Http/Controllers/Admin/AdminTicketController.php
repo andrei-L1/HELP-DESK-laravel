@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
+use Illuminate\Support\Facades\Auth;
 
 class AdminTicketController extends Controller
 {
@@ -21,7 +22,11 @@ class AdminTicketController extends Controller
     {
         return $this->getTickets($request, 'Open', 'open', 'Admin/Tickets/Open');
     }
-
+    public function assigned(Request $request)
+    {
+        $assignedTo = Auth::id();
+        return $this->getTickets($request, null, 'assigned', 'Admin/Tickets/Assigned', $assignedTo);
+    }
 
     /**
      * Shared logic for fetching and formatting tickets.

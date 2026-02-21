@@ -45,6 +45,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
             Route::get('/open', [AdminTicketController::class, 'open'])
                 ->name('tickets.open');
+                
+            Route::get('/assigned', [AdminTicketController::class, 'assigned'])
+                ->name('tickets.assigned');
 
 
             // Add more admin routes here in the future, e.g.:
