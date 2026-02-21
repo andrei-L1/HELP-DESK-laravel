@@ -15,12 +15,12 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // User::factory(10)->create();
-
-        // Optional: seed a default test user matching the custom schema
-        // User::factory()->create([
-        //     'username' => 'testuser',
-        //     'email' => 'test@example.com',
-        // ]);
+        $this->call([
+            RoleSeeder::class,
+            AdminUserSeeder::class,
+            TicketStatusSeeder::class,
+            TicketPrioritySeeder::class,
+            TicketSeeder::class,
+        ]);
     }
 }
