@@ -20,10 +20,13 @@ return new class extends Migration
             $table->boolean('is_resolved')->default(false);
             $table->smallInteger('sort_order')->default(100);
             $table->char('color_hex', 7)->nullable();
-            $table->timestamp('created_at')->useCurrent();
+
+            // Standard Laravel timestamps (created_at + updated_at)
+            $table->timestamps();
+
+            // Soft deletes (deleted_at)
             $table->softDeletes();
         });
-
     }
 
     /**

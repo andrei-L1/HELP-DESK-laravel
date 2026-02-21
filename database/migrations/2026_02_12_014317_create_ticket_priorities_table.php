@@ -17,10 +17,13 @@ return new class extends Migration
             $table->unsignedTinyInteger('level');
             $table->char('color_hex', 7)->nullable();
             $table->smallInteger('sort_order')->default(100);
-            $table->timestamp('created_at')->useCurrent();
+
+            // Standard Laravel timestamps (created_at + updated_at)
+            $table->timestamps();
+
+            // Soft deletes (deleted_at)
             $table->softDeletes();
         });
-
     }
 
     /**
