@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\AdminDashboardController;
+use App\Http\Controllers\Admin\AdminUserController;
 use App\Http\Controllers\Admin\AdminTicketController;
 use App\Http\Controllers\ProfileController;
 use Illuminate\Foundation\Application;
@@ -50,8 +51,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
                 ->name('tickets.assigned');
 
 
-            // Add more admin routes here in the future, e.g.:
-            // Route::get('/users',    [AdminUserController::class, 'index'])->name('users.index');
+
+            Route::get('/users',[AdminUserController::class, 'index'])
+                ->name('users.index');
+
+
+
+
+            // Add more admin routes here in the future, e.g.:               
             // Route::get('/settings', fn () => Inertia::render('Admin/Settings'))->name('settings');
         });
 });
