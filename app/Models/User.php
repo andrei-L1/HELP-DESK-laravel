@@ -120,6 +120,22 @@ class User extends Authenticatable implements MustVerifyEmail, CanResetPasswordC
      */
     public function hasPermission(string $permissionName): bool
     {
-        return $this->role && $this->role->permissions->contains('name', $permissionName);
+        // Check if user is admin first (admin has all permissions)
+        if ($this->isAdmin()) {
+            return true;
+        }
+        
+        // Load the role with permissions if not already loaded
+        if ($this->relationLoaded('role') && $this->role) {
+            return $this->role->permissions->contains('name', $permissionName);
+        }
+        
+        // If role isn't loaded, load it with permissions and check
+        if ($this->role) {
+            $this->load('role.permissions');
+            return $this->role->permissions->contains('name', $permissionName);
+        }
+        
+        return false;
     }
 }
