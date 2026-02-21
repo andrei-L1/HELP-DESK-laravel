@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\AdminDashboardController;
+use App\Http\Controllers\Admin\DepartmentManagementController;
 use App\Http\Controllers\Admin\userManagementController;
 use App\Http\Controllers\Admin\RoleManagementController;
 use App\Http\Controllers\Admin\AdminUserController;
@@ -112,6 +113,21 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::delete('/roles/{id}', [RoleManagementController::class, 'destroy']) // destroy()
                 ->name('roles.destroy');
 
+
+            // ── DEPARTMENT ──────────────────────────────────
+            Route::get('/departments', [DepartmentManagementController::class, 'index'])->name('departments.index');
+            Route::post('/departments', [DepartmentManagementController::class, 'store'])->name('departments.store');
+            Route::get('/departments/{id}', [DepartmentManagementController::class, 'show'])->name('departments.show');
+            Route::put('/departments/{id}', [DepartmentManagementController::class, 'update'])->name('departments.update');
+            Route::delete('/departments/{id}', [DepartmentManagementController::class, 'destroy'])->name('departments.destroy');
+
+            // Department user assignments
+            Route::post('/departments/{id}/assign-users', [DepartmentManagementController::class, 'assignUsers'])->name('departments.assign-users');
+            Route::delete('/departments/{id}/users/{userId}', [DepartmentManagementController::class, 'removeUser'])->name('departments.remove-user');
+            Route::post('/departments/{id}/users/{userId}/primary', [DepartmentManagementController::class, 'setPrimary'])->name('departments.set-primary');
+
+
+                
         });
 
 
