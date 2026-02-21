@@ -99,6 +99,10 @@ class User extends Authenticatable implements MustVerifyEmail, CanResetPasswordC
     {
         return $this->role?->name === 'manager';
     }
+    public function isAgent(): bool
+    {
+        return $this->role?->name === 'agent';
+    }
 
     public function hasRole(string $roleName): bool
     {
@@ -109,5 +113,13 @@ class User extends Authenticatable implements MustVerifyEmail, CanResetPasswordC
     public function scopeActive($query)
     {
         return $query->where('is_active', true);
+    }
+
+    /**
+     * Check if the user has a specific permission
+     */
+    public function hasPermission(string $permissionName): bool
+    {
+        return $this->role && $this->role->permissions->contains('name', $permissionName);
     }
 }

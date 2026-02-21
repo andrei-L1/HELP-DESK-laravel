@@ -2,12 +2,12 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Role extends Model
 {
-    use SoftDeletes;
+    use HasFactory;
 
     protected $fillable = [
         'name',
@@ -17,16 +17,19 @@ class Role extends Model
         'sort_order',
     ];
 
-    protected $casts = [
-        'is_system' => 'boolean',
-        'sort_order' => 'integer',
-    ];
+    /**
+     * Permissions assigned to this role
+     */
+    public function permissions()
+    {
+        return $this->belongsToMany(\App\Models\Permission::class, 'role_permissions');
+    }
 
     /**
-     * Get the users that belong to this role.
+     * Check if role has a specific permission
      */
-    public function users()
+    public function hasPermission(string $permissionName): bool
     {
-        return $this->hasMany(User::class);
+        return $this->permissions->contains('name', $permissionName);
     }
 }
