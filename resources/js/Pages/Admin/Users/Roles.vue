@@ -116,7 +116,7 @@ const confirmDelete = () => {
 // Filtering
 const applyFilter = (key, value) => {
     router.get(
-        route('admin.roles.index'),
+        route('admin.users.roles'),
         {
             ...props.filters,
             [key]: value || null,
@@ -131,7 +131,7 @@ const applyFilter = (key, value) => {
 
 const resetFilters = () => {
     router.get(
-        route('admin.roles.index'),
+        route('admin.users.roles'),
         {},
         {
             preserveState: false,
