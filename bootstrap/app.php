@@ -21,6 +21,8 @@ return Application::configure(basePath: dirname(__DIR__))
         // Register your custom middleware alias
         $middleware->alias([
             'admin' => \App\Http\Middleware\IsAdmin::class,
+            'permission' => \App\Http\Middleware\CheckPermission::class,
+            'role' => \App\Http\Middleware\RoleMiddleware::class,
         ]);
 
         // Optional: you can add more config here in the future, e.g.
