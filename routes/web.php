@@ -20,7 +20,7 @@ Route::get('/', fn () => Inertia::render('Index', [
 Route::middleware(['auth', 'verified'])->group(function () {
 
     // ── User Area ───────────────────────────────────
-    Route::get('/dashboard', fn () => Inertia::render('Dashboard'))
+    Route::get('/dashboard', fn () => Inertia::render('Users/Dashboard'))
         ->name('dashboard');
 
     // Profile management
