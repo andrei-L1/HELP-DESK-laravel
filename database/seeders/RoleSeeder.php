@@ -9,13 +9,22 @@ class RoleSeeder extends Seeder
 {
     public function run(): void
     {
-        DB::table('roles')->insert([
+        $roles = [
             [
                 'name'        => 'user',
                 'title'       => 'Regular User',
                 'description' => 'Standard user with basic access',
                 'is_system'   => true,
                 'sort_order'  => 10,
+                'created_at'  => now(),
+                'updated_at'  => now(),
+            ],
+            [
+                'name'        => 'agent',
+                'title'       => 'Agent',
+                'description' => 'Can be assigned tickets and respond to users',
+                'is_system'   => true,
+                'sort_order'  => 15,
                 'created_at'  => now(),
                 'updated_at'  => now(),
             ],
@@ -37,6 +46,12 @@ class RoleSeeder extends Seeder
                 'created_at'  => now(),
                 'updated_at'  => now(),
             ],
-        ]);
+        ];
+        foreach ($roles as $role) {
+            DB::table('roles')->updateOrInsert(
+                ['name' => $role['name']],
+                $role
+            );
+        }
     }
 }

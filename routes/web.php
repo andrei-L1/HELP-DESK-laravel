@@ -50,7 +50,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::get('/assigned', [AdminTicketController::class, 'assigned'])
                 ->name('tickets.assigned');
 
-
+            Route::get('/tickets/create', [AdminTicketController::class, 'create'])
+                ->name('tickets.create');
+            Route::post('/tickets', [AdminTicketController::class, 'store'])
+                ->name('tickets.store');
+            Route::get('/tickets/{ticket}', [AdminTicketController::class, 'show'])
+                ->name('tickets.show');
+            Route::patch('/tickets/{ticket}', [AdminTicketController::class, 'update'])
+                ->name('tickets.update');
 
             Route::get('/users',[AdminUserController::class, 'index'])
                 ->name('users.index');

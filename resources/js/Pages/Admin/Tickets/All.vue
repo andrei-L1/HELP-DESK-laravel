@@ -1,6 +1,31 @@
 <script setup>
+import { ref } from 'vue';
 import AdminNavigation from '@/Components/AdminNavigation.vue';
-import { Head, Link, router } from '@inertiajs/vue3';
+import { Head, Link, router, useForm } from '@inertiajs/vue3';
+
+const showCreateModal = ref(false);
+const createForm = useForm({
+    subject: '',
+    description: '',
+    priority: 'medium',
+});
+
+const openCreateModal = () => {
+    showCreateModal.value = true;
+    createForm.reset();
+};
+
+const closeCreateModal = () => {
+    showCreateModal.value = false;
+    createForm.reset();
+};
+
+const submitCreate = () => {
+    createForm.post(route('admin.tickets.store'), {
+        preserveScroll: true,
+        onSuccess: () => closeCreateModal(),
+    });
+};
 
 const props = defineProps({
     tickets: {
@@ -51,14 +76,95 @@ const resetFilters = () => {
 };
 
 const viewTicket = (ticketId) => {
-    // Wire this up when a ticket detail route exists
-    alert(`View ticket ${ticketId} (detail page not implemented yet).`);
+    router.visit(route('admin.tickets.show', ticketId));
 };
 </script>
 
 <template>
     <Head title="Tickets" />
     <AdminNavigation>
+        <!-- Create Ticket Modal -->
+        <Teleport to="body">
+            <div
+                v-if="showCreateModal"
+                class="fixed inset-0 z-50 overflow-y-auto"
+                aria-labelledby="Create ticket"
+                role="dialog"
+                aria-modal="true"
+            >
+                <div class="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
+                    <div
+                        class="fixed inset-0 bg-gray-500/75 transition-opacity"
+                        aria-hidden="true"
+                        @click="closeCreateModal"
+                    />
+                    <div
+                        class="relative transform overflow-hidden rounded-lg bg-white text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg"
+                    >
+                        <form @submit.prevent="submitCreate" class="p-6 space-y-4">
+                            <h3 class="text-lg font-semibold text-gray-900">Create Ticket</h3>
+                            <div>
+                                <label for="create-subject" class="block text-sm font-medium text-gray-700">Subject</label>
+                                <input
+                                    id="create-subject"
+                                    v-model="createForm.subject"
+                                    type="text"
+                                    required
+                                    maxlength="200"
+                                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm"
+                                    placeholder="Brief subject"
+                                />
+                                <p v-if="createForm.errors.subject" class="mt-1 text-sm text-red-600">
+                                    {{ createForm.errors.subject }}
+                                </p>
+                            </div>
+                            <div>
+                                <label for="create-description" class="block text-sm font-medium text-gray-700">Description</label>
+                                <textarea
+                                    id="create-description"
+                                    v-model="createForm.description"
+                                    rows="4"
+                                    required
+                                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm"
+                                    placeholder="Describe the issue or request"
+                                />
+                                <p v-if="createForm.errors.description" class="mt-1 text-sm text-red-600">
+                                    {{ createForm.errors.description }}
+                                </p>
+                            </div>
+                            <div>
+                                <label for="create-priority" class="block text-sm font-medium text-gray-700">Priority</label>
+                                <select
+                                    id="create-priority"
+                                    v-model="createForm.priority"
+                                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm"
+                                >
+                                    <option value="low">Low</option>
+                                    <option value="medium">Medium</option>
+                                    <option value="high">High</option>
+                                </select>
+                            </div>
+                            <div class="flex gap-3 justify-end pt-2">
+                                <button
+                                    type="button"
+                                    class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50"
+                                    @click="closeCreateModal"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="submit"
+                                    class="inline-flex justify-center rounded-md bg-slate-700 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-slate-800 disabled:opacity-50"
+                                    :disabled="createForm.processing"
+                                >
+                                    {{ createForm.processing ? 'Creating…' : 'Create Ticket' }}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </Teleport>
         <template #header-title>
             <h1 class="text-xl font-semibold text-gray-900">Tickets</h1>
         </template>
@@ -137,7 +243,7 @@ const viewTicket = (ticketId) => {
                     <button
                         type="button"
                         class="inline-flex items-center rounded-md bg-slate-700 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-slate-800"
-                        @click="$emit('create-ticket')"
+                       @click="openCreateModal"
                     >
                         <svg
                             class="-ml-0.5 mr-1.5 h-4 w-4"
