@@ -45,6 +45,7 @@ class SlaPolicySeeder extends Seeder
             ],
         ];
 
+        // Global SLAs (apply when ticket has no department or no department-specific SLA)
         foreach ($policies as $policy) {
             if ($policy['priority_id']) {
                 DB::table('sla_policies')->updateOrInsert(
@@ -58,6 +59,23 @@ class SlaPolicySeeder extends Seeder
             }
         }
 
-        $this->command->info('SLA policies seeded.');
+        // Optional: department-specific SLAs (override global for that priority + department)
+        $deptIds = DB::table('departments')->whereNull('deleted_at')->pluck('id', 'name')->all();
+        if (!empty($deptIds) && isset($deptIds['Technical Support'], $priorityIds['High'])) {
+            DB::table('sla_policies')->updateOrInsert(
+                ['priority_id' => $priorityIds['High'], 'department_id' => $deptIds['Technical Support']],
+                [
+                    'name'            => 'High - Technical Support (4h)',
+                    'priority_id'     => $priorityIds['High'],
+                    'department_id'   => $deptIds['Technical Support'],
+                    'response_time'   => 30,
+                    'resolution_time' => 240, // 4 hours
+                    'is_active'       => true,
+                    'created_at'      => now(),
+                ]
+            );
+        }
+
+        $this->command->info('SLA policies seeded (global + optional department-specific).');
     }
 }

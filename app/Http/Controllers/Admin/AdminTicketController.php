@@ -142,11 +142,7 @@ class AdminTicketController extends Controller
 
         $slaPolicy = null;
         if ($ticketRow->priority_id) {
-            $sla = DB::table('sla_policies')
-                ->where('priority_id', $ticketRow->priority_id)
-                ->whereNull('department_id')
-                ->where('is_active', true)
-                ->first();
+            $sla = $this->findSlaPolicy($ticketRow->priority_id, $ticketRow->department_id);
             if ($sla) {
                 $slaPolicy = [
                     'name'            => $sla->name,
@@ -352,7 +348,8 @@ class AdminTicketController extends Controller
         }
 
         $assignedTo = $this->pickAutoAssignUserId();
-        $dueAt      = $this->computeDueAtFromSla($priorityId);
+        $departmentId = isset($validated['department_id']) ? (int) $validated['department_id'] : null;
+        $dueAt      = $this->computeDueAtFromSla($priorityId, $departmentId);
 
         $year = date('Y');
         $ticket = Cache::lock('ticket_number_' . $year, 10)->block(5, function () use ($validated, $statusId, $priorityId, $assignedTo, $dueAt, $year) {
@@ -556,13 +553,33 @@ class AdminTicketController extends Controller
             ]);
     }
 
-    private function computeDueAtFromSla(int $priorityId): ?string
+    /**
+     * Find SLA policy: department-specific first, then global (department_id null).
+     */
+    private function findSlaPolicy(int $priorityId, ?int $departmentId): ?object
     {
-        $sla = DB::table('sla_policies')
+        if ($departmentId) {
+            $sla = DB::table('sla_policies')
+                ->where('priority_id', $priorityId)
+                ->where('department_id', $departmentId)
+                ->where('is_active', true)
+                ->whereNull('deleted_at')
+                ->first();
+            if ($sla) {
+                return $sla;
+            }
+        }
+        return DB::table('sla_policies')
             ->where('priority_id', $priorityId)
             ->whereNull('department_id')
             ->where('is_active', true)
+            ->whereNull('deleted_at')
             ->first();
+    }
+
+    private function computeDueAtFromSla(int $priorityId, ?int $departmentId = null): ?string
+    {
+        $sla = $this->findSlaPolicy($priorityId, $departmentId);
         if (!$sla || !$sla->resolution_time) {
             return null;
         }
