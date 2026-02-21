@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Admin\AdminDashboardController;
 use App\Http\Controllers\Admin\userManagementController;
+use App\Http\Controllers\Admin\RoleManagementController;
 use App\Http\Controllers\Admin\AdminUserController;
 use App\Http\Controllers\Admin\AdminTicketController;
 use App\Http\Controllers\ProfileController;
@@ -41,7 +42,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::get('/dashboard', [AdminDashboardController::class, 'index'])
                 ->name('admindashboard');
 
-            // Tickets
+           // ── TICKETS ──────────────────────────────────
             Route::get('/tickets', [AdminTicketController::class, 'index'])
                 ->name('tickets.index');
 
@@ -70,26 +71,47 @@ Route::middleware(['auth', 'verified'])->group(function () {
                 ->name('users.index');
 
 
-
-            Route::get('/users/create', [UserManagementController::class, 'create'])->name('users.create');
-            Route::post('/users', [UserManagementController::class, 'store'])->name('users.store');
-            Route::get('/users/{user}', [UserManagementController::class, 'show'])->name('users.show');
-            Route::get('/users/{user}/edit', [UserManagementController::class, 'edit'])->name('users.edit');
-            Route::put('/users/{user}', [UserManagementController::class, 'update'])->name('users.update');
-            Route::delete('/users/{user}', [UserManagementController::class, 'destroy'])->name('users.destroy');
+            // ── USER ──────────────────────────────────
+            Route::get('/users/create', [UserManagementController::class, 'create'])
+                ->name('users.create');
+            Route::post('/users', [UserManagementController::class, 'store'])
+                ->name('users.store');
+            Route::get('/users/{user}', [UserManagementController::class, 'show'])
+                ->name('users.show');
+            Route::get('/users/{user}/edit', [UserManagementController::class, 'edit'])
+                ->name('users.edit');
+            Route::put('/users/{user}', [UserManagementController::class, 'update'])
+                ->name('users.update');
+            Route::delete('/users/{user}', [UserManagementController::class, 'destroy'])
+                ->name('users.destroy');
             
             // Additional user management routes
-            Route::put('/users/{user}/password', [UserManagementController::class, 'updatePassword'])->name('users.password.update');
-            Route::post('/users/{user}/avatar', [UserManagementController::class, 'updateAvatar'])->name('users.avatar.update');
-            Route::post('/users/{user}/impersonate', [UserManagementController::class, 'impersonate'])->name('users.impersonate');
-            Route::delete('/users/{user}/sessions/{session}', [UserManagementController::class, 'logoutSession'])->name('users.sessions.destroy');
-            Route::delete('/users/{user}/sessions', [UserManagementController::class, 'logoutAllSessions'])->name('users.sessions.destroy-all');
-
+            Route::put('/users/{user}/password', [UserManagementController::class, 'updatePassword'])
+                ->name('users.password.update');
+            Route::post('/users/{user}/avatar', [UserManagementController::class, 'updateAvatar'])
+                ->name('users.avatar.update');
+            Route::post('/users/{user}/impersonate', [UserManagementController::class, 'impersonate'])
+                ->name('users.impersonate');
+            Route::delete('/users/{user}/sessions/{session}', [UserManagementController::class, 'logoutSession'])
+                ->name('users.sessions.destroy');
+            Route::delete('/users/{user}/sessions', [UserManagementController::class, 'logoutAllSessions'])
+                ->name('users.sessions.destroy-all');
             Route::post('/admin/users/stop-impersonate', [UserManagementController::class, 'stopImpersonate'])
                 ->name('admin.users.stop-impersonate');
 
-            // Add more admin routes here in the future, e.g.:               
-            // Route::get('/settings', fn () => Inertia::render('Admin/Settings'))->name('settings');
+            // ── ROLES (PART OF USER) ──────────────────────────────────
+            Route::get('/roles', [RoleManagementController::class, 'index'])      // index()
+                ->name('users.roles');
+
+            Route::post('/roles', [RoleManagementController::class, 'store'])     // store()
+                ->name('roles.store');
+
+            Route::put('/roles/{id}', [RoleManagementController::class, 'update']) // update()
+                ->name('roles.update');
+
+            Route::delete('/roles/{id}', [RoleManagementController::class, 'destroy']) // destroy()
+                ->name('roles.destroy');
+
         });
 
 
