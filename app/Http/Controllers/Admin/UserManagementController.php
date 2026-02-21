@@ -188,7 +188,7 @@ class UserManagementController extends Controller
                 'middle_name' => $user->middle_name,
                 'display_name' => $user->display_name,
                 'full_name' => trim("{$user->first_name} {$user->middle_name} {$user->last_name}"),
-                'avatar_url' => $user->avatar_url,
+                'avatar_url' => $user->avatar_url ? asset('storage/' . $user->avatar_url) : null,
                 'phone' => $user->phone,
                 'timezone' => $user->timezone,
                 'role_id' => $user->role_id,
@@ -290,9 +290,22 @@ class UserManagementController extends Controller
             'avatar' => 'required|image|max:2048',
         ]);
 
+        // Get the current user to find old avatar
+        $user = DB::table('users')->where('id', $id)->first();
+        
         if ($request->hasFile('avatar')) {
+            // Delete old avatar if it exists
+            if ($user->avatar_url) {
+                $oldPath = storage_path('app/public/' . $user->avatar_url);
+                if (file_exists($oldPath)) {
+                    unlink($oldPath);
+                }
+            }
+            
+            // Upload new avatar
             $path = $request->file('avatar')->store('avatars', 'public');
             
+            // Update database
             DB::table('users')
                 ->where('id', $id)
                 ->update([

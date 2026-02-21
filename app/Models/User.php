@@ -45,7 +45,9 @@ class User extends Authenticatable implements MustVerifyEmail, CanResetPasswordC
         'email_verified_at' => 'datetime', // ← added (for compatibility with Laravel's built-in verification)
         'role_id'        => 'integer',          // ← added (helps with comparisons)
     ];
-
+    protected $appends = [
+        'avatar_url'
+    ];
     /**
      * The attributes that should be mutated to dates.
      *
@@ -141,5 +143,14 @@ class User extends Authenticatable implements MustVerifyEmail, CanResetPasswordC
         }
         
         return false;
+    }
+    public function getAvatarUrlAttribute()
+    {
+        if ($this->attributes['avatar_url']) {
+            return asset('storage/' . $this->attributes['avatar_url']);
+        }
+        
+        // Return default avatar if none exists
+        return 'https://ui-avatars.com/api/?name=' . urlencode($this->first_name . ' ' . $this->last_name) . '&size=64&background=475569&color=fff';
     }
 }
