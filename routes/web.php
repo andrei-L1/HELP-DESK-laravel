@@ -43,6 +43,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::get('/tickets', [AdminTicketController::class, 'index'])
                 ->name('tickets.index');
 
+            Route::get('/open', [AdminTicketController::class, 'open'])
+            ->name('tickets.open');
+
+
             // Add more admin routes here in the future, e.g.:
             // Route::get('/users',    [AdminUserController::class, 'index'])->name('users.index');
             // Route::get('/settings', fn () => Inertia::render('Admin/Settings'))->name('settings');

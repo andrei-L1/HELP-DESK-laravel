@@ -10,7 +10,7 @@ const props = defineProps({
     filters: {
         type: Object,
         default: () => ({
-            status: null,
+            status: 'Open',           // pre-set for this view
             search: '',
         }),
     },
@@ -18,11 +18,15 @@ const props = defineProps({
         type: Array,
         default: () => [],
     },
+    view: {
+        type: String,
+        required: true,
+    },
 });
 
 const applyFilter = (key, value) => {
     router.get(
-        route('admin.tickets.index'),
+        route('admin.tickets.open'),           // ← changed to open route
         {
             ...props.filters,
             [key]: value || null,
@@ -37,8 +41,8 @@ const applyFilter = (key, value) => {
 
 const resetFilters = () => {
     router.get(
-        route('admin.tickets.index'),
-        {},
+        route('admin.tickets.open'),           // ← changed to open route
+        { status: 'Open' },                    // keep forced to Open
         {
             preserveState: false,
             preserveScroll: true,
@@ -53,10 +57,10 @@ const viewTicket = (ticketId) => {
 </script>
 
 <template>
-    <Head title="Tickets" />
+    <Head title="Open Tickets" />
     <AdminNavigation>
         <template #header-title>
-            <h1 class="text-xl font-semibold text-gray-900">Tickets</h1>
+            <h1 class="text-xl font-semibold text-gray-900">Open Tickets</h1>
         </template>
 
         <div class="p-6 space-y-6">
@@ -99,26 +103,22 @@ const viewTicket = (ticketId) => {
                         </div>
                     </div>
 
-                    <!-- Status filter -->
+                    <!-- Status filter (locked to Open in this view) -->
                     <div class="w-full md:w-52">
                         <label class="block text-sm font-medium text-gray-700" for="status">
                             Status
                         </label>
                         <select
                             id="status"
-                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 text-sm"
-                            :value="filters.status || ''"
-                            @change="applyFilter('status', $event.target.value || null)"
+                            class="mt-1 block w-full rounded-md border-gray-300 bg-gray-100 shadow-sm focus:border-slate-500 focus:ring-slate-500 text-sm cursor-not-allowed"
+                            :value="filters.status || 'Open'"
+                            disabled
                         >
-                            <option value="">All</option>
-                            <option
-                                v-for="status in statuses"
-                                :key="status"
-                                :value="status"
-                            >
-                                {{ status }}
-                            </option>
+                            <option value="Open">Open</option>
                         </select>
+                        <p class="mt-1 text-xs text-gray-500">
+                            (This view shows open tickets only)
+                        </p>
                     </div>
                 </div>
 
@@ -196,14 +196,7 @@ const viewTicket = (ticketId) => {
                             </td>
                             <td class="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
                                 <span
-                                    class="inline-flex rounded-full px-2 py-1 text-xs font-semibold"
-                                    :class="{
-                                        'bg-blue-100 text-blue-800': ticket.status?.toLowerCase() === 'open',
-                                        'bg-green-100 text-green-800': ticket.status?.toLowerCase() === 'resolved',
-                                        'bg-gray-100 text-gray-800': ticket.status?.toLowerCase() === 'closed',
-                                        'bg-yellow-100 text-yellow-800': ticket.status?.toLowerCase() === 'pending',
-                                        'bg-red-100 text-red-800': ticket.status?.toLowerCase() === 'urgent',
-                                    }"
+                                    class="inline-flex rounded-full px-2 py-1 text-xs font-semibold bg-blue-100 text-blue-800"
                                 >
                                     {{ ticket.status }}
                                 </span>
@@ -233,7 +226,7 @@ const viewTicket = (ticketId) => {
 
                         <tr v-if="tickets.data.length === 0">
                             <td colspan="7" class="px-6 py-8 text-center text-sm text-gray-500">
-                                No tickets found with the current filters.
+                                No open tickets found with the current filters.
                             </td>
                         </tr>
                     </tbody>
@@ -253,7 +246,7 @@ const viewTicket = (ticketId) => {
                         <span class="font-medium">{{ tickets.to || 0 }}</span>
                         of
                         <span class="font-medium">{{ tickets.total || 0 }}</span>
-                        results
+                        open tickets
                     </p>
                 </div>
                 <div class="flex flex-1 justify-between sm:justify-end gap-1">
@@ -275,4 +268,3 @@ const viewTicket = (ticketId) => {
         </div>
     </AdminNavigation>
 </template>
-
