@@ -51,7 +51,8 @@ class AuthenticatedSessionController extends Controller
         // Map role names → named routes
         $redirects = [
             'admin'   => 'admin.admindashboard',
-            'manager' => 'dashboard', // Manager dashboard route doesn't exist yet, using regular dashboard
+            'agent' => 'agent.agentdashboard', 
+            'manager' => 'manager.managerdashboard', 
             'user'    => 'dashboard',
             // Add more roles here in the future if needed
         ];
