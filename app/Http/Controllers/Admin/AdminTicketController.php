@@ -55,20 +55,27 @@ class AdminTicketController extends Controller
             )
             ->orderByDesc('tickets.created_at');
 
-        // Status filter
-        if ($statusFilter !== null) {
+        // ────────────────────────────────────────────────
+        // Apply status from URL/query (?status=...) if present
+        // This makes the Vue dropdown work
+        if ($request->filled('status')) {
+            $query->where('ticket_statuses.name', $request->status);
+        }
+        // Keep the view-specific hard filter (open(), assigned(), etc.) if you want
+        else if ($statusFilter !== null) {
             $query->where('ticket_statuses.name', $statusFilter);
         }
+        // ────────────────────────────────────────────────
 
         if ($view === 'assigned' && $assignedTo) {
             $query->where('tickets.assigned_to', $assignedTo);
         }
 
-        // Search filter (applies to both views)
+        // Search filter
         if ($search = $request->input('search')) {
             $query->where(function ($q) use ($search) {
                 $q->where('tickets.ticket_number', 'like', "%{$search}%")
-                  ->orWhere('tickets.subject', 'like', "%{$search}%");
+                ->orWhere('tickets.subject', 'like', "%{$search}%");
             });
         }
 
