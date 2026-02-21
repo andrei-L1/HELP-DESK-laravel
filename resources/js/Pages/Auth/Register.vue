@@ -27,7 +27,6 @@ const stepTitles = {
     2: 'Profile',
 };
 
-// If server returns errors, jump to the step that contains the first error
 const stepFields = {
     1: ['username', 'email', 'password', 'password_confirmation'],
     2: ['first_name', 'last_name', 'middle_name', 'display_name', 'phone'],
@@ -38,6 +37,7 @@ watch(
     (errors) => {
         const keys = Object.keys(errors);
         if (keys.length === 0) return;
+
         for (let s = 1; s <= totalSteps; s++) {
             if (stepFields[s].some((f) => keys.includes(f))) {
                 currentStep.value = s;
@@ -49,7 +49,28 @@ watch(
 );
 
 const next = () => {
-    currentStep.value = Math.min(currentStep.value + 1, totalSteps);
+    form.clearErrors();
+
+    if (currentStep.value === 1) {
+        // Quick client-side check for required fields
+        const required = ['username', 'email', 'password', 'password_confirmation'];
+        if (required.some(field => !form[field]?.trim())) {
+            alert('Please fill in all required account fields.');
+            return;
+        }
+
+        // Partial validation - only send step 1 fields
+        form.post(route('register'), {
+            preserveState: true,
+            preserveScroll: true,
+            only: stepFields[1],
+            onSuccess: () => {
+                currentStep.value = 2;
+            },
+        });
+    } else {
+        submit();
+    }
 };
 
 const back = () => {
@@ -57,7 +78,15 @@ const back = () => {
 };
 
 const submit = () => {
+    // Quick client-side check for step 2 required fields
+    const required = ['first_name', 'last_name'];
+    if (required.some(field => !form[field]?.trim())) {
+        alert('Please fill in First Name and Last Name.');
+        return;
+    }
+
     form.post(route('register'), {
+        preserveState: false,
         onFinish: () => form.reset('password', 'password_confirmation'),
     });
 };
@@ -76,20 +105,16 @@ const submit = () => {
                             <button
                                 type="button"
                                 class="flex h-10 w-10 items-center justify-center rounded-full text-sm font-semibold transition-colors"
-                                :class="
-                                    currentStep === step
-                                        ? 'bg-slate-700 text-white'
-                                        : currentStep > step
-                                          ? 'bg-slate-100 text-slate-700'
-                                          : 'bg-gray-200 text-gray-500'
-                                "
+                                :class="{
+                                    'bg-slate-700 text-white': currentStep === step,
+                                    'bg-slate-100 text-slate-700': currentStep > step,
+                                    'bg-gray-200 text-gray-500': currentStep < step
+                                }"
                                 @click="currentStep = step"
                             >
                                 {{ step }}
                             </button>
-                            <span
-                                class="ml-2 hidden text-sm font-medium text-gray-600 sm:inline"
-                            >
+                            <span class="ml-2 hidden text-sm font-medium text-gray-600 sm:inline">
                                 {{ stepTitles[step] }}
                             </span>
                             <span
@@ -104,7 +129,7 @@ const submit = () => {
                 </p>
             </div>
 
-            <form @submit.prevent="currentStep < totalSteps ? next() : submit()">
+            <form @submit.prevent="submit()">
                 <!-- Step 1: Account -->
                 <div v-show="currentStep === 1" class="space-y-5">
                     <div>
@@ -161,10 +186,7 @@ const submit = () => {
                             autocomplete="new-password"
                             placeholder="••••••••"
                         />
-                        <InputError
-                            class="mt-2"
-                            :message="form.errors.password_confirmation"
-                        />
+                        <InputError class="mt-2" :message="form.errors.password_confirmation" />
                     </div>
                 </div>
 
@@ -183,6 +205,7 @@ const submit = () => {
                             />
                             <InputError class="mt-2" :message="form.errors.first_name" />
                         </div>
+
                         <div>
                             <InputLabel for="last_name" value="Last Name" />
                             <TextInput
@@ -246,6 +269,7 @@ const submit = () => {
                             Already registered?
                         </Link>
                     </div>
+
                     <div class="flex gap-3">
                         <button
                             v-if="currentStep > 1"
@@ -255,10 +279,12 @@ const submit = () => {
                         >
                             Back
                         </button>
+
                         <PrimaryButton
-                            type="submit"
+                            type="button"
                             :class="{ 'opacity-25': form.processing }"
                             :disabled="form.processing"
+                            @click="next"
                         >
                             {{ currentStep < totalSteps ? 'Next' : 'Create account' }}
                         </PrimaryButton>

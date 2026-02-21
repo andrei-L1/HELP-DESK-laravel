@@ -31,29 +31,35 @@ class RegisteredUserController extends Controller
      */
     public function store(Request $request): RedirectResponse
     {
-        $request->validate([
-            'username'          => ['required', 'string', 'max:60', 'unique:'.User::class],
-            'first_name'        => ['required', 'string', 'max:120'],
-            'last_name'         => ['required', 'string', 'max:120'],
-            'middle_name'       => ['nullable', 'string', 'max:120'],
-            'display_name'      => ['nullable', 'string', 'max:80'],
-            'phone'             => ['nullable', 'string', 'max:30'],
-            'email'             => ['required', 'string', 'lowercase', 'email', 'max:120', 'unique:'.User::class],
-            'password'          => ['required', 'confirmed', Rules\Password::defaults()],
-        ]);
+        $rules = [
+            'username' => ['required', 'string', 'max:60', 'unique:'.User::class],
+            'email'    => ['required', 'string', 'lowercase', 'email', 'max:120', 'unique:'.User::class],
+            'password' => ['required', 'confirmed', Rules\Password::defaults()],
+        ];
+
+        // Only require profile fields if they were sent (final step)
+        if ($request->has('first_name') || $request->has('last_name')) {
+            $rules['first_name']  = ['required', 'string', 'max:120'];
+            $rules['last_name']   = ['required', 'string', 'max:120'];
+            $rules['middle_name'] = ['nullable', 'string', 'max:120'];
+            $rules['display_name']= ['nullable', 'string', 'max:80'];
+            $rules['phone']       = ['nullable', 'string', 'max:30'];
+        }
+
+        $validated = $request->validate($rules);
 
         $user = User::create([
-            'username'      => $request->username,
-            'first_name'    => $request->first_name,
-            'last_name'     => $request->last_name,
-            'middle_name'   => $request->middle_name ?? null,
-            'display_name'  => $request->display_name ?? null,
-            'phone'         => $request->phone ?? null,
-            'email'         => $request->email,
-            'password'      => Hash::make($request->password),
-            'role_id'       => 1,                    // default role
-            'timezone'      => 'Asia/Manila',
-            'is_active'     => true,
+            'username'       => $validated['username'],
+            'first_name'     => $validated['first_name'] ?? null,
+            'last_name'      => $validated['last_name'] ?? null,
+            'middle_name'    => $validated['middle_name'] ?? null,
+            'display_name'   => $validated['display_name'] ?? null,
+            'phone'          => $validated['phone'] ?? null,
+            'email'          => $validated['email'],
+            'password'       => Hash::make($validated['password']),
+            'role_id'        => 1,
+            'timezone'       => 'Asia/Manila',
+            'is_active'      => true,
             'email_verified' => false,
         ]);
 
@@ -61,6 +67,6 @@ class RegisteredUserController extends Controller
 
         Auth::login($user);
 
-        return redirect('/login');  // or RouteServiceProvider::HOME
+        return redirect("/login");
     }
 }
