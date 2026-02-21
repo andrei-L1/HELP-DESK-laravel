@@ -11,7 +11,7 @@ const showingMobileMenu = ref(false);
 const navigation = [
     {
         name: 'Dashboard',
-        href: route('admin.dashboard'),
+        href: route('admin.admindashboard'),
         icon: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6',
     },
     {
@@ -56,8 +56,8 @@ const navigation = [
 const isActive = (href) => {
     if (href === '#') return false;
     const currentRoute = route().current();
-    if (href === route('admin.dashboard')) {
-        return currentRoute === 'admin.dashboard';
+    if (href === route('admin.admindashboard')) {
+        return currentRoute === 'admin.admindashboard';
     }
     if (href === route('admin.tickets.index')) {
         return currentRoute === 'admin.tickets.index';
@@ -76,7 +76,7 @@ const user = computed(() => page.props.auth?.user || {});
         >
             <!-- Logo -->
             <div class="flex h-16 items-center border-b border-gray-200 px-6">
-                <Link :href="route('admin.dashboard')" class="flex items-center gap-3">
+                <Link :href="route('admin.admindashboard')" class="flex items-center gap-3">
                     <div
                         class="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-700"
                     >
@@ -281,7 +281,7 @@ const user = computed(() => page.props.auth?.user || {});
                 >
                     <div class="flex h-16 items-center border-b border-gray-200 px-6">
                         <Link
-                            :href="route('admin.dashboard')"
+                            :href="route('admin.admindashboard')"
                             class="flex items-center gap-3"
                         >
                             <div

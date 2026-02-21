@@ -37,14 +37,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->group(function () {
 
             Route::get('/dashboard', [AdminDashboardController::class, 'index'])
-                ->name('dashboard');
+                ->name('admindashboard');
 
             // Tickets
             Route::get('/tickets', [AdminTicketController::class, 'index'])
                 ->name('tickets.index');
 
             Route::get('/open', [AdminTicketController::class, 'open'])
-            ->name('tickets.open');
+                ->name('tickets.open');
 
 
             // Add more admin routes here in the future, e.g.:
