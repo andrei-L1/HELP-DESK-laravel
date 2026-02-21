@@ -4,7 +4,13 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Ticket;
+use App\Models\TicketAttachment;
+use App\Models\TicketMessage;
+use App\Models\TicketActivityLog;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
@@ -34,7 +40,21 @@ class AdminTicketController extends Controller
      */
     public function create()
     {
-        return Inertia::render('Admin/Tickets/Create');
+        $categories = DB::table('ticket_categories')
+            ->where('is_active', true)
+            ->orderBy('sort_order')
+            ->get(['id', 'name', 'title'])
+            ->map(fn ($c) => ['id' => $c->id, 'name' => $c->name, 'title' => $c->title]);
+        $departments = DB::table('departments')
+            ->whereNull('deleted_at')
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get(['id', 'name', 'short_code'])
+            ->map(fn ($d) => ['id' => $d->id, 'name' => $d->name, 'short_code' => $d->short_code]);
+        return Inertia::render('Admin/Tickets/Create', [
+            'categories'  => $categories,
+            'departments' => $departments,
+        ]);
     }
 
     /**
@@ -42,9 +62,11 @@ class AdminTicketController extends Controller
      */
     public function show(int $id)
     {
-        $ticket = DB::table('tickets')
+        $ticketRow = DB::table('tickets')
             ->leftJoin('ticket_statuses', 'tickets.status_id', '=', 'ticket_statuses.id')
             ->leftJoin('ticket_priorities', 'tickets.priority_id', '=', 'ticket_priorities.id')
+            ->leftJoin('ticket_categories', 'tickets.category_id', '=', 'ticket_categories.id')
+            ->leftJoin('departments', 'tickets.department_id', '=', 'departments.id')
             ->leftJoin('users as created_by_user', 'tickets.created_by', '=', 'created_by_user.id')
             ->leftJoin('users as assigned_to_user', 'tickets.assigned_to', '=', 'assigned_to_user.id')
             ->whereNull('tickets.deleted_at')
@@ -55,8 +77,18 @@ class AdminTicketController extends Controller
                 'tickets.subject',
                 'tickets.description',
                 'tickets.assigned_to as assigned_to_id',
+                'tickets.status_id',
+                'tickets.priority_id',
+                'tickets.category_id',
+                'tickets.department_id',
+                'tickets.due_at',
+                'tickets.first_response_at',
+                'tickets.resolved_at',
+                'tickets.closed_at',
                 'ticket_statuses.name as status',
                 'ticket_priorities.name as priority',
+                'ticket_categories.title as category_title',
+                'departments.name as department_name',
                 DB::raw("CONCAT(COALESCE(created_by_user.first_name, ''), ' ', COALESCE(created_by_user.last_name, '')) as created_by"),
                 DB::raw("CONCAT(COALESCE(assigned_to_user.first_name, ''), ' ', COALESCE(assigned_to_user.last_name, '')) as assigned_to_name"),
                 'tickets.created_at',
@@ -64,32 +96,114 @@ class AdminTicketController extends Controller
             )
             ->first();
 
-        if (!$ticket) {
+        if (!$ticketRow) {
             abort(404);
         }
 
         $users = $this->getAssignableUsers();
 
+        $messages = TicketMessage::query()
+            ->where('ticket_id', $id)
+            ->with('user:id,first_name,last_name')
+            ->orderBy('created_at')
+            ->get()
+            ->map(fn ($m) => [
+                'id'          => $m->id,
+                'body'        => $m->body,
+                'is_internal' => $m->is_internal,
+                'author'      => $m->user ? trim($m->user->first_name . ' ' . $m->user->last_name) : 'Unknown',
+                'created_at'  => $m->created_at?->toDateTimeString(),
+            ]);
+
+        $attachments = TicketAttachment::query()
+            ->where('ticket_id', $id)
+            ->get(['id', 'file_name', 'file_size', 'uploaded_at'])
+            ->map(fn ($a) => [
+                'id'          => $a->id,
+                'file_name'   => $a->file_name,
+                'file_size'   => $a->file_size,
+                'uploaded_at' => $a->uploaded_at?->toDateTimeString(),
+            ]);
+
+        $activityLogs = TicketActivityLog::query()
+            ->where('ticket_id', $id)
+            ->with('user:id,first_name,last_name')
+            ->orderByDesc('created_at')
+            ->limit(50)
+            ->get()
+            ->map(fn ($l) => [
+                'id'         => $l->id,
+                'action'     => $l->action,
+                'old_value'  => $l->old_value,
+                'new_value'  => $l->new_value,
+                'user_name'  => $l->user ? trim($l->user->first_name . ' ' . $l->user->last_name) : 'Unknown',
+                'created_at' => $l->created_at?->toDateTimeString(),
+            ]);
+
+        $slaPolicy = null;
+        if ($ticketRow->priority_id) {
+            $sla = DB::table('sla_policies')
+                ->where('priority_id', $ticketRow->priority_id)
+                ->whereNull('department_id')
+                ->where('is_active', true)
+                ->first();
+            if ($sla) {
+                $slaPolicy = [
+                    'name'            => $sla->name,
+                    'response_time'   => (int) $sla->response_time,
+                    'resolution_time' => (int) $sla->resolution_time,
+                ];
+            }
+        }
+
+        $statuses = DB::table('ticket_statuses')
+            ->where('is_active', true)
+            ->orderBy('sort_order')
+            ->get(['id', 'name', 'title'])
+            ->map(fn ($s) => ['id' => $s->id, 'name' => $s->name, 'title' => $s->title]);
+
+        $departments = DB::table('departments')
+            ->whereNull('deleted_at')
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get(['id', 'name', 'short_code'])
+            ->map(fn ($d) => ['id' => $d->id, 'name' => $d->name, 'short_code' => $d->short_code]);
+
         return Inertia::render('Admin/Tickets/Show', [
             'ticket' => [
-                'id'              => $ticket->id,
-                'ticket_number'   => $ticket->ticket_number,
-                'subject'         => $ticket->subject,
-                'description'     => $ticket->description,
-                'status'          => $ticket->status ?? 'Unknown',
-                'priority'        => $ticket->priority ?? 'Unknown',
-                'created_by'      => trim($ticket->created_by) ?: 'Unknown',
-                'assigned_to_id'  => $ticket->assigned_to_id,
-                'assigned_to_name'=> trim($ticket->assigned_to_name) ?: null,
-                'created_at'      => $ticket->created_at ? \Carbon\Carbon::parse($ticket->created_at)->toDateTimeString() : null,
-                'updated_at'      => $ticket->updated_at ? \Carbon\Carbon::parse($ticket->updated_at)->toDateTimeString() : null,
+                'id'                 => $ticketRow->id,
+                'ticket_number'      => $ticketRow->ticket_number,
+                'subject'            => $ticketRow->subject,
+                'description'        => $ticketRow->description,
+                'status'             => $ticketRow->status ?? 'Unknown',
+                'status_id'          => $ticketRow->status_id,
+                'priority'           => $ticketRow->priority ?? 'Unknown',
+                'category_id'        => $ticketRow->category_id,
+                'category_title'     => $ticketRow->category_title ?? null,
+                'department_id'      => $ticketRow->department_id,
+                'department_name'    => $ticketRow->department_name ?? null,
+                'created_by'         => trim($ticketRow->created_by) ?: 'Unknown',
+                'assigned_to_id'     => $ticketRow->assigned_to_id,
+                'assigned_to_name'   => trim($ticketRow->assigned_to_name) ?: null,
+                'due_at'             => $ticketRow->due_at ? \Carbon\Carbon::parse($ticketRow->due_at)->toDateTimeString() : null,
+                'first_response_at'  => $ticketRow->first_response_at ? \Carbon\Carbon::parse($ticketRow->first_response_at)->toDateTimeString() : null,
+                'resolved_at'        => $ticketRow->resolved_at ? \Carbon\Carbon::parse($ticketRow->resolved_at)->toDateTimeString() : null,
+                'closed_at'          => $ticketRow->closed_at ? \Carbon\Carbon::parse($ticketRow->closed_at)->toDateTimeString() : null,
+                'created_at'         => $ticketRow->created_at ? \Carbon\Carbon::parse($ticketRow->created_at)->toDateTimeString() : null,
+                'updated_at'         => $ticketRow->updated_at ? \Carbon\Carbon::parse($ticketRow->updated_at)->toDateTimeString() : null,
             ],
-            'users' => $users,
+            'statuses'      => $statuses,
+            'departments'   => $departments,
+            'sla_policy'   => $slaPolicy,
+            'messages'     => $messages,
+            'attachments'  => $attachments,
+            'activity_logs' => $activityLogs,
+            'users'        => $users,
         ]);
     }
 
     /**
-     * Update ticket (e.g. assign/reassign). Only managers and agents can be assigned.
+     * Update ticket (assign, status, department). Only managers and agents can be assigned.
      */
     public function update(Request $request, int $id)
     {
@@ -97,25 +211,136 @@ class AdminTicketController extends Controller
         $assignableIds = $this->getAssignableUserIds();
 
         $validated = $request->validate([
-            'assigned_to' => [
+            'assigned_to'   => [
                 'nullable',
                 'integer',
                 Rule::in($assignableIds),
             ],
+            'status_id'     => 'nullable|integer|exists:ticket_statuses,id',
+            'department_id' => 'nullable|integer|exists:departments,id',
         ]);
 
-        $ticket->assigned_to = $validated['assigned_to'] ?? null;
+        $oldStatusId   = $ticket->status_id;
+        $newStatusId   = $validated['status_id'] ?? $ticket->status_id;
+        $oldDepartmentId = $ticket->department_id;
+        $newDepartmentId = array_key_exists('department_id', $validated) ? $validated['department_id'] : $ticket->department_id;
+
+        if (array_key_exists('assigned_to', $validated)) {
+            $oldAssigned = $ticket->assigned_to;
+            $ticket->assigned_to = $validated['assigned_to'] ?? null;
+            if ($oldAssigned != $ticket->assigned_to) {
+                $this->logTicketActivity($ticket->id, 'assignment_changed', (string) $oldAssigned, (string) $ticket->assigned_to);
+            }
+        }
+
+        if ($newStatusId && $newStatusId != $oldStatusId) {
+            $ticket->status_id = $newStatusId;
+            $statusName = DB::table('ticket_statuses')->where('id', $newStatusId)->value('name');
+            if ($statusName === 'Resolved') {
+                $ticket->resolved_at = $ticket->resolved_at ?? now();
+                $ticket->resolver_id = Auth::id();
+            }
+            if ($statusName === 'Closed') {
+                $ticket->closed_at = $ticket->closed_at ?? now();
+                $ticket->closed_by = Auth::id();
+            }
+            $oldStatusName = DB::table('ticket_statuses')->where('id', $oldStatusId)->value('name');
+            $this->logTicketActivity($ticket->id, 'status_changed', $oldStatusName ?? '', $statusName ?? '');
+        }
+
+        if ($oldDepartmentId != $newDepartmentId) {
+            $ticket->department_id = $newDepartmentId;
+            $this->logTicketActivity($ticket->id, 'department_changed', (string) $oldDepartmentId, (string) $newDepartmentId);
+        }
+
         $ticket->save();
 
         return redirect()->route('admin.tickets.show', $ticket->id);
     }
 
+    /**
+     * Add a reply or internal note to the ticket.
+     */
+    public function storeMessage(Request $request, int $id)
+    {
+        $ticket = Ticket::findOrFail($id);
+        $validated = $request->validate([
+            'body'        => 'required|string|max:10000',
+            'is_internal' => 'boolean',
+        ]);
+        $isInternal = $request->boolean('is_internal');
+
+        $message = TicketMessage::create([
+            'ticket_id'   => $ticket->id,
+            'user_id'     => Auth::id(),
+            'is_internal' => $isInternal,
+            'body'        => $validated['body'],
+        ]);
+
+        if (!$ticket->first_response_at && !$isInternal) {
+            $ticket->first_response_at = now();
+            $ticket->save();
+        }
+
+        $this->logTicketActivity($ticket->id, 'message_added', null, $isInternal ? 'Internal note' : 'Reply');
+
+        return redirect()->route('admin.tickets.show', $ticket->id);
+    }
+
+    /**
+     * Upload an attachment to the ticket (optionally linked to a message).
+     */
+    public function storeAttachment(Request $request, int $id)
+    {
+        $ticket = Ticket::findOrFail($id);
+        $validated = $request->validate([
+            'file'       => 'required|file|max:10240', // 10MB
+            'message_id' => 'nullable|integer|exists:ticket_messages,id',
+        ]);
+        $file = $request->file('file');
+        $dir = 'ticket-attachments/' . $ticket->id;
+        $path = $file->store($dir, 'local');
+        $storedName = basename($path);
+
+        TicketAttachment::create([
+            'ticket_id'   => $ticket->id,
+            'message_id'  => $validated['message_id'] ?? null,
+            'file_name'   => $file->getClientOriginalName(),
+            'stored_name' => $storedName,
+            'file_path'   => $path,
+            'file_size'   => $file->getSize(),
+            'mime_type'   => $file->getMimeType(),
+            'uploaded_by' => Auth::id(),
+        ]);
+
+        $this->logTicketActivity($ticket->id, 'attachment_added', null, $file->getClientOriginalName());
+
+        return redirect()->route('admin.tickets.show', $ticket->id);
+    }
+
+    /**
+     * Download a ticket attachment (admin only).
+     */
+    public function downloadAttachment(int $ticketId, int $attachmentId)
+    {
+        $attachment = TicketAttachment::where('ticket_id', $ticketId)->where('id', $attachmentId)->firstOrFail();
+        $path = Storage::disk('local')->path($attachment->file_path);
+        if (!is_file($path)) {
+            abort(404);
+        }
+        return response()->download($path, $attachment->file_name, [
+            'Content-Type' => $attachment->mime_type,
+        ]);
+    }
+
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'subject'     => 'required|string|max:200',
-            'description' => 'required|string',
-            'priority'    => 'required|string|in:low,medium,high',
+            'subject'       => 'required|string|max:200',
+            'description'   => 'required|string',
+            'priority'      => 'required|string|in:low,medium,high',
+            'category_id'   => 'nullable|integer|exists:ticket_categories,id',
+            'department_id' => 'nullable|integer|exists:departments,id',
         ]);
 
         $priorityName = ucfirst(strtolower($validated['priority']));
@@ -126,21 +351,43 @@ class AdminTicketController extends Controller
             return back()->withErrors(['priority' => 'Invalid priority or status configuration. Run seeders.']);
         }
 
-        $year    = date('Y');
-        $count   = Ticket::whereYear('created_at', $year)->count();
-        $ticketNumber = 'TICKET-' . $year . '-' . str_pad($count + 1, 4, '0', STR_PAD_LEFT);
-
         $assignedTo = $this->pickAutoAssignUserId();
+        $dueAt      = $this->computeDueAtFromSla($priorityId);
 
-        Ticket::create([
-            'ticket_number' => $ticketNumber,
-            'subject'       => $validated['subject'],
-            'description'   => $validated['description'],
-            'status_id'     => $statusId,
-            'priority_id'   => $priorityId,
-            'created_by'    => Auth::id(),
-            'assigned_to'   => $assignedTo,
-        ]);
+        $year = date('Y');
+        $ticket = Cache::lock('ticket_number_' . $year, 10)->block(5, function () use ($validated, $statusId, $priorityId, $assignedTo, $dueAt, $year) {
+            return DB::transaction(function () use ($validated, $statusId, $priorityId, $assignedTo, $dueAt, $year) {
+                $prefix = 'TICKET-' . $year . '-';
+                // Include soft-deleted so we never reuse a number.
+                $existing = DB::table('tickets')
+                    ->where('ticket_number', 'like', $prefix . '%')
+                    ->pluck('ticket_number');
+                $maxNum = $existing->isEmpty()
+                    ? 0
+                    : $existing->max(fn ($num) => (int) Str::afterLast($num, '-'));
+                $ticketNumber = $prefix . str_pad($maxNum + 1, 4, '0', STR_PAD_LEFT);
+
+                $ticket = Ticket::create([
+                    'ticket_number' => $ticketNumber,
+                    'subject'       => $validated['subject'],
+                    'description'   => $validated['description'],
+                    'status_id'     => $statusId,
+                    'priority_id'   => $priorityId,
+                    'category_id'   => $validated['category_id'] ?? null,
+                    'department_id' => $validated['department_id'] ?? null,
+                    'created_by'    => Auth::id(),
+                    'assigned_to'   => $assignedTo,
+                    'due_at'        => $dueAt,
+                ]);
+
+                $this->logTicketActivity($ticket->id, 'ticket_created', null, $ticketNumber);
+                if ($assignedTo) {
+                    $this->logTicketActivity($ticket->id, 'assignment_changed', null, (string) $assignedTo);
+                }
+
+                return $ticket;
+            });
+        });
 
         return redirect()->route('admin.tickets.index');
     }
@@ -282,11 +529,55 @@ class AdminTicketController extends Controller
             ->orderBy('name')
             ->pluck('name');
 
-        return Inertia::render($component, [   // ← dynamic component name
-                'tickets'  => $tickets,
-                'filters'  => $request->only(['search', 'status']),
-                'statuses' => $statuses,
-                'view'     => $view,               // still useful for highlighting sidebar etc.
+        $categories = DB::table('ticket_categories')
+            ->where('is_active', true)
+            ->orderBy('sort_order')
+            ->get(['id', 'name', 'title'])
+            ->map(fn ($c) => ['id' => $c->id, 'name' => $c->name, 'title' => $c->title])
+            ->values()
+            ->all();
+
+        $departments = DB::table('departments')
+            ->whereNull('deleted_at')
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get(['id', 'name', 'short_code'])
+            ->map(fn ($d) => ['id' => $d->id, 'name' => $d->name, 'short_code' => $d->short_code])
+            ->values()
+            ->all();
+
+        return Inertia::render($component, [
+                'tickets'     => $tickets,
+                'filters'     => $request->only(['search', 'status']),
+                'statuses'    => $statuses,
+                'categories'  => $categories,
+                'departments' => $departments,
+                'view'        => $view,
             ]);
+    }
+
+    private function computeDueAtFromSla(int $priorityId): ?string
+    {
+        $sla = DB::table('sla_policies')
+            ->where('priority_id', $priorityId)
+            ->whereNull('department_id')
+            ->where('is_active', true)
+            ->first();
+        if (!$sla || !$sla->resolution_time) {
+            return null;
+        }
+        return now()->addMinutes((int) $sla->resolution_time)->toDateTimeString();
+    }
+
+    private function logTicketActivity(int $ticketId, string $action, ?string $oldValue, ?string $newValue, ?array $details = null): void
+    {
+        TicketActivityLog::create([
+            'ticket_id' => $ticketId,
+            'user_id'   => Auth::id(),
+            'action'    => $action,
+            'old_value' => $oldValue,
+            'new_value' => $newValue,
+            'details'   => $details,
+        ]);
     }
 }

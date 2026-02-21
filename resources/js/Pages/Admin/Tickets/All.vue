@@ -8,6 +8,8 @@ const createForm = useForm({
     subject: '',
     description: '',
     priority: 'medium',
+    category_id: '',
+    department_id: '',
 });
 
 const openCreateModal = () => {
@@ -21,7 +23,11 @@ const closeCreateModal = () => {
 };
 
 const submitCreate = () => {
-    createForm.post(route('admin.tickets.store'), {
+    createForm.transform((data) => ({
+        ...data,
+        category_id: data.category_id || null,
+        department_id: data.department_id || null,
+    })).post(route('admin.tickets.store'), {
         preserveScroll: true,
         onSuccess: () => closeCreateModal(),
     });
@@ -40,6 +46,14 @@ const props = defineProps({
         }),
     },
     statuses: {
+        type: Array,
+        default: () => [],
+    },
+    categories: {
+        type: Array,
+        default: () => [],
+    },
+    departments: {
         type: Array,
         default: () => [],
     },
@@ -142,6 +156,28 @@ const viewTicket = (ticketId) => {
                                     <option value="low">Low</option>
                                     <option value="medium">Medium</option>
                                     <option value="high">High</option>
+                                </select>
+                            </div>
+                            <div v-if="categories.length">
+                                <label for="create-category" class="block text-sm font-medium text-gray-700">Category</label>
+                                <select
+                                    id="create-category"
+                                    v-model="createForm.category_id"
+                                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm"
+                                >
+                                    <option value="">— None —</option>
+                                    <option v-for="c in categories" :key="c.id" :value="c.id">{{ c.title }}</option>
+                                </select>
+                            </div>
+                            <div v-if="departments.length">
+                                <label for="create-department" class="block text-sm font-medium text-gray-700">Department</label>
+                                <select
+                                    id="create-department"
+                                    v-model="createForm.department_id"
+                                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm"
+                                >
+                                    <option value="">— None —</option>
+                                    <option v-for="d in departments" :key="d.id" :value="d.id">{{ d.name }}</option>
                                 </select>
                             </div>
                             <div class="flex gap-3 justify-end pt-2">

@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Ticket extends Model
 {
@@ -16,8 +17,15 @@ class Ticket extends Model
         'description',
         'status_id',
         'priority_id',
+        'category_id',
+        'department_id',
         'created_by',
         'assigned_to',
+        'resolver_id',
+        'closed_by',
+        'due_at',
+        'resolved_at',
+        'closed_at',
     ];
 
     protected $casts = [
@@ -35,5 +43,30 @@ class Ticket extends Model
     public function assignee(): BelongsTo
     {
         return $this->belongsTo(User::class, 'assigned_to');
+    }
+
+    public function category(): BelongsTo
+    {
+        return $this->belongsTo(TicketCategory::class, 'category_id');
+    }
+
+    public function department(): BelongsTo
+    {
+        return $this->belongsTo(Department::class, 'department_id');
+    }
+
+    public function messages(): HasMany
+    {
+        return $this->hasMany(TicketMessage::class)->orderBy('created_at');
+    }
+
+    public function attachments(): HasMany
+    {
+        return $this->hasMany(TicketAttachment::class);
+    }
+
+    public function activityLogs(): HasMany
+    {
+        return $this->hasMany(TicketActivityLog::class)->orderByDesc('created_at');
     }
 }

@@ -58,6 +58,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
                 ->name('tickets.show');
             Route::patch('/tickets/{ticket}', [AdminTicketController::class, 'update'])
                 ->name('tickets.update');
+            Route::post('/tickets/{ticket}/messages', [AdminTicketController::class, 'storeMessage'])
+                ->name('tickets.messages.store');
+            Route::post('/tickets/{ticket}/attachments', [AdminTicketController::class, 'storeAttachment'])
+                ->name('tickets.attachments.store');
+            Route::get('/tickets/{ticket}/attachments/{attachment}', [AdminTicketController::class, 'downloadAttachment'])
+                ->name('tickets.attachments.download');
 
             Route::get('/users',[AdminUserController::class, 'index'])
                 ->name('users.index');
