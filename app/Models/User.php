@@ -115,6 +115,10 @@ class User extends Authenticatable implements MustVerifyEmail, CanResetPasswordC
         return $query->where('is_active', true);
     }
 
+    public function getEmailForPasswordReset()
+    {
+        return $this->email;
+    }
     /**
      * Check if the user has a specific permission
      */
