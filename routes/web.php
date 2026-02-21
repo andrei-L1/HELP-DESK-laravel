@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\AdminDashboardController;
+use App\Http\Controllers\Admin\userManagementController;
 use App\Http\Controllers\Admin\AdminUserController;
 use App\Http\Controllers\Admin\AdminTicketController;
 use App\Http\Controllers\ProfileController;
@@ -70,10 +71,53 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
 
 
+            Route::get('/users/create', [UserManagementController::class, 'create'])->name('users.create');
+            Route::post('/users', [UserManagementController::class, 'store'])->name('users.store');
+            Route::get('/users/{user}', [UserManagementController::class, 'show'])->name('users.show');
+            Route::get('/users/{user}/edit', [UserManagementController::class, 'edit'])->name('users.edit');
+            Route::put('/users/{user}', [UserManagementController::class, 'update'])->name('users.update');
+            Route::delete('/users/{user}', [UserManagementController::class, 'destroy'])->name('users.destroy');
+            
+            // Additional user management routes
+            Route::put('/users/{user}/password', [UserManagementController::class, 'updatePassword'])->name('users.password.update');
+            Route::post('/users/{user}/avatar', [UserManagementController::class, 'updateAvatar'])->name('users.avatar.update');
+            Route::post('/users/{user}/impersonate', [UserManagementController::class, 'impersonate'])->name('users.impersonate');
+            Route::delete('/users/{user}/sessions/{session}', [UserManagementController::class, 'logoutSession'])->name('users.sessions.destroy');
+            Route::delete('/users/{user}/sessions', [UserManagementController::class, 'logoutAllSessions'])->name('users.sessions.destroy-all');
+
+            Route::post('/admin/users/stop-impersonate', [UserManagementController::class, 'stopImpersonate'])
+                ->name('admin.users.stop-impersonate');
 
             // Add more admin routes here in the future, e.g.:               
             // Route::get('/settings', fn () => Inertia::render('Admin/Settings'))->name('settings');
         });
+
+
+        // ── Manager Area ──────────────────────────────────
+        Route::middleware(['auth', 'verified', 'role:manager'])
+            ->prefix('manager')
+            ->name('manager.')
+            ->group(function () {
+                Route::get('/dashboard', fn() => Inertia::render('Manager/ManagerDashboard'))
+                    ->name('managerdashboard');
+
+                // Example manager routes
+                Route::get('/tickets', [AdminTicketController::class, 'index'])->name('tickets.index');
+                Route::get('/assigned', [AdminTicketController::class, 'assigned'])->name('tickets.assigned');
+            });
+
+        // ── Agent Area ────────────────────────────────────
+        Route::middleware(['auth', 'verified', 'role:agent'])
+            ->prefix('agent')
+            ->name('agent.')
+            ->group(function () {
+                Route::get('/dashboard', fn() => Inertia::render('Agent/AgentDashboard'))
+                    ->name('agentdashboard');
+
+                // Example agent routes
+                Route::get('/tickets', [AdminTicketController::class, 'index'])->name('tickets.index');
+                Route::post('/tickets/{ticket}/messages', [AdminTicketController::class, 'storeMessage'])->name('tickets.messages.store');
+            });
 });
 
 require __DIR__ . '/auth.php';
