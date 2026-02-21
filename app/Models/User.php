@@ -30,6 +30,7 @@ class User extends Authenticatable implements MustVerifyEmail, CanResetPasswordC
         'is_active',
         'email_verified',
         'email_verified_at', // ← added (for compatibility with Laravel's built-in verification)
+        'last_login',       // ← added (for tracking last login time)
     ];
 
     protected $hidden = [

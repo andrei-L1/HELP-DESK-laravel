@@ -33,6 +33,10 @@ class LoginController extends Controller
 
         $user = Auth::user();
 
+        if ($user instanceof User) {
+            User::where('id', $user->id)->update(['last_login' => now()]);
+        }
+
         // Get role name safely (fallback to 'user' if no role or relation missing)
         $roleName = $user->role?->name ?? 'user';
 
