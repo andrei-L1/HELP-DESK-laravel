@@ -54,9 +54,7 @@ const resetFilters = () => {
 };
 
 const viewTicket = (ticketId) => {
-    // Replace with real route when you create the detail page
-    // router.get(route('admin.tickets.show', ticketId));
-    alert(`View ticket ${ticketId} (detail page not implemented yet).`);
+    router.visit(route('admin.tickets.show', ticketId));
 };
 </script>
 

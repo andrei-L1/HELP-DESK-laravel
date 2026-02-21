@@ -11,7 +11,7 @@ const createForm = useForm({
     category_id: '',
     department_id: '',
 });
-
+    
 const openCreateModal = () => {
     showCreateModal.value = true;
     createForm.reset();
