@@ -46,7 +46,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
            // ── TICKETS ──────────────────────────────────
             Route::get('/tickets', [AdminTicketController::class, 'index'])
                 ->name('tickets.index');
-                
+
             Route::get('/all', [AdminTicketController::class, 'all'])
                 ->name('tickets.all');               
 
@@ -71,11 +71,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::get('/tickets/{ticket}/attachments/{attachment}', [AdminTicketController::class, 'downloadAttachment'])
                 ->name('tickets.attachments.download');
 
+            // ── USER ──────────────────────────────────
             Route::get('/users',[AdminUserController::class, 'index'])
                 ->name('users.index');
-
-
-            // ── USER ──────────────────────────────────
+            Route::get('/users/all',[AdminUserController::class, 'all'])
+                ->name('users.all');            
             Route::get('/users/create', [UserManagementController::class, 'create'])
                 ->name('users.create');
             Route::post('/users', [UserManagementController::class, 'store'])
