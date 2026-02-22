@@ -169,23 +169,33 @@ Route::middleware(['auth', 'verified'])->group(function () {
                 Route::get('/dashboard', [ManagerDashboardController::class, 'index'])
                     ->name('managerdashboard');
 
-                // manager ticket general operations
-                Route::get('/tickets', [\App\Http\Controllers\Manager\ManagerTicketController::class, 'index'])->name('tickets.index');
-                Route::get('/tickets/all', [\App\Http\Controllers\Manager\ManagerTicketController::class, 'all'])->name('tickets.all');
-                Route::get('/tickets/open', [\App\Http\Controllers\Manager\ManagerTicketController::class, 'open'])->name('tickets.open');
-                Route::get('/tickets/assigned', [\App\Http\Controllers\Manager\ManagerTicketController::class, 'assigned'])->name('tickets.assigned');
+                // manager ticket viewing operations
+                Route::middleware(['permission:view_ticket'])->group(function () {
+                    Route::get('/tickets', [\App\Http\Controllers\Manager\ManagerTicketController::class, 'index'])->name('tickets.index');
+                    Route::get('/tickets/all', [\App\Http\Controllers\Manager\ManagerTicketController::class, 'all'])->name('tickets.all');
+                    Route::get('/tickets/open', [\App\Http\Controllers\Manager\ManagerTicketController::class, 'open'])->name('tickets.open');
+                    Route::get('/tickets/assigned', [\App\Http\Controllers\Manager\ManagerTicketController::class, 'assigned'])->name('tickets.assigned');
+                    Route::get('/tickets/{ticket}', [\App\Http\Controllers\Manager\ManagerTicketController::class, 'show'])->name('tickets.show')->where('ticket', '[0-9]+');
+                    Route::get('/tickets/{ticket}/attachments/{attachment}', [\App\Http\Controllers\Manager\ManagerTicketController::class, 'downloadAttachment'])->name('tickets.attachments.download');
+                });
 
-                // manager ticket specific operations
-                Route::get('/tickets/create', [\App\Http\Controllers\Manager\ManagerTicketController::class, 'create'])->name('tickets.create');
-                Route::post('/tickets', [\App\Http\Controllers\Manager\ManagerTicketController::class, 'store'])->name('tickets.store');
-                Route::get('/tickets/{ticket}', [\App\Http\Controllers\Manager\ManagerTicketController::class, 'show'])->name('tickets.show');
-                Route::patch('/tickets/{ticket}', [\App\Http\Controllers\Manager\ManagerTicketController::class, 'update'])->name('tickets.update');
-                Route::post('/tickets/{ticket}/messages', [\App\Http\Controllers\Manager\ManagerTicketController::class, 'storeMessage'])->name('tickets.messages.store');
-                Route::post('/tickets/{ticket}/attachments', [\App\Http\Controllers\Manager\ManagerTicketController::class, 'storeAttachment'])->name('tickets.attachments.store');
-                Route::get('/tickets/{ticket}/attachments/{attachment}', [\App\Http\Controllers\Manager\ManagerTicketController::class, 'downloadAttachment'])->name('tickets.attachments.download');
+                // manager ticket creation operations
+                Route::middleware(['permission:create_ticket'])->group(function () {
+                    Route::get('/tickets/create', [\App\Http\Controllers\Manager\ManagerTicketController::class, 'create'])->name('tickets.create');
+                    Route::post('/tickets', [\App\Http\Controllers\Manager\ManagerTicketController::class, 'store'])->name('tickets.store');
+                });
+
+                // manager ticket editing operations
+                Route::middleware(['permission:edit_ticket'])->group(function () {
+                    Route::patch('/tickets/{ticket}', [\App\Http\Controllers\Manager\ManagerTicketController::class, 'update'])->name('tickets.update');
+                    Route::post('/tickets/{ticket}/messages', [\App\Http\Controllers\Manager\ManagerTicketController::class, 'storeMessage'])->name('tickets.messages.store');
+                    Route::post('/tickets/{ticket}/attachments', [\App\Http\Controllers\Manager\ManagerTicketController::class, 'storeAttachment'])->name('tickets.attachments.store');
+                });
 
                 // manager team operations
-                Route::get('/team', [\App\Http\Controllers\Manager\ManagerTeamController::class, 'index'])->name('team.index');
+                Route::middleware(['permission:manage_users'])->group(function () {
+                    Route::get('/team', [\App\Http\Controllers\Manager\ManagerTeamController::class, 'index'])->name('team.index');
+                });
             });
 
         // ── Agent Area ────────────────────────────────────
