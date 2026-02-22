@@ -1,26 +1,9 @@
-FROM node:20-alpine AS node-builder
-
-WORKDIR /app
-
-# Copy package files
-COPY package*.json ./
-COPY yarn.lock ./
-
-# Install dependencies and build
-RUN npm ci
-COPY . .
-RUN npm run build
-
-# Stage 2: PHP-FPM with Nginx
 FROM richarvey/nginx-php-fpm:latest
 
 WORKDIR /var/www/html
 
 # Copy project files
 COPY . .
-
-# Copy built assets from node-builder
-COPY --from=node-builder /app/public/build /var/www/html/public/build
 
 # Image configuration from base image docs
 ENV SKIP_COMPOSER=1
@@ -37,8 +20,18 @@ ENV LOG_CHANNEL=stderr
 # Allow composer as root during build
 ENV COMPOSER_ALLOW_SUPERUSER=1
 
+# Install Node.js and npm
+RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+    && apt-get update \
+    && apt-get install -y nodejs \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
 # Install PHP dependencies
 RUN composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist
+
+# Install and build frontend assets
+RUN npm ci && npm run build
 
 # Optimize Laravel
 RUN php artisan optimize:clear \
