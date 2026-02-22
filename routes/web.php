@@ -162,7 +162,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
 
         // ── Manager Area ──────────────────────────────────
-        Route::middleware(['auth', 'verified', 'role:manager'])
+        Route::middleware(['role:manager'])
             ->prefix('manager')
             ->name('manager.')
             ->group(function () {
@@ -173,7 +173,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
                 Route::get('/tickets', [\App\Http\Controllers\Manager\ManagerTicketController::class, 'index'])->name('tickets.index');
                 Route::get('/tickets/all', [\App\Http\Controllers\Manager\ManagerTicketController::class, 'all'])->name('tickets.all');
                 Route::get('/tickets/open', [\App\Http\Controllers\Manager\ManagerTicketController::class, 'open'])->name('tickets.open');
-                Route::get('/assigned', [\App\Http\Controllers\Manager\ManagerTicketController::class, 'assigned'])->name('tickets.assigned');
+                Route::get('/tickets/assigned', [\App\Http\Controllers\Manager\ManagerTicketController::class, 'assigned'])->name('tickets.assigned');
 
                 // manager ticket specific operations
                 Route::get('/tickets/create', [\App\Http\Controllers\Manager\ManagerTicketController::class, 'create'])->name('tickets.create');
@@ -186,7 +186,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
             });
 
         // ── Agent Area ────────────────────────────────────
-        Route::middleware(['auth', 'verified', 'role:agent'])
+        Route::middleware(['role:agent'])
             ->prefix('agent')
             ->name('agent.')
             ->group(function () {

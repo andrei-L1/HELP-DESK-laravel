@@ -133,34 +133,68 @@ class ManagerTicketController extends AdminTicketController
     }
 
     /**
+     * Check if the manager is authorized to access the given ticket ID.
+     */
+    protected function authorizeTicketAccess(int $id)
+    {
+        $ticket = \App\Models\Ticket::findOrFail($id);
+        $userDepartments = Auth::user()->departments()->pluck('departments.id');
+        if (!in_array($ticket->department_id, $userDepartments->toArray())) {
+            abort(403, 'Unauthorized access to this ticket.');
+        }
+    }
+
+    /**
      * Show a single ticket (detail page) with assign option.
      */
     public function show(int $id)
     {
+        $this->authorizeTicketAccess($id);
+
         $response = parent::show($id);
         if (is_a($response, \Inertia\Response::class)) {
             $reflection = new \ReflectionClass($response);
             $property = $reflection->getProperty('component');
             $property->setAccessible(true);
             $property->setValue($response, 'Manager/Tickets/Show');
+
+            $propsProp = $reflection->getProperty('props');
+            $propsProp->setAccessible(true);
+            $props = $propsProp->getValue($response);
+
+            $userDepartments = Auth::user()->departments()->pluck('departments.id')->toArray();
+            $props['departments'] = \Illuminate\Support\Facades\DB::table('departments')
+                ->whereIn('id', $userDepartments)
+                ->whereNull('deleted_at')
+                ->where('is_active', true)
+                ->orderBy('name')
+                ->get(['id', 'name', 'short_code']);
+
+            $propsProp->setValue($response, $props);
         }
         return $response;
     }
 
     public function update(Request $request, int $id)
     {
+        $this->authorizeTicketAccess($id);
+
         parent::update($request, $id);
         return redirect()->route('manager.tickets.show', $id);
     }
 
     public function storeMessage(Request $request, int $id)
     {
+        $this->authorizeTicketAccess($id);
+
         parent::storeMessage($request, $id);
         return redirect()->route('manager.tickets.show', $id);
     }
 
     public function storeAttachment(Request $request, int $id)
     {
+        $this->authorizeTicketAccess($id);
+
         parent::storeAttachment($request, $id);
         return redirect()->route('manager.tickets.show', $id);
     }
@@ -173,6 +207,21 @@ class ManagerTicketController extends AdminTicketController
             $property = $reflection->getProperty('component');
             $property->setAccessible(true);
             $property->setValue($response, 'Manager/Tickets/Create');
+
+            $propsProp = $reflection->getProperty('props');
+            $propsProp->setAccessible(true);
+            $props = $propsProp->getValue($response);
+
+            $userDepartments = Auth::user()->departments()->pluck('departments.id')->toArray();
+            $props['departments'] = \Illuminate\Support\Facades\DB::table('departments')
+                ->whereIn('id', $userDepartments)
+                ->whereNull('deleted_at')
+                ->where('is_active', true)
+                ->orderBy('name')
+                ->get(['id', 'name', 'short_code'])
+                ->map(fn ($d) => ['id' => $d->id, 'name' => $d->name, 'short_code' => $d->short_code]);
+
+            $propsProp->setValue($response, $props);
         }
         return $response;
     }
