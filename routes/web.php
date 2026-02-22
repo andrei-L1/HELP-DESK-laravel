@@ -183,6 +183,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
                 Route::post('/tickets/{ticket}/messages', [\App\Http\Controllers\Manager\ManagerTicketController::class, 'storeMessage'])->name('tickets.messages.store');
                 Route::post('/tickets/{ticket}/attachments', [\App\Http\Controllers\Manager\ManagerTicketController::class, 'storeAttachment'])->name('tickets.attachments.store');
                 Route::get('/tickets/{ticket}/attachments/{attachment}', [\App\Http\Controllers\Manager\ManagerTicketController::class, 'downloadAttachment'])->name('tickets.attachments.download');
+
+                // manager team operations
+                Route::get('/team', [\App\Http\Controllers\Manager\ManagerTeamController::class, 'index'])->name('team.index');
             });
 
         // ── Agent Area ────────────────────────────────────
