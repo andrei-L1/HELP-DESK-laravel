@@ -21,9 +21,14 @@ class AdminTicketController extends Controller
     /**
      * Display a paginated list of ALL tickets for admins.
      */
+
+    public function all(Request $request)
+    {
+        return $this->getTickets($request, null, 'all', 'Admin/Tickets/All');
+    }
     public function index(Request $request)
     {
-        return $this->getTickets($request, null, 'all', 'Admin/Tickets/All'); 
+        return $this->getTickets($request, null, 'index', 'Admin/Tickets/Index'); 
     }
 
     public function open(Request $request)
@@ -476,27 +481,38 @@ class AdminTicketController extends Controller
                 'ticket_priorities.name as priority',
                 DB::raw("CONCAT(COALESCE(created_by_user.first_name, ''), ' ', COALESCE(created_by_user.last_name, '')) as created_by"),
                 DB::raw("CONCAT(COALESCE(assigned_to_user.first_name, ''), ' ', COALESCE(assigned_to_user.last_name, '')) as assigned_to"),
-                'tickets.created_at'
+                'tickets.created_at',
+                'tickets.status_id',
+                'tickets.priority_id',
+                'tickets.department_id'
             )
             ->orderByDesc('tickets.created_at');
 
-        // ────────────────────────────────────────────────
-        // Apply status from URL/query (?status=...) if present
-        // This makes the Vue dropdown work
+        // Apply status filter from URL/query
         if ($request->filled('status')) {
             $query->where('ticket_statuses.name', $request->status);
         }
-        // Keep the view-specific hard filter (open(), assigned(), etc.) if you want
+        // Apply view-specific hard filter
         else if ($statusFilter !== null) {
             $query->where('ticket_statuses.name', $statusFilter);
         }
-        // ────────────────────────────────────────────────
 
+        // Apply priority filter
+        if ($request->filled('priority')) {
+            $query->where('ticket_priorities.name', $request->priority);
+        }
+
+        // Apply department filter
+        if ($request->filled('department')) {
+            $query->where('tickets.department_id', $request->department);
+        }
+
+        // Apply assigned filter for assigned view
         if ($view === 'assigned' && $assignedTo) {
             $query->where('tickets.assigned_to', $assignedTo);
         }
 
-        // Search filter
+        // Apply search filter
         if ($search = $request->input('search')) {
             $query->where(function ($q) use ($search) {
                 $q->where('tickets.ticket_number', 'like', "%{$search}%")
@@ -506,26 +522,63 @@ class AdminTicketController extends Controller
 
         $tickets = $query->paginate(15)->withQueryString();
 
-        // Transform collection (same as before)
+        // Transform collection
         $tickets->getCollection()->transform(function ($ticket) {
             return [
-                'id'           => $ticket->id,
+                'id'            => $ticket->id,
                 'ticket_number' => $ticket->ticket_number,
-                'subject'      => $ticket->subject,
-                'status'       => $ticket->status ?? 'Unknown',
-                'priority'     => $ticket->priority ?? 'Unknown',
-                'created_by'   => trim($ticket->created_by) ?: 'Unknown',
-                'assigned_to'  => trim($ticket->assigned_to) ?: 'Unassigned',
-                'created_at'   => \Carbon\Carbon::parse($ticket->created_at)->toDateTimeString(),
+                'subject'       => $ticket->subject,
+                'status'        => $ticket->status ?? 'Unknown',
+                'priority'      => $ticket->priority ?? 'Unknown',
+                'created_by'    => trim($ticket->created_by) ?: 'Unknown',
+                'assigned_to'   => trim($ticket->assigned_to) ?: 'Unassigned',
+                'created_at'    => \Carbon\Carbon::parse($ticket->created_at)->toDateTimeString(),
             ];
         });
 
-        // Statuses for dropdown (you can still show all statuses, or filter them if desired)
+        // Get stats for dashboard - using your migration structure
+        $stats = [
+            'total'     => DB::table('tickets')->count(),
+            'open'      => DB::table('tickets')
+                            ->join('ticket_statuses', 'tickets.status_id', '=', 'ticket_statuses.id')
+                            ->where('ticket_statuses.name', 'Open')
+                            ->count(),
+            'pending'   => DB::table('tickets')
+                            ->join('ticket_statuses', 'tickets.status_id', '=', 'ticket_statuses.id')
+                            ->where('ticket_statuses.name', 'Pending')
+                            ->count(),
+            'resolved'  => DB::table('tickets')
+                            ->join('ticket_statuses', 'tickets.status_id', '=', 'ticket_statuses.id')
+                            ->where('ticket_statuses.name', 'Resolved')
+                            ->count(),
+            'closed'    => DB::table('tickets')
+                            ->join('ticket_statuses', 'tickets.status_id', '=', 'ticket_statuses.id')
+                            ->where('ticket_statuses.name', 'Closed')
+                            ->count(),
+            'urgent'    => DB::table('tickets')
+                            ->join('ticket_priorities', 'tickets.priority_id', '=', 'ticket_priorities.id')
+                            ->where('ticket_priorities.name', 'Urgent')
+                            ->count(),
+            'high'      => DB::table('tickets')
+                            ->join('ticket_priorities', 'tickets.priority_id', '=', 'ticket_priorities.id')
+                            ->where('ticket_priorities.name', 'High')
+                            ->count(),
+        ];
+
+        // Get statuses for dropdown - only active ones
         $statuses = DB::table('ticket_statuses')
-            ->select('name')
+            ->where('is_active', true)
+            ->orderBy('sort_order')
             ->orderBy('name')
             ->pluck('name');
 
+        // Get priorities for dropdown - all priorities (no is_active column)
+        $priorities = DB::table('ticket_priorities')
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->pluck('name');
+
+        // Get categories for dropdown - only active ones
         $categories = DB::table('ticket_categories')
             ->where('is_active', true)
             ->orderBy('sort_order')
@@ -534,6 +587,7 @@ class AdminTicketController extends Controller
             ->values()
             ->all();
 
+        // Get departments for dropdown - all active departments
         $departments = DB::table('departments')
             ->whereNull('deleted_at')
             ->where('is_active', true)
@@ -544,13 +598,15 @@ class AdminTicketController extends Controller
             ->all();
 
         return Inertia::render($component, [
-                'tickets'     => $tickets,
-                'filters'     => $request->only(['search', 'status']),
-                'statuses'    => $statuses,
-                'categories'  => $categories,
-                'departments' => $departments,
-                'view'        => $view,
-            ]);
+            'tickets'     => $tickets,
+            'filters'     => $request->only(['search', 'status', 'priority', 'department']),
+            'statuses'    => $statuses,
+            'priorities'  => $priorities,
+            'categories'  => $categories,
+            'departments' => $departments,
+            'stats'       => $stats,
+            'view'        => $view,
+        ]);
     }
 
     /**

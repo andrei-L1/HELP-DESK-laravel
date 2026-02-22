@@ -202,7 +202,7 @@ const viewTicket = (ticketId) => {
             </div>
         </Teleport>
         <template #header-title>
-            <h1 class="text-xl font-semibold text-gray-900">Tickets</h1>
+            <h1 class="text-xl font-semibold text-gray-900">All Tickets</h1>
         </template>
 
         <div class="p-6 space-y-6">

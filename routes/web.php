@@ -46,6 +46,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
            // ── TICKETS ──────────────────────────────────
             Route::get('/tickets', [AdminTicketController::class, 'index'])
                 ->name('tickets.index');
+                
+            Route::get('/all', [AdminTicketController::class, 'all'])
+                ->name('tickets.all');               
 
             Route::get('/open', [AdminTicketController::class, 'open'])
                 ->name('tickets.open');
