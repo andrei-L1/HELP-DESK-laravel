@@ -65,6 +65,16 @@ class Ticket extends Model
         return $this->hasMany(TicketAttachment::class);
     }
 
+    public function status(): BelongsTo
+    {
+        return $this->belongsTo(TicketStatus::class, 'status_id');
+    }
+
+    public function priority(): BelongsTo
+    {
+        return $this->belongsTo(TicketPriority::class, 'priority_id');
+    }
+
     public function activityLogs(): HasMany
     {
         return $this->hasMany(TicketActivityLog::class)->orderByDesc('created_at');

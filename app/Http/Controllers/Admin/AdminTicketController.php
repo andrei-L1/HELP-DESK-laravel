@@ -334,19 +334,12 @@ class AdminTicketController extends Controller
         ]);
     }
 
-    public function store(Request $request)
+    public function store(\App\Http\Requests\StoreTicketRequest $request)
     {
-        $validated = $request->validate([
-            'subject'       => 'required|string|max:200',
-            'description'   => 'required|string',
-            'priority'      => 'required|string|in:low,medium,high',
-            'category_id'   => 'nullable|integer|exists:ticket_categories,id',
-            'department_id' => 'nullable|integer|exists:departments,id',
-        ]);
-
-        $priorityName = ucfirst(strtolower($validated['priority']));
-        $priorityId   = DB::table('ticket_priorities')->where('name', $priorityName)->value('id');
-        $statusId     = DB::table('ticket_statuses')->where('name', 'Open')->value('id');
+        $validated = $request->validated();
+        
+        $priorityId = $request->getPriorityId();
+        $statusId = $request->getStatusId();
 
         if (!$priorityId || !$statusId) {
             return back()->withErrors(['priority' => 'Invalid priority or status configuration. Run seeders.']);
@@ -467,135 +460,79 @@ class AdminTicketController extends Controller
      */
     private function getTickets(Request $request, ?string $statusFilter, string $view, string $component, ?int $assignedTo = null)
     {
-        $query = DB::table('tickets')
-            ->leftJoin('ticket_statuses', 'tickets.status_id', '=', 'ticket_statuses.id')
-            ->leftJoin('ticket_priorities', 'tickets.priority_id', '=', 'ticket_priorities.id')
-            ->leftJoin('users as created_by_user', 'tickets.created_by', '=', 'created_by_user.id')
-            ->leftJoin('users as assigned_to_user', 'tickets.assigned_to', '=', 'assigned_to_user.id')
-            ->whereNull('tickets.deleted_at')
-            ->select(
-                'tickets.id',
-                'tickets.ticket_number',
-                'tickets.subject',
-                'ticket_statuses.name as status',
-                'ticket_priorities.name as priority',
-                DB::raw("CONCAT(COALESCE(created_by_user.first_name, ''), ' ', COALESCE(created_by_user.last_name, '')) as created_by"),
-                DB::raw("CONCAT(COALESCE(assigned_to_user.first_name, ''), ' ', COALESCE(assigned_to_user.last_name, '')) as assigned_to"),
-                'tickets.created_at',
-                'tickets.status_id',
-                'tickets.priority_id',
-                'tickets.department_id'
-            )
-            ->orderByDesc('tickets.created_at');
+        $query = Ticket::with(['status', 'priority', 'creator', 'assignee'])
+            ->orderByDesc('created_at');
 
         // Apply status filter from URL/query
         if ($request->filled('status')) {
-            $query->where('ticket_statuses.name', $request->status);
+            $query->whereHas('status', fn($q) => $q->where('name', $request->status));
         }
         // Apply view-specific hard filter
         else if ($statusFilter !== null) {
-            $query->where('ticket_statuses.name', $statusFilter);
+            $query->whereHas('status', fn($q) => $q->where('name', $statusFilter));
         }
 
         // Apply priority filter
         if ($request->filled('priority')) {
-            $query->where('ticket_priorities.name', $request->priority);
+            $query->whereHas('priority', fn($q) => $q->where('name', $request->priority));
         }
 
         // Apply department filter
         if ($request->filled('department')) {
-            $query->where('tickets.department_id', $request->department);
+            $query->where('department_id', $request->department);
         }
 
         // Apply assigned filter for assigned view
         if ($view === 'assigned' && $assignedTo) {
-            $query->where('tickets.assigned_to', $assignedTo);
+            $query->where('assigned_to', $assignedTo);
         }
 
         // Apply search filter
         if ($search = $request->input('search')) {
             $query->where(function ($q) use ($search) {
-                $q->where('tickets.ticket_number', 'like', "%{$search}%")
-                ->orWhere('tickets.subject', 'like', "%{$search}%");
+                $q->where('ticket_number', 'like', "%{$search}%")
+                  ->orWhere('subject', 'like', "%{$search}%");
             });
         }
 
         $tickets = $query->paginate(15)->withQueryString();
 
-        // Transform collection
+        // Transform collection for the frontend
         $tickets->getCollection()->transform(function ($ticket) {
             return [
                 'id'            => $ticket->id,
                 'ticket_number' => $ticket->ticket_number,
                 'subject'       => $ticket->subject,
-                'status'        => $ticket->status ?? 'Unknown',
-                'priority'      => $ticket->priority ?? 'Unknown',
-                'created_by'    => trim($ticket->created_by) ?: 'Unknown',
-                'assigned_to'   => trim($ticket->assigned_to) ?: 'Unassigned',
-                'created_at'    => \Carbon\Carbon::parse($ticket->created_at)->toDateTimeString(),
+                'status'        => $ticket->status->name ?? 'Unknown',
+                'priority'      => $ticket->priority->name ?? 'Unknown',
+                'created_by'    => $ticket->creator ? trim($ticket->creator->first_name . ' ' . $ticket->creator->last_name) : 'Unknown',
+                'assigned_to'   => $ticket->assignee ? trim($ticket->assignee->first_name . ' ' . $ticket->assignee->last_name) : 'Unassigned',
+                'created_at'    => $ticket->created_at->toDateTimeString(),
             ];
         });
 
-        // Get stats for dashboard - using your migration structure
+        // Optimize stats query (group by so we do exactly 2 fast queries rather than 6 separate join queries)
+        $statusCounts = Ticket::select('status_id', DB::raw('count(*) as count'))->groupBy('status_id')->pluck('count', 'status_id');
+        $priorityCounts = Ticket::select('priority_id', DB::raw('count(*) as count'))->groupBy('priority_id')->pluck('count', 'priority_id');
+
+        $statusMap = DB::table('ticket_statuses')->pluck('id', 'name');
+        $priorityMap = DB::table('ticket_priorities')->pluck('id', 'name');
+
         $stats = [
-            'total'     => DB::table('tickets')->count(),
-            'open'      => DB::table('tickets')
-                            ->join('ticket_statuses', 'tickets.status_id', '=', 'ticket_statuses.id')
-                            ->where('ticket_statuses.name', 'Open')
-                            ->count(),
-            'pending'   => DB::table('tickets')
-                            ->join('ticket_statuses', 'tickets.status_id', '=', 'ticket_statuses.id')
-                            ->where('ticket_statuses.name', 'Pending')
-                            ->count(),
-            'resolved'  => DB::table('tickets')
-                            ->join('ticket_statuses', 'tickets.status_id', '=', 'ticket_statuses.id')
-                            ->where('ticket_statuses.name', 'Resolved')
-                            ->count(),
-            'closed'    => DB::table('tickets')
-                            ->join('ticket_statuses', 'tickets.status_id', '=', 'ticket_statuses.id')
-                            ->where('ticket_statuses.name', 'Closed')
-                            ->count(),
-            'urgent'    => DB::table('tickets')
-                            ->join('ticket_priorities', 'tickets.priority_id', '=', 'ticket_priorities.id')
-                            ->where('ticket_priorities.name', 'Urgent')
-                            ->count(),
-            'high'      => DB::table('tickets')
-                            ->join('ticket_priorities', 'tickets.priority_id', '=', 'ticket_priorities.id')
-                            ->where('ticket_priorities.name', 'High')
-                            ->count(),
+            'total'     => Ticket::count(),
+            'open'      => $statusCounts[$statusMap['Open'] ?? 0] ?? 0,
+            'pending'   => $statusCounts[$statusMap['Pending'] ?? 0] ?? 0,
+            'resolved'  => $statusCounts[$statusMap['Resolved'] ?? 0] ?? 0,
+            'closed'    => $statusCounts[$statusMap['Closed'] ?? 0] ?? 0,
+            'urgent'    => $priorityCounts[$priorityMap['Urgent'] ?? 0] ?? 0,
+            'high'      => $priorityCounts[$priorityMap['High'] ?? 0] ?? 0,
         ];
 
-        // Get statuses for dropdown - only active ones
-        $statuses = DB::table('ticket_statuses')
-            ->where('is_active', true)
-            ->orderBy('sort_order')
-            ->orderBy('name')
-            ->pluck('name');
-
-        // Get priorities for dropdown - all priorities (no is_active column)
-        $priorities = DB::table('ticket_priorities')
-            ->orderBy('sort_order')
-            ->orderBy('name')
-            ->pluck('name');
-
-        // Get categories for dropdown - only active ones
-        $categories = DB::table('ticket_categories')
-            ->where('is_active', true)
-            ->orderBy('sort_order')
-            ->get(['id', 'name', 'title'])
-            ->map(fn ($c) => ['id' => $c->id, 'name' => $c->name, 'title' => $c->title])
-            ->values()
-            ->all();
-
-        // Get departments for dropdown - all active departments
-        $departments = DB::table('departments')
-            ->whereNull('deleted_at')
-            ->where('is_active', true)
-            ->orderBy('name')
-            ->get(['id', 'name', 'short_code'])
-            ->map(fn ($d) => ['id' => $d->id, 'name' => $d->name, 'short_code' => $d->short_code])
-            ->values()
-            ->all();
+        // Retrieve dropdown filter maps
+        $statuses = DB::table('ticket_statuses')->where('is_active', true)->orderBy('sort_order')->orderBy('name')->pluck('name');
+        $priorities = DB::table('ticket_priorities')->orderBy('sort_order')->orderBy('name')->pluck('name');
+        $categories = DB::table('ticket_categories')->where('is_active', true)->orderBy('sort_order')->get(['id', 'name', 'title']);
+        $departments = DB::table('departments')->whereNull('deleted_at')->where('is_active', true)->orderBy('name')->get(['id', 'name', 'short_code']);
 
         return Inertia::render($component, [
             'tickets'     => $tickets,
