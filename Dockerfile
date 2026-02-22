@@ -42,7 +42,9 @@ ENV COMPOSER_ALLOW_SUPERUSER=1
 RUN composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist
 
 # Optimize Laravel
-RUN php artisan optimize:clear \
+RUN mkdir -p database \
+    && touch database/database.sqlite \
+    && php artisan optimize:clear \
     && php artisan config:cache --no-interaction \
     && php artisan route:cache --no-interaction \
     && php artisan view:cache --no-interaction \
