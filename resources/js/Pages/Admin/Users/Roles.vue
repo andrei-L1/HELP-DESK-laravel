@@ -8,6 +8,7 @@ const showCreateModal = ref(false);
 const createForm = useForm({
     name: '',
     description: '',
+    permissions: [],
 });
 
 // Edit role modal
@@ -16,6 +17,7 @@ const editForm = useForm({
     id: null,
     name: '',
     description: '',
+    permissions: [],
 });
 
 // Delete confirmation modal
@@ -30,6 +32,10 @@ const props = defineProps({
     roles: {
         type: Object,
         required: true,
+    },
+    permissions: {
+        type: Array,
+        default: () => [],
     },
     filters: {
         type: Object,
@@ -61,6 +67,7 @@ const openEditModal = (role) => {
     editForm.id = role.id;
     editForm.name = role.name;
     editForm.description = role.description || '';
+    editForm.permissions = role.permissions || [];
     showEditModal.value = true;
 };
 
@@ -209,6 +216,29 @@ const getUserCountText = (role) => {
                                     {{ createForm.errors.description }}
                                 </p>
                             </div>
+
+                            <!-- Permissions Checkboxes -->
+                            <div class="border-t border-gray-200 pt-4 mt-4">
+                                <h4 class="text-sm font-medium text-gray-900 mb-2">Permissions</h4>
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-48 overflow-y-auto pr-2">
+                                    <div v-for="permission in permissions" :key="permission.id" class="flex items-start">
+                                        <div class="flex h-5 items-center">
+                                            <input
+                                                :id="'create-perm-' + permission.id"
+                                                :value="permission.id"
+                                                v-model="createForm.permissions"
+                                                type="checkbox"
+                                                class="h-4 w-4 rounded border-gray-300 text-slate-600 focus:ring-slate-500"
+                                            />
+                                        </div>
+                                        <div class="ml-3 text-sm">
+                                            <label :for="'create-perm-' + permission.id" class="font-medium text-gray-700">
+                                                {{ permission.title || permission.name }}
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                             
                             <div class="flex gap-3 justify-end pt-2">
                                 <button
@@ -281,6 +311,29 @@ const getUserCountText = (role) => {
                                     {{ editForm.errors.description }}
                                 </p>
                             </div>
+
+                            <!-- Permissions Checkboxes -->
+                            <div class="border-t border-gray-200 pt-4 mt-4">
+                                <h4 class="text-sm font-medium text-gray-900 mb-2">Permissions</h4>
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-48 overflow-y-auto pr-2">
+                                    <div v-for="permission in permissions" :key="permission.id" class="flex items-start">
+                                        <div class="flex h-5 items-center">
+                                            <input
+                                                :id="'edit-perm-' + permission.id"
+                                                :value="permission.id"
+                                                v-model="editForm.permissions"
+                                                type="checkbox"
+                                                class="h-4 w-4 rounded border-gray-300 text-slate-600 focus:ring-slate-500"
+                                            />
+                                        </div>
+                                        <div class="ml-3 text-sm">
+                                            <label :for="'edit-perm-' + permission.id" class="font-medium text-gray-700">
+                                                {{ permission.title || permission.name }}
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                             
                             <div class="flex gap-3 justify-end pt-2">
                                 <button
@@ -342,6 +395,16 @@ const getUserCountText = (role) => {
                                         <span class="inline-flex rounded-full bg-indigo-100 px-2 py-1 text-xs font-semibold text-indigo-800">
                                             {{ getUserCountText(selectedRole) }}
                                         </span>
+                                    </dd>
+                                </div>
+
+                                <div class="border-b border-gray-200 pb-2">
+                                    <dt class="text-sm font-medium text-gray-500">Permissions</dt>
+                                    <dd class="mt-1 flex flex-wrap gap-2 text-sm text-gray-900">
+                                        <span v-for="permId in selectedRole.permissions" :key="'sp-'+permId" class="inline-flex rounded-full bg-blue-100 px-2 py-1 text-xs font-semibold text-blue-800">
+                                            {{ permissions.find(p => p.id === permId)?.title || permId }}
+                                        </span>
+                                        <span v-if="!selectedRole.permissions || selectedRole.permissions.length === 0" class="text-gray-500 italic">No permissions assigned</span>
                                     </dd>
                                 </div>
                                 

@@ -32,4 +32,12 @@ class Role extends Model
     {
         return $this->permissions->contains('name', $permissionName);
     }
+
+    /**
+     * Users assigned to this role
+     */
+    public function users()
+    {
+        return $this->hasMany(\App\Models\User::class);
+    }
 }

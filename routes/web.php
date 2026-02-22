@@ -35,7 +35,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     });
 
     // ── Admin Area ──────────────────────────────────
-    Route::middleware('admin')
+    Route::middleware('permission:manage_users|manage_roles|manage_permissions')
         ->prefix('admin')
         ->name('admin.')
         ->group(function () {
@@ -153,7 +153,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
 
         // ── Manager Area ──────────────────────────────────
-        Route::middleware(['auth', 'verified', 'role:manager'])
+        Route::middleware(['auth', 'verified', 'permission:manage_users|manage_roles'])
             ->prefix('manager')
             ->name('manager.')
             ->group(function () {
@@ -166,7 +166,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
             });
 
         // ── Agent Area ────────────────────────────────────
-        Route::middleware(['auth', 'verified', 'role:agent'])
+        Route::middleware(['auth', 'verified', 'permission:view_ticket|edit_ticket'])
             ->prefix('agent')
             ->name('agent.')
             ->group(function () {

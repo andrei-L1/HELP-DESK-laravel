@@ -18,8 +18,18 @@ class CheckPermission
             abort(403, 'Unauthorized');
         }
 
-        // Check if user has the permission (admin check is inside hasPermission now)
-        if (!$user->hasPermission($permission)) {
+        // Explode permissions separated by '|'
+        $permissions = explode('|', $permission);
+        $hasPermission = false;
+
+        foreach ($permissions as $perm) {
+            if ($user->hasPermission($perm)) {
+                $hasPermission = true;
+                break;
+            }
+        }
+
+        if (!$hasPermission) {
             abort(403, 'Unauthorized');
         }
 
