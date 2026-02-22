@@ -138,14 +138,22 @@ Route::middleware(['auth', 'verified'])->group(function () {
                 ->name('departments.set-primary');
 
 
-                            // ── SETTINGS ──────────────────────────────────────────────
+            // ── SETTINGS ──────────────────────────────────────────────
             Route::prefix('settings')->name('settings.')->group(function () {
                 Route::get('/', [SettingsController::class, 'index'])->name('index');
                 Route::get('/general', [SettingsController::class, 'general'])->name('general');
                 Route::post('/general', [SettingsController::class, 'updateGeneral'])->name('general.update');
                 Route::get('/ticket', [SettingsController::class, 'ticket'])->name('ticket');
                 Route::get('/email', [SettingsController::class, 'email'])->name('email');
+                Route::post('/email', [SettingsController::class, 'updateEmail'])->name('email.update');
+                Route::post('/email/test', [SettingsController::class, 'testEmail'])->name('email.test');
+                Route::post('/email/notifications', [SettingsController::class, 'updateNotifications'])->name('email.notifications.update');
+                
+                // SLA Policies
                 Route::get('/sla', [SettingsController::class, 'sla'])->name('sla');
+                Route::post('/sla', [SettingsController::class, 'storeSla'])->name('sla.store');
+                Route::put('/sla/{id}', [SettingsController::class, 'updateSla'])->name('sla.update');
+                Route::delete('/sla/{id}', [SettingsController::class, 'destroySla'])->name('sla.destroy');
             });
 
                 
