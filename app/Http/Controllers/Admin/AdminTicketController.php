@@ -74,7 +74,7 @@ class AdminTicketController extends Controller
             'messages.user', 'attachments', 'activityLogs.user'
         ])->findOrFail($id);
 
-        $users = $this->getAssignableUsers();
+        $users = $this->getAssignableUsers($ticket->department_id);
 
         // 2. Calculate SLA Policy (Using existing method)
         $slaPolicy = null;
@@ -150,7 +150,7 @@ class AdminTicketController extends Controller
     public function update(Request $request, int $id)
     {
         $ticket = Ticket::findOrFail($id);
-        $assignableIds = $this->getAssignableUserIds();
+        $assignableIds = $this->getAssignableUserIds($ticket->department_id);
 
         $validated = $request->validate([
             'assigned_to'   => [
@@ -286,8 +286,8 @@ class AdminTicketController extends Controller
             return back()->withErrors(['priority' => 'Invalid priority or status configuration. Run seeders.']);
         }
 
-        $assignedTo = $this->pickAutoAssignUserId();
         $departmentId = isset($validated['department_id']) ? (int) $validated['department_id'] : null;
+        $assignedTo = $this->pickAutoAssignUserId($departmentId);
         $dueAt      = $this->computeDueAtFromSla($priorityId, $departmentId);
 
         $year = date('Y');
@@ -331,13 +331,19 @@ class AdminTicketController extends Controller
     /**
      * Users who can be assigned tickets: managers and agents only.
      */
-    private function getAssignableUsers(): array
+    protected function getAssignableUsers(?int $departmentId = null): array
     {
-        return DB::table('users')
+        $query = DB::table('users')
             ->join('roles', 'users.role_id', '=', 'roles.id')
             ->whereNull('users.deleted_at')
-            ->whereIn('roles.name', ['manager', 'agent'])
-            ->orderBy('users.first_name')
+            ->whereIn('roles.name', ['manager', 'agent']);
+            
+        if ($departmentId !== null) {
+            $query->join('user_departments', 'users.id', '=', 'user_departments.user_id')
+                  ->where('user_departments.department_id', $departmentId);
+        }
+
+        return $query->orderBy('users.first_name')
             ->orderBy('users.last_name')
             ->get(['users.id', 'users.first_name', 'users.last_name'])
             ->map(fn ($u) => [
@@ -348,27 +354,32 @@ class AdminTicketController extends Controller
             ->all();
     }
 
-    private function getAssignableUserIds(): array
+    protected function getAssignableUserIds(?int $departmentId = null): array
     {
-        return DB::table('users')
+        $query = DB::table('users')
             ->join('roles', 'users.role_id', '=', 'roles.id')
             ->whereNull('users.deleted_at')
-            ->whereIn('roles.name', ['manager', 'agent'])
-            ->pluck('users.id')
-            ->all();
+            ->whereIn('roles.name', ['manager', 'agent']);
+
+        if ($departmentId !== null) {
+            $query->join('user_departments', 'users.id', '=', 'user_departments.user_id')
+                  ->where('user_departments.department_id', $departmentId);
+        }
+
+        return $query->pluck('users.id')->all();
     }
 
     /**
      * Pick a user for auto-assign: the assignable user with the fewest open tickets (round-robin style).
      */
-    private function pickAutoAssignUserId(): ?int
+    protected function pickAutoAssignUserId(?int $departmentId = null): ?int
     {
         $openStatusId = DB::table('ticket_statuses')->where('name', 'Open')->value('id');
         if (!$openStatusId) {
             return null;
         }
 
-        $assignableIds = $this->getAssignableUserIds();
+        $assignableIds = $this->getAssignableUserIds($departmentId);
         if (empty($assignableIds)) {
             return null;
         }
