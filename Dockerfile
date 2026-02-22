@@ -1,38 +1,38 @@
-# Use official PHP image with PHP-FPM and Composer
-FROM php:8.2-fpm
+FROM richarvey/nginx-php-fpm:latest   # Or :8.2 if you want pinned; latest is PHP 8.2.7
 
-# Set working directory
 WORKDIR /var/www/html
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
-    git \
-    unzip \
-    libzip-dev \
-    libonig-dev \
-    curl \
-    nodejs \
-    npm \
-    && docker-php-ext-install pdo_mysql mbstring zip \
-    && rm -rf /var/lib/apt/lists/*
-
-# Copy project files
+# Copy app code
 COPY . .
 
-# Install Composer (if not already included in PHP image)
-RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
+# Env vars for the base image
+ENV SKIP_COMPOSER=1
+ENV WEBROOT=/var/www/html/public
+ENV PHP_ERRORS_STDERR=1
+ENV RUN_SCRIPTS=1
+ENV REAL_IP_HEADER=1
 
-# Install PHP dependencies
-RUN composer install --no-dev --optimize-autoloader
+# Laravel production env (can be overridden in Render dashboard)
+ENV APP_ENV=production
+ENV APP_DEBUG=false
+ENV LOG_CHANNEL=stderr
 
-# Install Node dependencies and build frontend
-RUN npm install && npm run build
+ENV COMPOSER_ALLOW_SUPERUSER=1
 
-# Set permissions for storage and cache
-RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
+# Install composer deps
+RUN composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist
 
-# Expose the port Laravel will run on
-EXPOSE 8000
+# Build frontend assets
+RUN npm ci && npm run build
 
-# Start Laravel server
-CMD ["php", "artisan", "serve", "--host=0.0.0.0", "--port=8000"]
+# Clear caches and link storage (safe at build if no dynamic env)
+RUN php artisan optimize:clear \
+    && php artisan config:cache --no-interaction \
+    && php artisan route:cache --no-interaction \
+    && php artisan view:cache --no-interaction \
+    && php artisan storage:link --no-interaction || true
+
+# Permissions
+RUN chown -R www-data:www-data storage bootstrap/cache
+
+# Base image starts nginx + php-fpm automatically — no CMD needed
