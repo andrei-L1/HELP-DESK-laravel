@@ -1,5 +1,5 @@
 <?php
-
+use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Controllers\Admin\AdminDashboardController;
 use App\Http\Controllers\Admin\DepartmentManagementController;
 use App\Http\Controllers\Admin\userManagementController;
@@ -115,17 +115,35 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
 
             // ── DEPARTMENT ──────────────────────────────────
-            Route::get('/departments', [DepartmentManagementController::class, 'index'])->name('departments.index');
-            Route::post('/departments', [DepartmentManagementController::class, 'store'])->name('departments.store');
-            Route::get('/departments/{id}', [DepartmentManagementController::class, 'show'])->name('departments.show');
-            Route::put('/departments/{id}', [DepartmentManagementController::class, 'update'])->name('departments.update');
-            Route::delete('/departments/{id}', [DepartmentManagementController::class, 'destroy'])->name('departments.destroy');
+            Route::get('/departments', [DepartmentManagementController::class, 'index'])
+                ->name('departments.index');
+            Route::post('/departments', [DepartmentManagementController::class, 'store'])
+                ->name('departments.store');
+            Route::get('/departments/{id}', [DepartmentManagementController::class, 'show'])
+                ->name('departments.show');
+            Route::put('/departments/{id}', [DepartmentManagementController::class, 'update'])
+                ->name('departments.update');
+            Route::delete('/departments/{id}', [DepartmentManagementController::class, 'destroy'])
+                ->name('departments.destroy');
 
             // Department user assignments
-            Route::post('/departments/{id}/assign-users', [DepartmentManagementController::class, 'assignUsers'])->name('departments.assign-users');
-            Route::delete('/departments/{id}/users/{userId}', [DepartmentManagementController::class, 'removeUser'])->name('departments.remove-user');
-            Route::post('/departments/{id}/users/{userId}/primary', [DepartmentManagementController::class, 'setPrimary'])->name('departments.set-primary');
+            Route::post('/departments/{id}/assign-users', [DepartmentManagementController::class, 'assignUsers'])
+                ->name('departments.assign-users');
+            Route::delete('/departments/{id}/users/{userId}', [DepartmentManagementController::class, 'removeUser'])
+                ->name('departments.remove-user');
+            Route::post('/departments/{id}/users/{userId}/primary', [DepartmentManagementController::class, 'setPrimary'])
+                ->name('departments.set-primary');
 
+
+                            // ── SETTINGS ──────────────────────────────────────────────
+            Route::prefix('settings')->name('settings.')->group(function () {
+                Route::get('/', [SettingsController::class, 'index'])->name('index');
+                Route::get('/general', [SettingsController::class, 'general'])->name('general');
+                Route::post('/general', [SettingsController::class, 'updateGeneral'])->name('general.update');
+                Route::get('/ticket', [SettingsController::class, 'ticket'])->name('ticket');
+                Route::get('/email', [SettingsController::class, 'email'])->name('email');
+                Route::get('/sla', [SettingsController::class, 'sla'])->name('sla');
+            });
 
                 
         });
