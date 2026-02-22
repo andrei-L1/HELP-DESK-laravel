@@ -1,8 +1,17 @@
+# Stage 1: Install Composer dependencies
+FROM composer:2 AS vendor
+WORKDIR /app
+COPY composer.json composer.lock ./
+RUN composer install --no-dev --no-interaction --prefer-dist --ignore-platform-reqs --no-scripts --no-autoloader
+
+# Stage 2: Build frontend assets
 FROM node:20-alpine AS frontend
 WORKDIR /app
 COPY package*.json ./
 RUN npm ci
 COPY . .
+# Vite needs Ziggy's Vue components from the vendor directory
+COPY --from=vendor /app/vendor ./vendor
 RUN npm run build
 
 # Stage 2: Serve application
