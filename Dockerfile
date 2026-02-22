@@ -1,38 +1,41 @@
-FROM richarvey/nginx-php-fpm:latest   # Or :8.2 if you want pinned; latest is PHP 8.2.7
+FROM richarvey/nginx-php-fpm:latest
 
 WORKDIR /var/www/html
 
-# Copy app code
+# Copy project files
 COPY . .
 
-# Env vars for the base image
+# Image configuration from base image docs
 ENV SKIP_COMPOSER=1
 ENV WEBROOT=/var/www/html/public
 ENV PHP_ERRORS_STDERR=1
 ENV RUN_SCRIPTS=1
 ENV REAL_IP_HEADER=1
 
-# Laravel production env (can be overridden in Render dashboard)
+# Laravel production settings (can be overridden in Render env vars)
 ENV APP_ENV=production
 ENV APP_DEBUG=false
 ENV LOG_CHANNEL=stderr
 
+# Allow composer as root during build
 ENV COMPOSER_ALLOW_SUPERUSER=1
 
-# Install composer deps
+# Install PHP dependencies
 RUN composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist
 
-# Build frontend assets
+# Install and build frontend assets
 RUN npm ci && npm run build
 
-# Clear caches and link storage (safe at build if no dynamic env)
+# Optimize Laravel (config/route/view caching)
+# These are safe at build time if env vars are static
 RUN php artisan optimize:clear \
     && php artisan config:cache --no-interaction \
     && php artisan route:cache --no-interaction \
     && php artisan view:cache --no-interaction \
     && php artisan storage:link --no-interaction || true
 
-# Permissions
+# Set permissions
 RUN chown -R www-data:www-data storage bootstrap/cache
 
-# Base image starts nginx + php-fpm automatically — no CMD needed
+# Copy custom nginx config (create this file in your repo root)
+COPY nginx-site.conf /etc/nginx/conf.d/default.conf
