@@ -16,39 +16,24 @@ class UserManagementController extends Controller
      */
     public function create()
     {
-        $roles = DB::table('roles')->get(['id', 'name']);
-        
         return Inertia::render('Admin/Users/Create', [
-            'roles' => $roles,
+            'roles' => \App\Models\Role::select('id', 'name')->get(),
         ]);
     }
 
     /**
      * Store a newly created user.
      */
-    public function store(Request $request)
+    public function store(\App\Http\Requests\StoreUserRequest $request)
     {
-        $validated = $request->validate([
-            'username' => 'required|string|max:60|unique:users',
-            'email' => 'required|email|max:120|unique:users',
-            'password' => 'required|string|min:8|confirmed',
-            'first_name' => 'required|string|max:120',
-            'last_name' => 'required|string|max:120',
-            'middle_name' => 'nullable|string|max:120',
-            'display_name' => 'nullable|string|max:80',
-            'role_id' => 'required|exists:roles,id',
-            'phone' => 'nullable|string|max:30',
-            'timezone' => 'nullable|string|max:40',
-            'is_active' => 'boolean',
-        ]);
-
+        $validated = $request->validated();
         $validated['password'] = Hash::make($validated['password']);
         $validated['is_active'] = $validated['is_active'] ?? true;
         $validated['timezone'] = $validated['timezone'] ?? 'Asia/Manila';
 
-        $userId = DB::table('users')->insertGetId($validated);
+        $user = \App\Models\User::create($validated);
 
-        return redirect()->route('admin.users.show', $userId)
+        return redirect()->route('admin.users.show', $user->id)
             ->with('success', 'User created successfully.');
     }
 
@@ -57,125 +42,62 @@ class UserManagementController extends Controller
      */
     public function show($id)
     {
-        $user = DB::table('users')
-            ->leftJoin('roles', 'users.role_id', '=', 'roles.id')
-            ->where('users.id', $id)
-            ->whereNull('users.deleted_at')
-            ->select(
-                'users.id',
-                'users.username',
-                'users.email',
-                'users.first_name',
-                'users.last_name',
-                'users.middle_name',
-                'users.display_name',
-                'users.avatar_url',
-                'users.phone',
-                'users.timezone',
-                'users.is_active',
-                'users.email_verified',
-                'users.last_login',
-                'users.created_at',
-                'users.updated_at',
-                'roles.id as role_id',
-                'roles.name as role_name'
-            )
-            ->first();
+        $user = \App\Models\User::with('role')->findOrFail($id);
 
-        if (!$user) {
-            return redirect()->route('admin.users.index')
-                ->with('error', 'User not found.');
-        }
-
-        // Get user's tickets with status and priority names
-        $tickets = DB::table('tickets')
-            ->leftJoin('ticket_statuses', 'tickets.status_id', '=', 'ticket_statuses.id')
-            ->leftJoin('ticket_priorities', 'tickets.priority_id', '=', 'ticket_priorities.id')
-            ->where('tickets.created_by', $id)
-            ->orWhere('tickets.assigned_to', $id)
-            ->select(
-                'tickets.id',
-                'tickets.ticket_number',
-                'tickets.subject',
-                'ticket_statuses.name as status',
-                'ticket_priorities.name as priority',
-                'tickets.created_at'
-            )
-            ->orderByDesc('tickets.created_at')
+        // Get user's tickets with status and priority
+        $tickets = \App\Models\Ticket::with(['status', 'priority'])
+            ->where('created_by', $id)
+            ->orWhere('assigned_to', $id)
+            ->orderByDesc('created_at')
             ->limit(10)
             ->get()
-            ->map(function ($ticket) {
-                return [
-                    'id' => $ticket->id,
-                    'ticket_number' => $ticket->ticket_number,
-                    'subject' => $ticket->subject,
-                    'status' => $ticket->status ?? 'Unknown',
-                    'priority' => $ticket->priority ?? 'Unknown',
-                    'created_at' => \Carbon\Carbon::parse($ticket->created_at)->toDateTimeString(),
-                ];
-            });
+            ->map(fn ($ticket) => [
+                'id' => $ticket->id,
+                'ticket_number' => $ticket->ticket_number,
+                'subject' => $ticket->subject,
+                'status' => $ticket->status->name ?? 'Unknown',
+                'priority' => $ticket->priority->name ?? 'Unknown',
+                'created_at' => $ticket->created_at->toDateTimeString(),
+            ]);
 
-        // Calculate user stats using status IDs
-        $openStatusIds = DB::table('ticket_statuses')
-            ->whereIn('name', ['Open', 'Pending'])
-            ->pluck('id')
-            ->toArray();
-
-        $resolvedStatusIds = DB::table('ticket_statuses')
-            ->where('name', 'Resolved')
-            ->pluck('id')
-            ->toArray();
-
+        // Calculate user stats
         $stats = [
-            'total_tickets' => DB::table('tickets')
-                ->where('created_by', $id)
-                ->count(),
-            'open_tickets' => DB::table('tickets')
-                ->where('created_by', $id)
-                ->whereIn('status_id', $openStatusIds)
-                ->count(),
-            'resolved_tickets' => DB::table('tickets')
-                ->where('created_by', $id)
-                ->whereIn('status_id', $resolvedStatusIds)
-                ->count(),
+            'total_tickets' => \App\Models\Ticket::where('created_by', $id)->count(),
+            'open_tickets' => \App\Models\Ticket::where('created_by', $id)->whereHas('status', fn($q) => $q->whereIn('name', ['Open', 'Pending']))->count(),
+            'resolved_tickets' => \App\Models\Ticket::where('created_by', $id)->whereHas('status', fn($q) => $q->where('name', 'Resolved'))->count(),
             'avg_response_time' => $this->calculateAvgResponseTime($id),
         ];
 
-        // Get user's activity from ticket_activity_logs
-        $activity_logs = DB::table('ticket_activity_logs')
+        // Get user's activity
+        $activity_logs = \App\Models\TicketActivityLog::with('user:id,username')
             ->where('user_id', $id)
             ->orderByDesc('created_at')
             ->limit(50)
             ->get()
-            ->map(function ($log) {
-                return [
-                    'id' => $log->id,
-                    'action' => $log->action,
-                    'user_name' => DB::table('users')->where('id', $log->user_id)->value('username') ?? 'System',
-                    'old_value' => $log->old_value,
-                    'new_value' => $log->new_value,
-                    'created_at' => \Carbon\Carbon::parse($log->created_at)->toDateTimeString(),
-                ];
-            });
+            ->map(fn ($log) => [
+                'id' => $log->id,
+                'action' => $log->action,
+                'user_name' => $log->user->username ?? 'System',
+                'old_value' => $log->old_value,
+                'new_value' => $log->new_value,
+                'created_at' => $log->created_at->toDateTimeString(),
+            ]);
 
-        // Get all roles for the edit form
-        $roles = DB::table('roles')->get(['id', 'name']);
+        $roles = \App\Models\Role::select('id', 'name')->get();
 
-        // Get user's active sessions
+        // Get user's active sessions (Sessions are usually managed by the database driver inherently using DB facade)
         $sessions = [];
         if (DB::connection()->getSchemaBuilder()->hasTable('sessions')) {
             $sessions = DB::table('sessions')
                 ->where('user_id', $id)
                 ->where('last_activity', '>', now()->subDays(1)->timestamp)
                 ->get()
-                ->map(function ($session) {
-                    return [
-                        'id' => $session->id,
-                        'ip' => $session->ip_address,
-                        'device' => $this->parseUserAgent($session->user_agent ?? ''),
-                        'last_active' => \Carbon\Carbon::createFromTimestamp($session->last_activity)->toDateTimeString(),
-                    ];
-                })->toArray();
+                ->map(fn ($session) => [
+                    'id' => $session->id,
+                    'ip' => $session->ip_address,
+                    'device' => $this->parseUserAgent($session->user_agent ?? ''),
+                    'last_active' => \Carbon\Carbon::createFromTimestamp($session->last_activity)->toDateTimeString(),
+                ])->toArray();
         }
 
         return Inertia::render('Admin/Users/Show', [
@@ -188,16 +110,16 @@ class UserManagementController extends Controller
                 'middle_name' => $user->middle_name,
                 'display_name' => $user->display_name,
                 'full_name' => trim("{$user->first_name} {$user->middle_name} {$user->last_name}"),
-                'avatar_url' => $user->avatar_url ? asset('storage/' . $user->avatar_url) : null,
+                'avatar_url' => $user->avatar_url,
                 'phone' => $user->phone,
                 'timezone' => $user->timezone,
                 'role_id' => $user->role_id,
-                'role_name' => $user->role_name,
+                'role_name' => $user->role->name ?? 'Unknown',
                 'is_active' => (bool) $user->is_active,
                 'email_verified' => (bool) $user->email_verified,
-                'last_login' => $user->last_login ? \Carbon\Carbon::parse($user->last_login)->toDateTimeString() : null,
-                'created_at' => \Carbon\Carbon::parse($user->created_at)->toDateTimeString(),
-                'updated_at' => \Carbon\Carbon::parse($user->updated_at)->toDateTimeString(),
+                'last_login' => $user->last_login ? $user->last_login->toDateTimeString() : null,
+                'created_at' => $user->created_at->toDateTimeString(),
+                'updated_at' => $user->updated_at->toDateTimeString(),
                 'sessions' => $sessions,
             ],
             'roles' => $roles,
@@ -212,17 +134,8 @@ class UserManagementController extends Controller
      */
     public function edit($id)
     {
-        $user = DB::table('users')
-            ->where('id', $id)
-            ->whereNull('deleted_at')
-            ->first();
-
-        if (!$user) {
-            return redirect()->route('admin.users.index')
-                ->with('error', 'User not found.');
-        }
-
-        $roles = DB::table('roles')->get(['id', 'name']);
+        $user = \App\Models\User::findOrFail($id);
+        $roles = \App\Models\Role::select('id', 'name')->get();
 
         return Inertia::render('Admin/Users/Edit', [
             'user' => $user,
@@ -233,30 +146,10 @@ class UserManagementController extends Controller
     /**
      * Update the specified user.
      */
-    public function update(Request $request, $id)
+    public function update(\App\Http\Requests\UpdateUserRequest $request, $id)
     {
-        $user = DB::table('users')->where('id', $id)->first();
-        
-        if (!$user) {
-            return redirect()->back()->with('error', 'User not found.');
-        }
-
-        $validated = $request->validate([
-            'username' => "required|string|max:60|unique:users,username,{$id}",
-            'email' => "required|email|max:120|unique:users,email,{$id}",
-            'first_name' => 'required|string|max:120',
-            'last_name' => 'required|string|max:120',
-            'middle_name' => 'nullable|string|max:120',
-            'display_name' => 'nullable|string|max:80',
-            'role_id' => 'required|exists:roles,id',
-            'phone' => 'nullable|string|max:30',
-            'timezone' => 'nullable|string|max:40',
-            'is_active' => 'boolean',
-        ]);
-
-        DB::table('users')
-            ->where('id', $id)
-            ->update($validated);
+        $user = \App\Models\User::findOrFail($id);
+        $user->update($request->validated());
 
         return redirect()->route('admin.users.show', $id)
             ->with('success', 'User updated successfully.');
@@ -271,12 +164,9 @@ class UserManagementController extends Controller
             'password' => 'required|string|min:8|confirmed',
         ]);
 
-        DB::table('users')
-            ->where('id', $id)
-            ->update([
-                'password' => Hash::make($validated['password']),
-                'updated_at' => now(),
-            ]);
+        \App\Models\User::findOrFail($id)->update([
+            'password' => Hash::make($validated['password']),
+        ]);
 
         return redirect()->back()->with('success', 'Password updated successfully.');
     }
@@ -290,8 +180,7 @@ class UserManagementController extends Controller
             'avatar' => 'required|image|max:2048',
         ]);
 
-        // Get the current user to find old avatar
-        $user = DB::table('users')->where('id', $id)->first();
+        $user = \App\Models\User::findOrFail($id);
         
         if ($request->hasFile('avatar')) {
             // Delete old avatar if it exists
@@ -302,16 +191,10 @@ class UserManagementController extends Controller
                 }
             }
             
-            // Upload new avatar
-            $path = $request->file('avatar')->store('avatars', 'public');
-            
-            // Update database
-            DB::table('users')
-                ->where('id', $id)
-                ->update([
-                    'avatar_url' => $path,
-                    'updated_at' => now(),
-                ]);
+            // Upload new avatar and update database using Eloquent
+            $user->update([
+                'avatar_url' => $request->file('avatar')->store('avatars', 'public'),
+            ]);
         }
 
         return redirect()->back()->with('success', 'Avatar updated successfully.');
@@ -385,12 +268,8 @@ class UserManagementController extends Controller
             return redirect()->back()->with('error', 'You cannot delete your own account.');
         }
 
-        // Soft delete
-        DB::table('users')
-            ->where('id', $id)
-            ->update([
-                'deleted_at' => now(),
-            ]);
+        // Eloquent handles soft deleting automatically!
+        \App\Models\User::findOrFail($id)->delete();
 
         return redirect()->route('admin.users.index')
             ->with('success', 'User deleted successfully.');

@@ -146,7 +146,10 @@ class User extends Authenticatable implements MustVerifyEmail, CanResetPasswordC
     }
     public function getAvatarUrlAttribute()
     {
-        if ($this->attributes['avatar_url']) {
+        if (!empty($this->attributes['avatar_url'])) {
+            if (str_starts_with($this->attributes['avatar_url'], 'http')) {
+                return $this->attributes['avatar_url'];
+            }
             return asset('storage/' . $this->attributes['avatar_url']);
         }
         
