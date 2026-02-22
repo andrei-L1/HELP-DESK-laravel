@@ -42,8 +42,7 @@ const viewReports = () => {
 };
 
 const viewTicket = (ticketId) => {
-    // Navigate to ticket detail page when route is created
-    alert(`View ticket ${ticketId} - Coming soon!`);
+    router.visit(route('admin.tickets.show', ticketId));
 };
 </script>
 
