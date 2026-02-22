@@ -21,11 +21,7 @@ ENV LOG_CHANNEL=stderr
 ENV COMPOSER_ALLOW_SUPERUSER=1
 
 # Install Node.js and npm
-RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
-    && apt-get update \
-    && apt-get install -y nodejs \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
+RUN apk add --no-cache nodejs npm
 
 # Install PHP dependencies
 RUN composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist
@@ -41,7 +37,5 @@ RUN php artisan optimize:clear \
     && php artisan storage:link --no-interaction || true
 
 # Set permissions
-RUN chown -R www-data:www-data storage bootstrap/cache
+RUN chown -R nginx:nginx storage bootstrap/cache
 
-# Copy custom nginx config
-COPY nginx-site.conf /etc/nginx/conf.d/default.conf
