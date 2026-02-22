@@ -44,37 +44,44 @@ class TicketSeeder extends Seeder
             'Report inappropriate content',
         ];
 
-        for ($i = 1; $i <= 35; $i++) {  // Create 35 tickets
-            $createdAt = Carbon::now()->subDays(rand(0, 90))->subHours(rand(0, 23));
+        $departments = DB::table('departments')->get();
 
-            $statusName = fake()->randomElement(['Open', 'Pending', 'Resolved', 'Closed', 'Urgent']);
-            $priorityName = fake()->randomElement(['Low', 'Medium', 'High', 'Urgent']);
+        foreach ($departments as $department) {
+            for ($i = 1; $i <= 10; $i++) {
+                $createdAt = Carbon::now()->subDays(rand(0, 90))->subHours(rand(0, 23));
 
-            $statusId = $statusIds[$statusName] ?? $defaultStatusId;
-            $priorityId = $priorityIds[$priorityName] ?? $defaultPriorityId;
+                $statusName = fake()->randomElement(['Open', 'Pending', 'Resolved', 'Closed', 'Urgent']);
+                $priorityName = fake()->randomElement(['Low', 'Medium', 'High', 'Urgent']);
 
-            // 70% chance assigned to someone, 30% unassigned
-            $assignedTo = (rand(1, 10) <= 7 && !empty($userIds))
-                ? fake()->randomElement($userIds)
-                : null;
+                $statusId = $statusIds[$statusName] ?? $defaultStatusId;
+                $priorityId = $priorityIds[$priorityName] ?? $defaultPriorityId;
 
-            // Ticket number: something like TICKET-2025-0001
-            $year = $createdAt->year;
-            $ticketNumber = 'TICKET-' . $year . '-' . str_pad($i, 4, '0', STR_PAD_LEFT);
+                // 70% chance assigned to someone, 30% unassigned
+                $assignedTo = (rand(1, 10) <= 7 && !empty($userIds))
+                    ? fake()->randomElement($userIds)
+                    : null;
 
-            DB::table('tickets')->insert([
-                'ticket_number'  => $ticketNumber,
-                'subject'        => fake()->randomElement($subjects) . ' #' . $i,
-                'description'    => fake()->paragraphs(3, true),  // assuming you have a description column
-                'status_id'      => $statusId,
-                'priority_id'    => $priorityId,
-                'created_by'     => !empty($userIds) ? fake()->randomElement($userIds) : null,
-                'assigned_to'    => $assignedTo,
-                'created_at'     => $createdAt,
-                'updated_at'     => Carbon::now(),
-            ]);
+                // Ticket number: something like TKT-TS-2025-0001
+                $year = $createdAt->year;
+                $uniqueSuffix = Str::random(4);
+                $ticketNumber = 'TKT-' . $department->short_code . '-' . $year . '-' . str_pad($i, 4, '0', STR_PAD_LEFT) . '-' . strtoupper($uniqueSuffix);
+
+                DB::table('tickets')->insert([
+                    'ticket_number'  => $ticketNumber,
+                    'subject'        => fake()->randomElement($subjects) . ' #' . $i,
+                    'description'    => fake()->paragraphs(3, true),
+                    'status_id'      => $statusId,
+                    'priority_id'    => $priorityId,
+                    'department_id'  => $department->id,
+                    'created_by'     => !empty($userIds) ? fake()->randomElement($userIds) : null,
+                    'assigned_to'    => $assignedTo,
+                    'created_at'     => $createdAt,
+                    'updated_at'     => Carbon::now(),
+                ]);
+            }
         }
 
-        $this->command->info('🎫 Seeded ' . 35 . ' support tickets successfully!');
+        $totalTickets = $departments->count() * 10;
+        $this->command->info('🎫 Seeded ' . $totalTickets . ' support tickets successfully!');
     }
 }
