@@ -195,6 +195,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
                 // manager team operations
                 Route::middleware(['permission:manage_users'])->group(function () {
                     Route::get('/team', [\App\Http\Controllers\Manager\ManagerTeamController::class, 'index'])->name('team.index');
+                    Route::get('/team/{user}', [\App\Http\Controllers\Manager\ManagerTeamController::class, 'show'])->name('team.show')->where('user', '[0-9]+');
                 });
             });
 

@@ -205,6 +205,7 @@ const getVerifiedClass = (isVerified) => {
                             <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Status</th>
                             <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Verified</th>
                             <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Last Login</th>
+                            <th class="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">Actions</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-200 bg-white">
@@ -258,10 +259,18 @@ const getVerifiedClass = (isVerified) => {
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                 {{ formatDate(user.last_login) }}
                             </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-right">
+                                <Link
+                                    :href="route('manager.team.show', user.id)"
+                                    class="inline-flex items-center rounded bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-700 hover:bg-emerald-100"
+                                >
+                                    View Performance
+                                </Link>
+                            </td>
                         </tr>
 
                         <tr v-if="users.data.length === 0">
-                            <td colspan="7" class="px-6 py-8 text-center text-sm text-gray-500">
+                            <td colspan="8" class="px-6 py-8 text-center text-sm text-gray-500">
                                 No team members found.
                             </td>
                         </tr>

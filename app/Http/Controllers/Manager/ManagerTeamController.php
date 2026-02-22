@@ -93,4 +93,47 @@ class ManagerTeamController extends Controller
             'stats'    => $stats,
         ]);
     }
+
+    public function show(int $id)
+    {
+        $userDepartments = Auth::user()->departments()->pluck('departments.id');
+
+        // Allow viewing only if they are an agent/user and share a department
+        $member = clone \App\Models\User::with(['role', 'departments'])
+            ->where('id', $id)
+            ->whereHas('departments', function($q) use ($userDepartments) {
+                $q->whereIn('departments.id', $userDepartments);
+            })
+            ->whereHas('role', function($q) {
+                $q->whereIn('name', ['agent', 'user']);
+            })
+            ->firstOrFail();
+
+        // Calculate basic historical performance metrics
+        $ticketsTotal = \App\Models\Ticket::where('assigned_to', $member->id)->count();
+        $ticketsOpen = \App\Models\Ticket::where('assigned_to', $member->id)
+            ->whereHas('status', function($q) {
+                $q->whereNotIn('name', ['Closed', 'Resolved']);
+            })->count();
+        $ticketsResolved = \App\Models\Ticket::where('assigned_to', $member->id)
+            ->whereHas('status', function($q) {
+                $q->whereIn('name', ['Closed', 'Resolved']);
+            })->count();
+
+        $recentTickets = \App\Models\Ticket::with(['status', 'priority', 'department'])
+            ->where('assigned_to', $member->id)
+            ->orderByDesc('created_at')
+            ->take(8)
+            ->get();
+
+        return Inertia::render('Manager/Team/Show', [
+            'member' => $member,
+            'stats' => [
+                'tickets_total'    => $ticketsTotal,
+                'tickets_open'     => $ticketsOpen,
+                'tickets_resolved' => $ticketsResolved,
+            ],
+            'recentTickets' => $recentTickets
+        ]);
+    }
 }
