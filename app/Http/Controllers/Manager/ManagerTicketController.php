@@ -179,6 +179,11 @@ class ManagerTicketController extends AdminTicketController
     {
         $this->authorizeTicketAccess($id);
 
+        $userDepartments = Auth::user()->departments()->pluck('departments.id')->toArray();
+        if ($request->filled('department_id') && !in_array($request->department_id, $userDepartments)) {
+            abort(403, 'Unauthorized. You can only move tickets to departments you manage.');
+        }
+
         parent::update($request, $id);
         return redirect()->route('manager.tickets.show', $id);
     }
@@ -197,6 +202,13 @@ class ManagerTicketController extends AdminTicketController
 
         parent::storeAttachment($request, $id);
         return redirect()->route('manager.tickets.show', $id);
+    }
+
+    public function downloadAttachment(int $ticketId, int $attachmentId)
+    {
+        $this->authorizeTicketAccess($ticketId);
+        
+        return parent::downloadAttachment($ticketId, $attachmentId);
     }
 
     public function create()
@@ -228,6 +240,11 @@ class ManagerTicketController extends AdminTicketController
 
     public function store(\App\Http\Requests\StoreTicketRequest $request)
     {
+        $userDepartments = Auth::user()->departments()->pluck('departments.id')->toArray();
+        if ($request->filled('department_id') && !in_array($request->department_id, $userDepartments)) {
+            abort(403, 'Unauthorized. You can only assign tickets to your own departments.');
+        }
+
         parent::store($request);
         return redirect()->route('manager.tickets.index');
     }
