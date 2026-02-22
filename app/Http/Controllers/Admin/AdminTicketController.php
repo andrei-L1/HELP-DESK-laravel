@@ -399,7 +399,7 @@ class AdminTicketController extends Controller
      * @param string|null $statusFilter  Specific status to filter by (null = all)
      * @param string $view               Identifier for the frontend ('all', 'open', etc.)
      */
-    private function getTickets(Request $request, ?string $statusFilter, string $view, string $component, ?int $assignedTo = null)
+    protected function getTickets(Request $request, ?string $statusFilter, string $view, string $component, ?int $assignedTo = null)
     {
         $query = Ticket::with(['status', 'priority', 'creator', 'assignee'])
             ->orderByDesc('created_at');

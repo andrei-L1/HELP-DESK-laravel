@@ -6,6 +6,7 @@ use App\Http\Controllers\Admin\userManagementController;
 use App\Http\Controllers\Admin\RoleManagementController;
 use App\Http\Controllers\Admin\AdminUserController;
 use App\Http\Controllers\Admin\AdminTicketController;
+use App\Http\Controllers\Manager\ManagerDashboardController;
 use App\Http\Controllers\ProfileController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
@@ -35,7 +36,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     });
 
     // ── Admin Area ──────────────────────────────────
-    Route::middleware('permission:manage_users|manage_roles|manage_permissions')
+    Route::middleware('role:admin')
         ->prefix('admin')
         ->name('admin.')
         ->group(function () {
@@ -161,20 +162,31 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
 
         // ── Manager Area ──────────────────────────────────
-        Route::middleware(['auth', 'verified', 'permission:manage_users|manage_roles'])
+        Route::middleware(['auth', 'verified', 'role:manager'])
             ->prefix('manager')
             ->name('manager.')
             ->group(function () {
-                Route::get('/dashboard', fn() => Inertia::render('Manager/ManagerDashboard'))
+                Route::get('/dashboard', [ManagerDashboardController::class, 'index'])
                     ->name('managerdashboard');
 
-                // Example manager routes
-                Route::get('/tickets', [AdminTicketController::class, 'index'])->name('tickets.index');
-                Route::get('/assigned', [AdminTicketController::class, 'assigned'])->name('tickets.assigned');
+                // manager ticket general operations
+                Route::get('/tickets', [\App\Http\Controllers\Manager\ManagerTicketController::class, 'index'])->name('tickets.index');
+                Route::get('/tickets/all', [\App\Http\Controllers\Manager\ManagerTicketController::class, 'all'])->name('tickets.all');
+                Route::get('/tickets/open', [\App\Http\Controllers\Manager\ManagerTicketController::class, 'open'])->name('tickets.open');
+                Route::get('/assigned', [\App\Http\Controllers\Manager\ManagerTicketController::class, 'assigned'])->name('tickets.assigned');
+
+                // manager ticket specific operations
+                Route::get('/tickets/create', [\App\Http\Controllers\Manager\ManagerTicketController::class, 'create'])->name('tickets.create');
+                Route::post('/tickets', [\App\Http\Controllers\Manager\ManagerTicketController::class, 'store'])->name('tickets.store');
+                Route::get('/tickets/{ticket}', [\App\Http\Controllers\Manager\ManagerTicketController::class, 'show'])->name('tickets.show');
+                Route::patch('/tickets/{ticket}', [\App\Http\Controllers\Manager\ManagerTicketController::class, 'update'])->name('tickets.update');
+                Route::post('/tickets/{ticket}/messages', [\App\Http\Controllers\Manager\ManagerTicketController::class, 'storeMessage'])->name('tickets.messages.store');
+                Route::post('/tickets/{ticket}/attachments', [\App\Http\Controllers\Manager\ManagerTicketController::class, 'storeAttachment'])->name('tickets.attachments.store');
+                Route::get('/tickets/{ticket}/attachments/{attachment}', [\App\Http\Controllers\Manager\ManagerTicketController::class, 'downloadAttachment'])->name('tickets.attachments.download');
             });
 
         // ── Agent Area ────────────────────────────────────
-        Route::middleware(['auth', 'verified', 'permission:view_ticket|edit_ticket'])
+        Route::middleware(['auth', 'verified', 'role:agent'])
             ->prefix('agent')
             ->name('agent.')
             ->group(function () {

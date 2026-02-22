@@ -91,6 +91,16 @@ class User extends Authenticatable implements MustVerifyEmail, CanResetPasswordC
         return $this->belongsTo(Role::class);
     }
 
+    public function assignedTickets()
+    {
+        return $this->hasMany(Ticket::class, 'assigned_to');
+    }
+
+    public function createdTickets()
+    {
+        return $this->hasMany(Ticket::class, 'created_by');
+    }
+
     // Optional but very useful helpers
     public function isAdmin(): bool
     {
