@@ -101,6 +101,17 @@ class User extends Authenticatable implements MustVerifyEmail, CanResetPasswordC
         return $this->hasMany(Ticket::class, 'created_by');
     }
 
+    public function departments()
+    {
+        return $this->belongsToMany(Department::class, 'user_departments')
+                    ->withPivot('is_primary', 'joined_at');
+    }
+
+    public function managedDepartments()
+    {
+        return $this->hasMany(Department::class, 'manager_id');
+    }
+
     // Optional but very useful helpers
     public function isAdmin(): bool
     {
