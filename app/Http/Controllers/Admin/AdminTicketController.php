@@ -67,87 +67,19 @@ class AdminTicketController extends Controller
      */
     public function show(int $id)
     {
-        $ticketRow = DB::table('tickets')
-            ->leftJoin('ticket_statuses', 'tickets.status_id', '=', 'ticket_statuses.id')
-            ->leftJoin('ticket_priorities', 'tickets.priority_id', '=', 'ticket_priorities.id')
-            ->leftJoin('ticket_categories', 'tickets.category_id', '=', 'ticket_categories.id')
-            ->leftJoin('departments', 'tickets.department_id', '=', 'departments.id')
-            ->leftJoin('users as created_by_user', 'tickets.created_by', '=', 'created_by_user.id')
-            ->leftJoin('users as assigned_to_user', 'tickets.assigned_to', '=', 'assigned_to_user.id')
-            ->whereNull('tickets.deleted_at')
-            ->where('tickets.id', $id)
-            ->select(
-                'tickets.id',
-                'tickets.ticket_number',
-                'tickets.subject',
-                'tickets.description',
-                'tickets.assigned_to as assigned_to_id',
-                'tickets.status_id',
-                'tickets.priority_id',
-                'tickets.category_id',
-                'tickets.department_id',
-                'tickets.due_at',
-                'tickets.first_response_at',
-                'tickets.resolved_at',
-                'tickets.closed_at',
-                'ticket_statuses.name as status',
-                'ticket_priorities.name as priority',
-                'ticket_categories.title as category_title',
-                'departments.name as department_name',
-                DB::raw("CONCAT(COALESCE(created_by_user.first_name, ''), ' ', COALESCE(created_by_user.last_name, '')) as created_by"),
-                DB::raw("CONCAT(COALESCE(assigned_to_user.first_name, ''), ' ', COALESCE(assigned_to_user.last_name, '')) as assigned_to_name"),
-                'tickets.created_at',
-                'tickets.updated_at'
-            )
-            ->first();
-
-        if (!$ticketRow) {
-            abort(404);
-        }
+        // 1. Fetch ticket using elegant Eloquent eager loading
+        $ticket = Ticket::with([
+            'status', 'priority', 'category', 'department', 
+            'creator', 'assignee',
+            'messages.user', 'attachments', 'activityLogs.user'
+        ])->findOrFail($id);
 
         $users = $this->getAssignableUsers();
 
-        $messages = TicketMessage::query()
-            ->where('ticket_id', $id)
-            ->with('user:id,first_name,last_name')
-            ->orderBy('created_at')
-            ->get()
-            ->map(fn ($m) => [
-                'id'          => $m->id,
-                'body'        => $m->body,
-                'is_internal' => $m->is_internal,
-                'author'      => $m->user ? trim($m->user->first_name . ' ' . $m->user->last_name) : 'Unknown',
-                'created_at'  => $m->created_at?->toDateTimeString(),
-            ]);
-
-        $attachments = TicketAttachment::query()
-            ->where('ticket_id', $id)
-            ->get(['id', 'file_name', 'file_size', 'uploaded_at'])
-            ->map(fn ($a) => [
-                'id'          => $a->id,
-                'file_name'   => $a->file_name,
-                'file_size'   => $a->file_size,
-                'uploaded_at' => $a->uploaded_at?->toDateTimeString(),
-            ]);
-
-        $activityLogs = TicketActivityLog::query()
-            ->where('ticket_id', $id)
-            ->with('user:id,first_name,last_name')
-            ->orderByDesc('created_at')
-            ->limit(50)
-            ->get()
-            ->map(fn ($l) => [
-                'id'         => $l->id,
-                'action'     => $l->action,
-                'old_value'  => $l->old_value,
-                'new_value'  => $l->new_value,
-                'user_name'  => $l->user ? trim($l->user->first_name . ' ' . $l->user->last_name) : 'Unknown',
-                'created_at' => $l->created_at?->toDateTimeString(),
-            ]);
-
+        // 2. Calculate SLA Policy (Using existing method)
         $slaPolicy = null;
-        if ($ticketRow->priority_id) {
-            $sla = $this->findSlaPolicy($ticketRow->priority_id, $ticketRow->department_id);
+        if ($ticket->priority_id) {
+            $sla = $this->findSlaPolicy($ticket->priority_id, $ticket->department_id);
             if ($sla) {
                 $slaPolicy = [
                     'name'            => $sla->name,
@@ -157,48 +89,57 @@ class AdminTicketController extends Controller
             }
         }
 
-        $statuses = DB::table('ticket_statuses')
-            ->where('is_active', true)
-            ->orderBy('sort_order')
-            ->get(['id', 'name', 'title'])
-            ->map(fn ($s) => ['id' => $s->id, 'name' => $s->name, 'title' => $s->title]);
-
-        $departments = DB::table('departments')
-            ->whereNull('deleted_at')
-            ->where('is_active', true)
-            ->orderBy('name')
-            ->get(['id', 'name', 'short_code'])
-            ->map(fn ($d) => ['id' => $d->id, 'name' => $d->name, 'short_code' => $d->short_code]);
+        // 3. Get dropdown options for the form
+        $statuses = DB::table('ticket_statuses')->where('is_active', true)->orderBy('sort_order')->get(['id', 'name', 'title']);
+        $departments = DB::table('departments')->whereNull('deleted_at')->where('is_active', true)->orderBy('name')->get(['id', 'name', 'short_code']);
 
         return Inertia::render('Admin/Tickets/Show', [
             'ticket' => [
-                'id'                 => $ticketRow->id,
-                'ticket_number'      => $ticketRow->ticket_number,
-                'subject'            => $ticketRow->subject,
-                'description'        => $ticketRow->description,
-                'status'             => $ticketRow->status ?? 'Unknown',
-                'status_id'          => $ticketRow->status_id,
-                'priority'           => $ticketRow->priority ?? 'Unknown',
-                'category_id'        => $ticketRow->category_id,
-                'category_title'     => $ticketRow->category_title ?? null,
-                'department_id'      => $ticketRow->department_id,
-                'department_name'    => $ticketRow->department_name ?? null,
-                'created_by'         => trim($ticketRow->created_by) ?: 'Unknown',
-                'assigned_to_id'     => $ticketRow->assigned_to_id,
-                'assigned_to_name'   => trim($ticketRow->assigned_to_name) ?: null,
-                'due_at'             => $ticketRow->due_at ? \Carbon\Carbon::parse($ticketRow->due_at)->toDateTimeString() : null,
-                'first_response_at'  => $ticketRow->first_response_at ? \Carbon\Carbon::parse($ticketRow->first_response_at)->toDateTimeString() : null,
-                'resolved_at'        => $ticketRow->resolved_at ? \Carbon\Carbon::parse($ticketRow->resolved_at)->toDateTimeString() : null,
-                'closed_at'          => $ticketRow->closed_at ? \Carbon\Carbon::parse($ticketRow->closed_at)->toDateTimeString() : null,
-                'created_at'         => $ticketRow->created_at ? \Carbon\Carbon::parse($ticketRow->created_at)->toDateTimeString() : null,
-                'updated_at'         => $ticketRow->updated_at ? \Carbon\Carbon::parse($ticketRow->updated_at)->toDateTimeString() : null,
+                'id'                 => $ticket->id,
+                'ticket_number'      => $ticket->ticket_number,
+                'subject'            => $ticket->subject,
+                'description'        => $ticket->description,
+                'status'             => $ticket->status->name ?? 'Unknown',
+                'status_id'          => $ticket->status_id,
+                'priority'           => $ticket->priority->name ?? 'Unknown',
+                'category_id'        => $ticket->category_id,
+                'category_title'     => $ticket->category->title ?? null,
+                'department_id'      => $ticket->department_id,
+                'department_name'    => $ticket->department->name ?? null,
+                'created_by'         => $ticket->creator ? trim($ticket->creator->first_name . ' ' . $ticket->creator->last_name) : 'Unknown',
+                'assigned_to_id'     => $ticket->assigned_to,
+                'assigned_to_name'   => $ticket->assignee ? trim($ticket->assignee->first_name . ' ' . $ticket->assignee->last_name) : null,
+                'due_at'             => $ticket->due_at ? \Carbon\Carbon::parse($ticket->due_at)->toDateTimeString() : null,
+                'first_response_at'  => $ticket->first_response_at ? \Carbon\Carbon::parse($ticket->first_response_at)->toDateTimeString() : null,
+                'resolved_at'        => $ticket->resolved_at ? \Carbon\Carbon::parse($ticket->resolved_at)->toDateTimeString() : null,
+                'closed_at'          => $ticket->closed_at ? \Carbon\Carbon::parse($ticket->closed_at)->toDateTimeString() : null,
+                'created_at'         => $ticket->created_at ? \Carbon\Carbon::parse($ticket->created_at)->toDateTimeString() : null,
+                'updated_at'         => $ticket->updated_at ? \Carbon\Carbon::parse($ticket->updated_at)->toDateTimeString() : null,
             ],
             'statuses'      => $statuses,
             'departments'   => $departments,
             'sla_policy'   => $slaPolicy,
-            'messages'     => $messages,
-            'attachments'  => $attachments,
-            'activity_logs' => $activityLogs,
+            'messages'     => $ticket->messages->map(fn($m) => [
+                'id'          => $m->id,
+                'body'        => $m->body,
+                'is_internal' => $m->is_internal,
+                'author'      => $m->user ? trim($m->user->first_name . ' ' . $m->user->last_name) : 'Unknown',
+                'created_at'  => $m->created_at?->toDateTimeString(),
+            ]),
+            'attachments'  => $ticket->attachments->map(fn($a) => [
+                'id'          => $a->id,
+                'file_name'   => $a->file_name,
+                'file_size'   => $a->file_size,
+                'uploaded_at' => $a->uploaded_at?->toDateTimeString(),
+            ]),
+            'activity_logs' => $ticket->activityLogs->map(fn($l) => [
+                'id'         => $l->id,
+                'action'     => $l->action,
+                'old_value'  => $l->old_value,
+                'new_value'  => $l->new_value,
+                'user_name'  => $l->user ? trim($l->user->first_name . ' ' . $l->user->last_name) : 'Unknown',
+                'created_at' => $l->created_at?->toDateTimeString(),
+            ])->take(50),
             'users'        => $users,
         ]);
     }
