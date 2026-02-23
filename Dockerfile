@@ -41,15 +41,18 @@ ENV COMPOSER_ALLOW_SUPERUSER=1
 # Install PHP dependencies
 RUN composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist
 
-# Optimize Laravel
+# Prepare database directory
 RUN mkdir -p database \
     && touch database/database.sqlite \
-    && php artisan optimize:clear \
-    && php artisan config:cache --no-interaction \
-    && php artisan route:cache --no-interaction \
-    && php artisan view:cache --no-interaction \
-    && php artisan storage:link --no-interaction || true
+    && chown -R nginx:nginx database storage bootstrap/cache
 
-# Set permissions
-RUN chown -R nginx:nginx storage bootstrap/cache
-
+# Create startup script to run Laravel migrations and cache on container boot
+RUN mkdir -p scripts \
+    && echo '#!/bin/bash' > scripts/00-laravel-setup.sh \
+    && echo 'echo "Running Laravel Optimizations and Migrations..."' >> scripts/00-laravel-setup.sh \
+    && echo 'php artisan optimize:clear' >> scripts/00-laravel-setup.sh \
+    && echo 'php artisan optimize' >> scripts/00-laravel-setup.sh \
+    && echo 'php artisan migrate --force --isolated' >> scripts/00-laravel-setup.sh \
+    && echo 'php artisan storage:link' >> scripts/00-laravel-setup.sh \
+    && echo 'chown -R nginx:nginx database storage bootstrap/cache' >> scripts/00-laravel-setup.sh \
+    && chmod +x scripts/00-laravel-setup.sh
