@@ -21,6 +21,10 @@ WORKDIR /var/www/html
 
 # Copy project files
 COPY . .
+
+# Override default Nginx default.conf to support Laravel routing
+COPY nginx.conf /etc/nginx/sites-available/default.conf
+
 # Copy compiled frontend assets from the node stage
 COPY --from=frontend /app/public/build ./public/build
 # Image configuration from base image docs
