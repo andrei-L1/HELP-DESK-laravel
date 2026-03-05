@@ -145,6 +145,22 @@ Route::middleware(['auth', 'verified'])->group(function () {
                 Route::get('/general', [SettingsController::class, 'general'])->name('general');
                 Route::post('/general', [SettingsController::class, 'updateGeneral'])->name('general.update');
                 Route::get('/ticket', [SettingsController::class, 'ticket'])->name('ticket');
+                Route::post('/ticket/priorities', [\App\Http\Controllers\Admin\TicketSettingsController::class, 'storePriority'])->name('priorities.store');
+                Route::put('/ticket/priorities/{id}', [\App\Http\Controllers\Admin\TicketSettingsController::class, 'updatePriority'])->name('priorities.update');
+                Route::delete('/ticket/priorities/{id}', [\App\Http\Controllers\Admin\TicketSettingsController::class, 'destroyPriority'])->name('priorities.destroy');
+                
+                Route::post('/ticket/statuses', [\App\Http\Controllers\Admin\TicketSettingsController::class, 'storeStatus'])->name('statuses.store');
+                Route::put('/ticket/statuses/{id}', [\App\Http\Controllers\Admin\TicketSettingsController::class, 'updateStatus'])->name('statuses.update');
+                Route::delete('/ticket/statuses/{id}', [\App\Http\Controllers\Admin\TicketSettingsController::class, 'destroyStatus'])->name('statuses.destroy');
+
+                Route::post('/ticket/categories', [\App\Http\Controllers\Admin\TicketSettingsController::class, 'storeCategory'])->name('categories.store');
+                Route::put('/ticket/categories/{id}', [\App\Http\Controllers\Admin\TicketSettingsController::class, 'updateCategory'])->name('categories.update');
+                Route::delete('/ticket/categories/{id}', [\App\Http\Controllers\Admin\TicketSettingsController::class, 'destroyCategory'])->name('categories.destroy');
+
+                Route::post('/ticket/types', [\App\Http\Controllers\Admin\TicketSettingsController::class, 'storeType'])->name('types.store');
+                Route::put('/ticket/types/{id}', [\App\Http\Controllers\Admin\TicketSettingsController::class, 'updateType'])->name('types.update');
+                Route::delete('/ticket/types/{id}', [\App\Http\Controllers\Admin\TicketSettingsController::class, 'destroyType'])->name('types.destroy');
+
                 Route::get('/email', [SettingsController::class, 'email'])->name('email');
                 Route::post('/email', [SettingsController::class, 'updateEmail'])->name('email.update');
                 Route::post('/email/test', [SettingsController::class, 'testEmail'])->name('email.test');

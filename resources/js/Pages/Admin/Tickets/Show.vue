@@ -149,13 +149,7 @@ const formatSlaMinutes = (mins) => {
                         <dd class="mt-1 sm:col-span-2 sm:mt-0">
                             <span
                                 class="inline-flex rounded-full px-2 py-1 text-xs font-semibold"
-                                :class="{
-                                    'bg-blue-100 text-blue-800': ticket.status?.toLowerCase() === 'open',
-                                    'bg-green-100 text-green-800': ticket.status?.toLowerCase() === 'resolved',
-                                    'bg-gray-100 text-gray-800': ticket.status?.toLowerCase() === 'closed',
-                                    'bg-yellow-100 text-yellow-800': ticket.status?.toLowerCase() === 'pending',
-                                    'bg-red-100 text-red-800': ticket.status?.toLowerCase() === 'urgent',
-                                }"
+                                :style="{ backgroundColor: ticket.status_color + '40', color: ticket.status_color }"
                             >
                                 {{ ticket.status }}
                             </span>
@@ -166,11 +160,7 @@ const formatSlaMinutes = (mins) => {
                         <dd class="mt-1 sm:col-span-2 sm:mt-0">
                             <span
                                 class="inline-flex rounded-full px-2 py-1 text-xs font-semibold"
-                                :class="{
-                                    'bg-red-100 text-red-800': ticket.priority?.toLowerCase() === 'high' || ticket.priority?.toLowerCase() === 'urgent',
-                                    'bg-yellow-100 text-yellow-800': ticket.priority?.toLowerCase() === 'medium',
-                                    'bg-green-100 text-green-800': ticket.priority?.toLowerCase() === 'low',
-                                }"
+                                :style="{ backgroundColor: ticket.priority_color + '40', color: ticket.priority_color }"
                             >
                                 {{ ticket.priority }}
                             </span>

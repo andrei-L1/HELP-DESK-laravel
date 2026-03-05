@@ -262,7 +262,7 @@ const getStatusClass = (status) => {
                             <td class="whitespace-nowrap px-6 py-4 text-sm">
                                 <span
                                     class="inline-flex rounded-full px-2 py-1 text-xs font-semibold"
-                                    :class="getStatusClass(ticket.status)"
+                                    :style="{ backgroundColor: ticket.status_color + '40', color: ticket.status_color }"
                                 >
                                     {{ ticket.status }}
                                 </span>
@@ -270,7 +270,7 @@ const getStatusClass = (status) => {
                             <td class="whitespace-nowrap px-6 py-4 text-sm">
                                 <span
                                     class="inline-flex rounded-full px-2 py-1 text-xs font-semibold"
-                                    :class="getPriorityClass(ticket.priority)"
+                                    :style="{ backgroundColor: ticket.priority_color + '40', color: ticket.priority_color }"
                                 >
                                     {{ ticket.priority }}
                                 </span>
