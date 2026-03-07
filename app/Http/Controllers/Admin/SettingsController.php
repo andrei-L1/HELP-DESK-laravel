@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Setting;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
@@ -30,20 +31,20 @@ class SettingsController extends Controller
     }
 
     /**
-     * General settings.
+     * General settings - FIXED to use database
      */
     public function general()
     {
-        // Get general settings
+        // Get settings from database, fallback to config
         $settings = [
-            'app_name' => config('app.name'),
-            'app_url' => config('app.url'),
-            'app_timezone' => config('app.timezone'),
-            'app_locale' => config('app.locale'),
-            'company_name' => config('company.name', ''),
-            'company_email' => config('company.email', ''),
-            'company_phone' => config('company.phone', ''),
-            'company_address' => config('company.address', ''),
+            'app_name' => Setting::get('app_name', config('app.name')),
+            'app_url' => Setting::get('app_url', config('app.url')),
+            'app_timezone' => Setting::get('app_timezone', config('app.timezone')),
+            'app_locale' => Setting::get('app_locale', config('app.locale')),
+            'company_name' => Setting::get('company_name', ''),
+            'company_email' => Setting::get('company_email', ''),
+            'company_phone' => Setting::get('company_phone', ''),
+            'company_address' => Setting::get('company_address', ''),
         ];
 
         return Inertia::render('Admin/Settings/General', [
@@ -52,7 +53,7 @@ class SettingsController extends Controller
     }
 
     /**
-     * Update general settings.
+     * Update general settings - FIXED to save to database
      */
     public function updateGeneral(Request $request)
     {
@@ -67,9 +68,13 @@ class SettingsController extends Controller
             'company_address' => 'nullable|string',
         ]);
 
-        // Here you would typically save to database or .env file
-        // For now, we'll just show success message
-        // In production, you'd want to use a proper settings table
+        // Save each setting to database
+        foreach ($validated as $key => $value) {
+            Setting::set($key, $value, 'string', 'general');
+        }
+
+        // Optional: Update config for current request
+        // config(['app.name' => $validated['app_name']]);
 
         return redirect()->back()->with('success', 'General settings updated successfully.');
     }

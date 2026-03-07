@@ -24,6 +24,9 @@ const form = useForm({
 const submit = () => {
     form.post(route('admin.settings.general.update'), {
         preserveScroll: true,
+        onSuccess: () => {
+            showSuccessMessage();
+        },
     });
 };
 
