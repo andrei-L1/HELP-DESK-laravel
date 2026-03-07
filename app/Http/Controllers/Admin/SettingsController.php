@@ -79,22 +79,22 @@ class SettingsController extends Controller
      */
     public function ticket()
     {
-        $statuses = DB::table('ticket_statuses')
+        $statuses = \App\Models\TicketStatus::withTrashed()
             ->orderBy('sort_order')
             ->orderBy('name')
             ->get();
 
-        $priorities = DB::table('ticket_priorities')
+        $priorities = \App\Models\TicketPriority::withTrashed()
             ->orderBy('sort_order')
             ->orderBy('level')
             ->get();
 
-        $categories = DB::table('ticket_categories')
+        $categories = \App\Models\TicketCategory::withTrashed()
             ->orderBy('sort_order')
             ->orderBy('name')
             ->get();
 
-        $types = DB::table('ticket_types')
+        $types = \App\Models\TicketType::withTrashed()
             ->orderBy('sort_order')
             ->orderBy('name')
             ->get();

@@ -21,6 +21,7 @@ class TicketPriority extends Model
         'title',
         'description',
         'sort_order',
+        'color_hex',
     ];
 
     /**

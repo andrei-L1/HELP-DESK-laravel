@@ -23,6 +23,7 @@ class TicketStatus extends Model
         'description',
         'is_active',
         'sort_order',
+        'color_hex',
     ];
 
     /**

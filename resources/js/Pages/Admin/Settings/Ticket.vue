@@ -121,12 +121,12 @@ const closeStatusModal = () => {
 
 const saveStatus = () => {
     if (editingStatus.value) {
-        statusForm.put(route('admin.settings.ticket.statuses.update', statusForm.id), {
+        statusForm.put(route('admin.settings.statuses.update', statusForm.id), {
             preserveScroll: true,
             onSuccess: () => closeStatusModal(),
         });
     } else {
-        statusForm.post(route('admin.settings.ticket.statuses.store'), {
+        statusForm.post(route('admin.settings.statuses.store'), {
             preserveScroll: true,
             onSuccess: () => closeStatusModal(),
         });
@@ -135,7 +135,7 @@ const saveStatus = () => {
 
 const deleteStatus = (id) => {
     if (confirm('Are you sure you want to delete this status?')) {
-        router.delete(route('admin.settings.ticket.statuses.destroy', id), {
+        router.delete(route('admin.settings.statuses.destroy', id), {
             preserveScroll: true,
         });
     }
@@ -167,12 +167,12 @@ const closePriorityModal = () => {
 
 const savePriority = () => {
     if (editingPriority.value) {
-        priorityForm.put(route('admin.settings.ticket.priorities.update', priorityForm.id), {
+        priorityForm.put(route('admin.settings.priorities.update', priorityForm.id), {
             preserveScroll: true,
             onSuccess: () => closePriorityModal(),
         });
     } else {
-        priorityForm.post(route('admin.settings.ticket.priorities.store'), {
+        priorityForm.post(route('admin.settings.priorities.store'), {
             preserveScroll: true,
             onSuccess: () => closePriorityModal(),
         });
@@ -181,7 +181,7 @@ const savePriority = () => {
 
 const deletePriority = (id) => {
     if (confirm('Are you sure you want to delete this priority?')) {
-        router.delete(route('admin.settings.ticket.priorities.destroy', id), {
+        router.delete(route('admin.settings.priorities.destroy', id), {
             preserveScroll: true,
         });
     }
@@ -213,12 +213,12 @@ const closeCategoryModal = () => {
 
 const saveCategory = () => {
     if (editingCategory.value) {
-        categoryForm.put(route('admin.settings.ticket.categories.update', categoryForm.id), {
+        categoryForm.put(route('admin.settings.categories.update', categoryForm.id), {
             preserveScroll: true,
             onSuccess: () => closeCategoryModal(),
         });
     } else {
-        categoryForm.post(route('admin.settings.ticket.categories.store'), {
+        categoryForm.post(route('admin.settings.categories.store'), {
             preserveScroll: true,
             onSuccess: () => closeCategoryModal(),
         });
@@ -227,7 +227,7 @@ const saveCategory = () => {
 
 const deleteCategory = (id) => {
     if (confirm('Are you sure you want to delete this category?')) {
-        router.delete(route('admin.settings.ticket.categories.destroy', id), {
+        router.delete(route('admin.settings.categories.destroy', id), {
             preserveScroll: true,
         });
     }
@@ -259,12 +259,12 @@ const closeTypeModal = () => {
 
 const saveType = () => {
     if (editingType.value) {
-        typeForm.put(route('admin.settings.ticket.types.update', typeForm.id), {
+        typeForm.put(route('admin.settings.types.update', typeForm.id), {
             preserveScroll: true,
             onSuccess: () => closeTypeModal(),
         });
     } else {
-        typeForm.post(route('admin.settings.ticket.types.store'), {
+        typeForm.post(route('admin.settings.types.store'), {
             preserveScroll: true,
             onSuccess: () => closeTypeModal(),
         });
@@ -273,7 +273,7 @@ const saveType = () => {
 
 const deleteType = (id) => {
     if (confirm('Are you sure you want to delete this type?')) {
-        router.delete(route('admin.settings.ticket.types.destroy', id), {
+        router.delete(route('admin.settings.types.destroy', id), {
             preserveScroll: true,
         });
     }
@@ -411,6 +411,13 @@ const getStatusColorClass = (color) => {
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm">
                                     <span
+                                        v-if="status.deleted_at"
+                                        class="inline-flex rounded-full px-2 py-1 text-xs font-semibold bg-gray-100 text-gray-800 line-through"
+                                    >
+                                        Deleted
+                                    </span>
+                                    <span
+                                        v-else
                                         class="inline-flex rounded-full px-2 py-1 text-xs font-semibold"
                                         :class="status.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'"
                                     >
@@ -488,7 +495,8 @@ const getStatusColorClass = (color) => {
                                     {{ priority.level }}
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                    {{ priority.sort_order }}
+                                    <span v-if="priority.deleted_at" class="inline-flex rounded-full px-2 py-1 text-xs font-semibold bg-gray-100 text-gray-800 line-through">Deleted</span>
+                                    <span v-else>{{ priority.sort_order }}</span>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-right">
                                     <div class="flex justify-end gap-2">
@@ -562,6 +570,13 @@ const getStatusColorClass = (color) => {
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm">
                                     <span
+                                        v-if="category.deleted_at"
+                                        class="inline-flex rounded-full px-2 py-1 text-xs font-semibold bg-gray-100 text-gray-800 line-through"
+                                    >
+                                        Deleted
+                                    </span>
+                                    <span
+                                        v-else
                                         class="inline-flex rounded-full px-2 py-1 text-xs font-semibold"
                                         :class="category.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'"
                                     >
@@ -640,6 +655,13 @@ const getStatusColorClass = (color) => {
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm">
                                     <span
+                                        v-if="type.deleted_at"
+                                        class="inline-flex rounded-full px-2 py-1 text-xs font-semibold bg-gray-100 text-gray-800 line-through"
+                                    >
+                                        Deleted
+                                    </span>
+                                    <span
+                                        v-else
                                         class="inline-flex rounded-full px-2 py-1 text-xs font-semibold"
                                         :class="type.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'"
                                     >
