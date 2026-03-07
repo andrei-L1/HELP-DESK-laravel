@@ -112,6 +112,39 @@ const formatSlaMinutes = (mins) => {
     const m = mins % 60;
     return m ? `${h}h ${m}m` : `${h}h`;
 };
+const getSlaStatusClass = (actualDate, targetMinutes) => {
+    if (!actualDate) return 'text-gray-900'; // Not yet completed
+    
+    const actual = new Date(actualDate);
+    const created = new Date(props.ticket.created_at);
+    const diffMinutes = (actual - created) / (1000 * 60);
+    
+    if (diffMinutes <= targetMinutes) {
+        return 'text-green-600'; // Within SLA
+    } else {
+        return 'text-red-600'; // Breached SLA
+    }
+};
+
+// Add due date status
+const getDueDateStatus = () => {
+    if (!props.ticket.due_at) return null;
+    
+    const due = new Date(props.ticket.due_at);
+    const now = new Date();
+    
+    if (props.ticket.resolved_at) {
+        const resolved = new Date(props.ticket.resolved_at);
+        return resolved <= due ? 'text-green-600' : 'text-red-600';
+    }
+    
+    // Not resolved yet
+    const hoursLeft = (due - now) / (1000 * 60 * 60);
+    
+    if (hoursLeft < 0) return 'text-red-600 font-bold'; // Overdue
+    if (hoursLeft < 2) return 'text-orange-600'; // Due soon
+    return 'text-gray-900';
+};
 </script>
 
 <template>
@@ -208,12 +241,48 @@ const formatSlaMinutes = (mins) => {
             </div>
 
             <!-- SLA policy -->
+            <!-- SLA Policy - Enhanced -->
             <div v-if="sla_policy" class="rounded-lg border border-gray-200 bg-slate-50 p-4 shadow-sm">
-                <h3 class="text-sm font-semibold text-gray-900 mb-2">SLA policy</h3>
-                <p class="text-sm text-gray-700">{{ sla_policy.name }}</p>
-                <p class="text-xs text-gray-500 mt-1">
-                    Response: {{ formatSlaMinutes(sla_policy.response_time) }} · Resolution: {{ formatSlaMinutes(sla_policy.resolution_time) }}
-                </p>
+                <div class="flex items-center justify-between mb-2">
+                    <h3 class="text-sm font-semibold text-gray-900">SLA Policy</h3>
+                    <span class="text-xs text-gray-500">ID: {{ ticket.sla_policy_id }}</span>
+                </div>
+                
+                <div class="space-y-2">
+                    <p class="text-sm font-medium text-gray-900">{{ sla_policy.name }}</p>
+                    
+                    <!-- Time targets -->
+                    <div class="grid grid-cols-2 gap-4 mt-2">
+                        <div>
+                            <span class="text-xs text-gray-500">Response Time</span>
+                            <p class="text-sm font-medium" :class="getSlaStatusClass(ticket.first_response_at, sla_policy.response_time)">
+                                {{ formatSlaMinutes(sla_policy.response_time) }}
+                            </p>
+                        </div>
+                        <div>
+                            <span class="text-xs text-gray-500">Resolution Time</span>
+                            <p class="text-sm font-medium" :class="getSlaStatusClass(ticket.resolved_at, sla_policy.resolution_time)">
+                                {{ formatSlaMinutes(sla_policy.resolution_time) }}
+                            </p>
+                        </div>
+                    </div>
+                    
+                    <!-- Additional SLA info if available -->
+                    <div v-if="sla_policy.business_hours_only !== undefined" class="text-xs text-gray-500 mt-1">
+                        ⏰ {{ sla_policy.business_hours_only ? 'Business hours only' : '24/7' }}
+                    </div>
+                    
+                    <!-- Escalation info -->
+                    <div v-if="sla_policy.escalate_after" class="text-xs text-amber-600 mt-1">
+                        ⚠️ Escalates after {{ formatSlaMinutes(sla_policy.escalate_after) }}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Fallback when no SLA policy -->
+            <div v-else-if="ticket.priority_id" class="rounded-lg border border-gray-200 bg-gray-50 p-4 shadow-sm">
+                <h3 class="text-sm font-semibold text-gray-900 mb-1">SLA Policy</h3>
+                <p class="text-xs text-gray-500">No SLA policy assigned to this ticket.</p>
             </div>
 
             <!-- Status & department -->

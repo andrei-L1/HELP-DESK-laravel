@@ -11,18 +11,49 @@ class SlaPolicy extends Model
 
     protected $table = 'sla_policies';
 
-    public $timestamps = false;
-
-    const UPDATED_AT = null;
+    // Enable timestamps
+    public $timestamps = true;
 
     protected $fillable = [
-        'name', 'priority_id', 'department_id',
-        'response_time', 'resolution_time', 'is_active',
+        'name', 
+        'description',          
+        'priority_id', 
+        'department_id',
+        'response_time', 
+        'resolution_time',
+        'escalate_after',        
+        'notify_before',         
+        'notify_escalation',     
+        'is_active',
+        'business_hours_only',   
+        'calendar_id',           
     ];
 
     protected $casts = [
-        'is_active'       => 'boolean',
-        'response_time'   => 'integer',
-        'resolution_time' => 'integer',
+        'is_active'           => 'boolean',
+        'notify_escalation'   => 'boolean',
+        'business_hours_only' => 'boolean',
+        'response_time'       => 'integer',
+        'resolution_time'     => 'integer',
+        'escalate_after'      => 'integer',
+        'notify_before'       => 'integer',
+        'created_at'          => 'datetime',
+        'updated_at'          => 'datetime',
     ];
+
+    // Optional: Add relationships
+    public function priority()
+    {
+        return $this->belongsTo(TicketPriority::class, 'priority_id');
+    }
+
+    public function department()
+    {
+        return $this->belongsTo(Department::class, 'department_id');
+    }
+
+    public function tickets()
+    {
+        return $this->hasMany(Ticket::class, 'sla_policy_id');
+    }
 }

@@ -21,6 +21,14 @@ class TicketSeeder extends Seeder
         $userIds = DB::table('users')->pluck('id')->toArray();
         $statusIds = DB::table('ticket_statuses')->pluck('id', 'name')->toArray();
         $priorityIds = DB::table('ticket_priorities')->pluck('id', 'name')->toArray();
+        
+        // Get SLA policies for assignment
+        $slaPolicies = DB::table('sla_policies')
+            ->where('is_active', true)
+            ->get()
+            ->keyBy(function ($item) {
+                return $item->priority_id . '-' . ($item->department_id ?? 'null');
+            });
 
         // Default fallbacks if tables are empty
         $defaultStatusId = $statusIds['Open'] ?? DB::table('ticket_statuses')->insertGetId(['name' => 'Open']);
@@ -50,7 +58,7 @@ class TicketSeeder extends Seeder
             for ($i = 1; $i <= 10; $i++) {
                 $createdAt = Carbon::now()->subDays(rand(0, 90))->subHours(rand(0, 23));
 
-                $statusName = fake()->randomElement(['Open', 'Pending', 'Resolved', 'Closed', 'Urgent']);
+                $statusName = fake()->randomElement(['Open', 'Pending', 'Resolved', 'Closed']);
                 $priorityName = fake()->randomElement(['Low', 'Medium', 'High', 'Urgent']);
 
                 $statusId = $statusIds[$statusName] ?? $defaultStatusId;
@@ -61,27 +69,108 @@ class TicketSeeder extends Seeder
                     ? fake()->randomElement($userIds)
                     : null;
 
+                // Find the appropriate SLA policy
+                $slaPolicy = null;
+                
+                // First try: department-specific SLA
+                $slaKey = $priorityId . '-' . $department->id;
+                if (isset($slaPolicies[$slaKey])) {
+                    $slaPolicy = $slaPolicies[$slaKey];
+                } else {
+                    // Second try: global SLA for this priority
+                    $globalKey = $priorityId . '-null';
+                    if (isset($slaPolicies[$globalKey])) {
+                        $slaPolicy = $slaPolicies[$globalKey];
+                    }
+                }
+
+                // Calculate due date based on SLA resolution time
+                $dueAt = null;
+                if ($slaPolicy && $slaPolicy->resolution_time) {
+                    $dueAt = $createdAt->copy()->addMinutes((int) $slaPolicy->resolution_time);
+                    
+                    // If business hours only, you'd need more complex calculation here
+                    // For now, we'll just use the simple addition
+                }
+
+                // Calculate response time for some tickets (30% chance of having first response)
+                $firstResponseAt = null;
+                if (rand(1, 10) <= 3 && $statusName !== 'Open') {
+                    // Response within SLA or breached?
+                    $responseHours = rand(1, 48);
+                    $firstResponseAt = $createdAt->copy()->addHours($responseHours);
+                }
+
+                // Calculate resolution time for resolved/closed tickets
+                $resolvedAt = null;
+                $closedAt = null;
+                if ($statusName === 'Resolved' || $statusName === 'Closed') {
+                    $resolutionHours = rand(2, 72);
+                    $resolvedAt = $createdAt->copy()->addHours($resolutionHours);
+                    
+                    if ($statusName === 'Closed') {
+                        $closedAt = $resolvedAt->copy()->addHours(rand(1, 24));
+                    }
+                }
+
                 // Ticket number: something like TKT-TS-2025-0001
                 $year = $createdAt->year;
                 $uniqueSuffix = Str::random(4);
                 $ticketNumber = 'TKT-' . $department->short_code . '-' . $year . '-' . str_pad($i, 4, '0', STR_PAD_LEFT) . '-' . strtoupper($uniqueSuffix);
 
                 DB::table('tickets')->insert([
-                    'ticket_number'  => $ticketNumber,
-                    'subject'        => fake()->randomElement($subjects) . ' #' . $i,
-                    'description'    => fake()->paragraphs(3, true),
-                    'status_id'      => $statusId,
-                    'priority_id'    => $priorityId,
-                    'department_id'  => $department->id,
-                    'created_by'     => !empty($userIds) ? fake()->randomElement($userIds) : null,
-                    'assigned_to'    => $assignedTo,
-                    'created_at'     => $createdAt,
-                    'updated_at'     => Carbon::now(),
+                    'ticket_number'      => $ticketNumber,
+                    'subject'            => fake()->randomElement($subjects) . ' #' . $i,
+                    'description'        => fake()->paragraphs(3, true),
+                    'status_id'          => $statusId,
+                    'priority_id'        => $priorityId,
+                    'sla_policy_id'      => $slaPolicy?->id, // ← ADD THIS LINE
+                    'department_id'      => $department->id,
+                    'created_by'         => !empty($userIds) ? fake()->randomElement($userIds) : null,
+                    'assigned_to'        => $assignedTo,
+                    'first_response_at'  => $firstResponseAt,
+                    'resolved_at'        => $resolvedAt,
+                    'closed_at'          => $closedAt,
+                    'due_at'             => $dueAt,
+                    'created_at'         => $createdAt,
+                    'updated_at'         => Carbon::now(),
                 ]);
             }
         }
 
-        $totalTickets = $departments->count() * 10;
-        $this->command->info('🎫 Seeded ' . $totalTickets . ' support tickets successfully!');
+        // Create some tickets WITHOUT department (orphaned) to test global SLA
+        if (!empty($departments) && !empty($userIds)) {
+            for ($i = 1; $i <= 5; $i++) {
+                $createdAt = Carbon::now()->subDays(rand(0, 30));
+                $priorityName = fake()->randomElement(['Low', 'Medium', 'High', 'Urgent']);
+                $priorityId = $priorityIds[$priorityName] ?? $defaultPriorityId;
+                
+                // Find global SLA for this priority
+                $globalKey = $priorityId . '-null';
+                $slaPolicy = $slaPolicies[$globalKey] ?? null;
+                
+                $dueAt = $slaPolicy && $slaPolicy->resolution_time 
+                    ? $createdAt->copy()->addMinutes((int) $slaPolicy->resolution_time)
+                    : null;
+
+                DB::table('tickets')->insert([
+                    'ticket_number'      => 'TKT-GLB-' . date('Y') . '-' . str_pad($i, 4, '0', STR_PAD_LEFT),
+                    'subject'            => 'Global ticket without department #' . $i,
+                    'description'        => fake()->paragraphs(2, true),
+                    'status_id'          => $statusIds['Open'] ?? $defaultStatusId,
+                    'priority_id'        => $priorityId,
+                    'sla_policy_id'      => $slaPolicy?->id, // ← ADD THIS LINE
+                    'department_id'      => null, // No department
+                    'created_by'         => fake()->randomElement($userIds),
+                    'assigned_to'        => null,
+                    'due_at'             => $dueAt,
+                    'created_at'         => $createdAt,
+                    'updated_at'         => Carbon::now(),
+                ]);
+            }
+        }
+
+        $totalTickets = ($departments->count() * 10) + 5; // Department tickets + global tickets
+        $this->command->info('🎫 Seeded ' . $totalTickets . ' support tickets with SLA policies successfully!');
     }
 }

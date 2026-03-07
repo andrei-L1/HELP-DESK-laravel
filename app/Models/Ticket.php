@@ -26,6 +26,7 @@ class Ticket extends Model
         'due_at',
         'resolved_at',
         'closed_at',
+        'sla_policy_id',
     ];
 
     protected $casts = [
@@ -78,5 +79,9 @@ class Ticket extends Model
     public function activityLogs(): HasMany
     {
         return $this->hasMany(TicketActivityLog::class)->orderByDesc('created_at');
+    }
+    public function slaPolicy()
+    {
+        return $this->belongsTo(\App\Models\SlaPolicy::class, 'sla_policy_id');
     }
 }

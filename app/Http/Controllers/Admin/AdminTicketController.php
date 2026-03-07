@@ -67,18 +67,27 @@ class AdminTicketController extends Controller
      */
     public function show(int $id)
     {
-        // 1. Fetch ticket using elegant Eloquent eager loading
+        // Add 'slaPolicy' to the eager loading
         $ticket = Ticket::with([
             'status', 'priority', 'category', 'department', 
-            'creator', 'assignee',
+            'creator', 'assignee', 'slaPolicy', // ← ADD THIS
             'messages.user', 'attachments', 'activityLogs.user'
         ])->findOrFail($id);
 
         $users = $this->getAssignableUsers($ticket->department_id);
 
-        // 2. Calculate SLA Policy (Using existing method)
+        // 2. Get SLA Policy from the ticket's relationship
         $slaPolicy = null;
-        if ($ticket->priority_id) {
+        if ($ticket->slaPolicy) {
+            $slaPolicy = [
+                'id'               => $ticket->slaPolicy->id,
+                'name'             => $ticket->slaPolicy->name,
+                'response_time'    => (int) $ticket->slaPolicy->response_time,
+                'resolution_time'  => (int) $ticket->slaPolicy->resolution_time,
+                'business_hours_only' => $ticket->slaPolicy->business_hours_only,
+            ];
+        } elseif ($ticket->priority_id) {
+            // Fallback for older tickets that don't have sla_policy_id set
             $sla = $this->findSlaPolicy($ticket->priority_id, $ticket->department_id);
             if ($sla) {
                 $slaPolicy = [
@@ -89,7 +98,7 @@ class AdminTicketController extends Controller
             }
         }
 
-        // 3. Get dropdown options for the form
+        // Rest of your method stays exactly the same...
         $statuses = DB::table('ticket_statuses')->where('is_active', true)->orderBy('sort_order')->get(['id', 'name', 'title']);
         $departments = DB::table('departments')->whereNull('deleted_at')->where('is_active', true)->orderBy('name')->get(['id', 'name', 'short_code']);
 
@@ -117,18 +126,19 @@ class AdminTicketController extends Controller
                 'closed_at'          => $ticket->closed_at ? \Carbon\Carbon::parse($ticket->closed_at)->toDateTimeString() : null,
                 'created_at'         => $ticket->created_at ? \Carbon\Carbon::parse($ticket->created_at)->toDateTimeString() : null,
                 'updated_at'         => $ticket->updated_at ? \Carbon\Carbon::parse($ticket->updated_at)->toDateTimeString() : null,
+                'sla_policy_id'      => $ticket->sla_policy_id, 
             ],
             'statuses'      => $statuses,
             'departments'   => $departments,
-            'sla_policy'   => $slaPolicy,
-            'messages'     => $ticket->messages->map(fn($m) => [
+            'sla_policy'    => $slaPolicy,
+            'messages'      => $ticket->messages->map(fn($m) => [
                 'id'          => $m->id,
                 'body'        => $m->body,
                 'is_internal' => $m->is_internal,
                 'author'      => $m->user ? trim($m->user->first_name . ' ' . $m->user->last_name) : 'Unknown',
                 'created_at'  => $m->created_at?->toDateTimeString(),
             ]),
-            'attachments'  => $ticket->attachments->map(fn($a) => [
+            'attachments'   => $ticket->attachments->map(fn($a) => [
                 'id'          => $a->id,
                 'file_name'   => $a->file_name,
                 'file_size'   => $a->file_size,
@@ -142,7 +152,7 @@ class AdminTicketController extends Controller
                 'user_name'  => $l->user ? trim($l->user->first_name . ' ' . $l->user->last_name) : 'Unknown',
                 'created_at' => $l->created_at?->toDateTimeString(),
             ])->take(50),
-            'users'        => $users,
+            'users'         => $users,
         ]);
     }
 
@@ -155,20 +165,17 @@ class AdminTicketController extends Controller
         $assignableIds = $this->getAssignableUserIds($ticket->department_id);
 
         $validated = $request->validate([
-            'assigned_to'   => [
-                'nullable',
-                'integer',
-                Rule::in($assignableIds),
-            ],
+            'assigned_to'   => ['nullable', 'integer', Rule::in($assignableIds)],
             'status_id'     => 'nullable|integer|exists:ticket_statuses,id',
             'department_id' => 'nullable|integer|exists:departments,id',
         ]);
 
-        $oldStatusId   = $ticket->status_id;
-        $newStatusId   = $validated['status_id'] ?? $ticket->status_id;
+        $oldStatusId = $ticket->status_id;
+        $newStatusId = $validated['status_id'] ?? $ticket->status_id;
         $oldDepartmentId = $ticket->department_id;
         $newDepartmentId = array_key_exists('department_id', $validated) ? $validated['department_id'] : $ticket->department_id;
 
+        // Handle assignment changes
         if (array_key_exists('assigned_to', $validated)) {
             $oldAssigned = $ticket->assigned_to;
             $ticket->assigned_to = $validated['assigned_to'] ?? null;
@@ -177,6 +184,7 @@ class AdminTicketController extends Controller
             }
         }
 
+        // Handle status changes
         if ($newStatusId && $newStatusId != $oldStatusId) {
             $ticket->status_id = $newStatusId;
             $statusName = DB::table('ticket_statuses')->where('id', $newStatusId)->value('name');
@@ -192,9 +200,20 @@ class AdminTicketController extends Controller
             $this->logTicketActivity($ticket->id, 'status_changed', $oldStatusName ?? '', $statusName ?? '');
         }
 
+        // Handle department changes - may affect SLA
         if ($oldDepartmentId != $newDepartmentId) {
             $ticket->department_id = $newDepartmentId;
             $this->logTicketActivity($ticket->id, 'department_changed', (string) $oldDepartmentId, (string) $newDepartmentId);
+            
+            // Recalculate SLA for the new department
+            $newSlaPolicy = $this->findSlaPolicy($ticket->priority_id, $newDepartmentId);
+            if ($newSlaPolicy && $newSlaPolicy->id != $ticket->sla_policy_id) {
+                $oldSlaId = $ticket->sla_policy_id;
+                $ticket->sla_policy_id = $newSlaPolicy->id;
+                $ticket->due_at = now()->addMinutes((int) $newSlaPolicy->resolution_time);
+                
+                $this->logTicketActivity($ticket->id, 'sla_changed', (string) $oldSlaId, (string) $newSlaPolicy->id);
+            }
         }
 
         $ticket->save();
@@ -289,14 +308,18 @@ class AdminTicketController extends Controller
         }
 
         $departmentId = isset($validated['department_id']) ? (int) $validated['department_id'] : null;
+        
+        // FIND THE SLA POLICY (you already have this method)
+        $slaPolicy = $this->findSlaPolicy($priorityId, $departmentId);
+        $slaPolicyId = $slaPolicy?->id;
+        
         $assignedTo = $this->pickAutoAssignUserId($departmentId);
-        $dueAt      = $this->computeDueAtFromSla($priorityId, $departmentId);
+        $dueAt = $this->computeDueAtFromSla($priorityId, $departmentId);
 
         $year = date('Y');
-        $ticket = Cache::lock('ticket_number_' . $year, 10)->block(5, function () use ($validated, $statusId, $priorityId, $assignedTo, $dueAt, $year) {
-            return DB::transaction(function () use ($validated, $statusId, $priorityId, $assignedTo, $dueAt, $year) {
+        $ticket = Cache::lock('ticket_number_' . $year, 10)->block(5, function () use ($validated, $statusId, $priorityId, $assignedTo, $dueAt, $slaPolicyId, $year) {
+            return DB::transaction(function () use ($validated, $statusId, $priorityId, $assignedTo, $dueAt, $slaPolicyId, $year) {
                 $prefix = 'TICKET-' . $year . '-';
-                // Include soft-deleted so we never reuse a number.
                 $existing = DB::table('tickets')
                     ->where('ticket_number', 'like', $prefix . '%')
                     ->pluck('ticket_number');
@@ -313,6 +336,7 @@ class AdminTicketController extends Controller
                     'priority_id'   => $priorityId,
                     'category_id'   => $validated['category_id'] ?? null,
                     'department_id' => $validated['department_id'] ?? null,
+                    'sla_policy_id' => $slaPolicyId, 
                     'created_by'    => Auth::id(),
                     'assigned_to'   => $assignedTo,
                     'due_at'        => $dueAt,
@@ -321,6 +345,11 @@ class AdminTicketController extends Controller
                 $this->logTicketActivity($ticket->id, 'ticket_created', null, $ticketNumber);
                 if ($assignedTo) {
                     $this->logTicketActivity($ticket->id, 'assignment_changed', null, (string) $assignedTo);
+                }
+                
+                // Log which SLA was applied (optional but helpful)
+                if ($slaPolicyId) {
+                    $this->logTicketActivity($ticket->id, 'sla_applied', null, (string) $slaPolicyId);
                 }
 
                 return $ticket;
