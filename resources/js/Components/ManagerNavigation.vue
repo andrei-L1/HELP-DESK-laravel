@@ -35,12 +35,14 @@ const navigation = [
     },
     {
         name: 'Reports',
-        //href: route('manager.reports.index'),
+        href: route('manager.reports.index'),
         icon: 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z',
         children: [
-            //{ name: 'Team Performance', href: route('manager.reports.team') },
-            //{ name: 'Ticket Analytics', href: route('manager.reports.tickets') },
-            //{ name: 'Response Times', href: route('manager.reports.response') },
+            { name: 'Overview', href: route('manager.reports.index') },
+            { name: 'Volume Report', href: route('manager.reports.index', { type: 'volume' }) },
+            { name: 'Performance', href: route('manager.reports.index', { type: 'performance' }) },
+            { name: 'Agent Performance', href: route('manager.reports.index', { type: 'agent' }) },
+            { name: 'Resolution Time', href: route('manager.reports.index', { type: 'resolution' }) },
         ],
     },
     {
