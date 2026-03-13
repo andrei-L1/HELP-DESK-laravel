@@ -205,24 +205,27 @@ class UserManagementController extends Controller
      */
     public function impersonate($id)
     {
-        // Store original admin ID in session
-        session()->put('impersonate', Auth::id());
+        session()->put('impersonate', [
+            'admin_id' => Auth::id(),
+        ]);
 
-        // Log in as the target user
         $targetUser = \App\Models\User::with('role')->findOrFail($id);
+
+        if ($targetUser->role->name === 'admin') {
+            abort(403, 'Cannot impersonate another admin.');
+        }
         Auth::loginUsingId($id);
 
-        // Redirect to the impersonated user's role dashboard
         $roleName = $targetUser->role?->name ?? 'user';
+
         $dashboardRoutes = [
             'admin'   => 'admin.dashboard',
             'manager' => 'manager.dashboard',
             'agent'   => 'agent.dashboard',
             'user'    => 'user.dashboard',
         ];
-        $routeName = $dashboardRoutes[$roleName] ?? 'user.dashboard';
 
-        return redirect()->route($routeName);
+        return redirect()->route($dashboardRoutes[$roleName] ?? 'user.dashboard');
     }
 
     /**
@@ -230,13 +233,15 @@ class UserManagementController extends Controller
      */
     public function stopImpersonate()
     {
-        $originalId = session()->get('impersonate');
-        
-        if ($originalId) {
+        $impersonate = session()->get('impersonate');
+
+        if ($impersonate && isset($impersonate['admin_id'])) {
+
+            Auth::loginUsingId($impersonate['admin_id']);
+
             session()->forget('impersonate');
-            Auth::loginUsingId($originalId);
         }
-        
+
         return redirect()->route('admin.users.index');
     }
 

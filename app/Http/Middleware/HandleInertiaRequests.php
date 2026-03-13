@@ -4,6 +4,7 @@ namespace App\Http\Middleware;
 
 use Illuminate\Http\Request;
 use Inertia\Middleware;
+use App\Models\User;
 
 class HandleInertiaRequests extends Middleware
 {
@@ -29,14 +30,45 @@ class HandleInertiaRequests extends Middleware
      */
     public function share(Request $request): array
     {
+        $impersonation = null;
+
+        if (session()->has('impersonate')) {
+            $session = session('impersonate');
+
+            if (isset($session['admin_id'])) {
+                $admin = User::find($session['admin_id']);
+
+                if ($admin) {
+                    $impersonation = [
+                        'admin' => [
+                            'id' => $admin->id,
+                            'name' => $admin->display_name ?? trim($admin->first_name . ' ' . $admin->last_name),
+                            'email' => $admin->email,
+                        ],
+                    ];
+                }
+            }
+        }
+
         return [
             ...parent::share($request),
+
             'auth' => [
-                'user' => $request->user() ? array_merge($request->user()->toArray(), [
-                    'role' => $request->user()->role?->name,
-                    'permissions' => $request->user()->role ? $request->user()->role->permissions->pluck('name')->toArray() : [],
-                ]) : null,
+                'user' => $request->user()
+                    ? array_merge($request->user()->toArray(), [
+                        'role' => $request->user()->role?->name,
+                        'permissions' => $request->user()->role
+                            ? $request->user()->role->permissions->pluck('name')->toArray()
+                            : [],
+                    ])
+                    : null,
             ],
+
+            // impersonation data
+            'impersonation' => $impersonation,
+
+            // simple boolean if needed
+            'impersonating' => session()->has('impersonate'),
         ];
     }
 }

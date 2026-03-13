@@ -49,6 +49,9 @@ const userInitials = computed(() => {
     const lastName = user.value?.last_name?.[0] || '';
     return (firstName + lastName).toUpperCase() || user.value?.name?.[0]?.toUpperCase() || 'U';
 });
+
+const impersonation = computed(() => page.props.impersonation);
+const isImpersonating = computed(() => impersonation.value !== null);
 </script>
 
 <template>
@@ -152,6 +155,26 @@ const userInitials = computed(() => {
                             </template>
                         </Dropdown>
                     </div>
+                </div>
+                <div
+                    v-if="isImpersonating"
+                    class="bg-red-600 text-white text-sm px-4 py-2 flex items-center justify-between"
+                >
+                    <span>
+                        You are impersonating this user
+                        <span v-if="impersonation?.admin">
+                            (Admin: {{ impersonation.admin.name }})
+                        </span>
+                    </span>
+
+                    <Link
+                        :href="route('admin.users.stop-impersonate')"
+                        method="post"
+                        as="button"
+                        class="bg-white text-red-600 px-3 py-1 rounded text-xs font-semibold hover:bg-gray-100"
+                    >
+                        Stop Impersonating
+                    </Link>
                 </div>
             </header>
 
