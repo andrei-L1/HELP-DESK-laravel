@@ -93,7 +93,7 @@ class AdminDashboardController extends Controller
             $tickets_by_status = collect([]);
         }
 
-        return Inertia::render('Admin/AdminDashboard', [
+        return Inertia::render('Admin/Dashboard', [
             'stats' => $stats,
             'recent_tickets' => $recent_tickets,
             'tickets_by_status' => $tickets_by_status,

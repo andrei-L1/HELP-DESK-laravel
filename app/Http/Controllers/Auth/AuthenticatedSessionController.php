@@ -50,10 +50,10 @@ class AuthenticatedSessionController extends Controller
 
         // Map role names → named routes
         $redirects = [
-            'admin'   => 'admin.admindashboard',
-            'agent' => 'agent.agentdashboard', 
-            'manager' => 'manager.managerdashboard', 
-            'user'    => 'dashboard',
+            'admin'   => 'admin.dashboard',
+            'agent' => 'agent.dashboard', 
+            'manager' => 'manager.dashboard', 
+            'user'    => 'user.dashboard',
             // Add more roles here in the future if needed
         ];
 

@@ -28,7 +28,7 @@ Route::get('/', fn () => Inertia::render('Index', [
 Route::middleware(['auth', 'verified'])->group(function () {
 
     // ── User Area ───────────────────────────────────
-    Route::get('/dashboard', fn () => Inertia::render('Users/Dashboard'))
+    Route::get('/dashboard', fn () => Inertia::render('User/Dashboard'))
         ->name('dashboard');
 
     // Profile management
@@ -45,7 +45,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->group(function () {
 
             Route::get('/dashboard', [AdminDashboardController::class, 'index'])
-                ->name('admindashboard');
+                ->name('dashboard');
 
            // ── TICKETS ──────────────────────────────────
             Route::get('/tickets', [AdminTicketController::class, 'index'])
@@ -186,7 +186,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
             ->name('manager.')
             ->group(function () {
                 Route::get('/dashboard', [ManagerDashboardController::class, 'index'])
-                    ->name('managerdashboard');
+                    ->name('dashboard');
 
                 // manager ticket viewing operations
                 Route::middleware(['permission:view_ticket'])->group(function () {
@@ -229,8 +229,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
             ->prefix('agent')
             ->name('agent.')
             ->group(function () {
-                Route::get('/dashboard', fn() => Inertia::render('Agent/AgentDashboard'))
-                    ->name('agentdashboard');
+                Route::get('/dashboard', fn() => Inertia::render('Agent/Dashboard'))
+                    ->name('dashboard');
 
                 // Example agent routes
                 Route::get('/tickets', [AdminTicketController::class, 'index'])->name('tickets.index');

@@ -86,7 +86,7 @@ class ManagerDashboardController extends Controller
                 ];
             });
 
-        return Inertia::render('Manager/ManagerDashboard', [
+        return Inertia::render('Manager/Dashboard', [
             'stats' => $stats,
             'recent_tickets' => $recentTickets,
             'tickets_by_status' => $ticketsByStatus,
