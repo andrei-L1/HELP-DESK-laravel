@@ -28,8 +28,15 @@ Route::get('/', fn () => Inertia::render('Index', [
 Route::middleware(['auth', 'verified'])->group(function () {
 
     // ── User Area ───────────────────────────────────
-    Route::get('/dashboard', fn () => Inertia::render('User/Dashboard'))
+    Route::get('/dashboard', [\App\Http\Controllers\User\UserDashboardController::class, 'index'])
         ->name('dashboard');
+
+    // ── USER TICKETS ────────────────────────────────
+    Route::prefix('user/tickets')->name('user.tickets.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\User\UserTicketController::class, 'index'])->name('index');
+        Route::get('/create', [\App\Http\Controllers\User\UserTicketController::class, 'create'])->name('create');
+        Route::get('/{ticket}', [\App\Http\Controllers\User\UserTicketController::class, 'show'])->name('show');
+    });
 
     // Profile management
     Route::controller(ProfileController::class)->group(function () {
