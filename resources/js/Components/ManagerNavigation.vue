@@ -269,7 +269,7 @@ const userInitials = computed(() => {
                                 <DropdownLink :href="route('profile.edit')">
                                     Profile Settings
                                 </DropdownLink>
-                                <DropdownLink :href="route('dashboard')">
+                                <DropdownLink :href="route('user.dashboard')">
                                     User Dashboard
                                 </DropdownLink>
                                 <DropdownLink

@@ -207,11 +207,22 @@ class UserManagementController extends Controller
     {
         // Store original admin ID in session
         session()->put('impersonate', Auth::id());
-        
+
         // Log in as the target user
+        $targetUser = \App\Models\User::with('role')->findOrFail($id);
         Auth::loginUsingId($id);
-        
-        return redirect()->route('dashboard');
+
+        // Redirect to the impersonated user's role dashboard
+        $roleName = $targetUser->role?->name ?? 'user';
+        $dashboardRoutes = [
+            'admin'   => 'admin.dashboard',
+            'manager' => 'manager.dashboard',
+            'agent'   => 'agent.dashboard',
+            'user'    => 'user.dashboard',
+        ];
+        $routeName = $dashboardRoutes[$roleName] ?? 'user.dashboard';
+
+        return redirect()->route($routeName);
     }
 
     /**

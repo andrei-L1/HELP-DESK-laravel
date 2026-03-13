@@ -11,7 +11,7 @@ const showingMobileMenu = ref(false);
 const navigation = [
     {
         name: 'Dashboard',
-        href: route('dashboard'),
+        href: route('user.dashboard'),
         icon: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6',
     },
     {
@@ -29,8 +29,8 @@ const navigation = [
 const isActive = (href) => {
     if (href === '#') return false;
     const currentRoute = route().current();
-    if (href === route('dashboard')) {
-        return currentRoute === 'dashboard';
+    if (href === route('user.dashboard')) {
+        return currentRoute === 'user.dashboard';
     }
     if (href === route('user.tickets.index')) {
         return currentRoute === 'user.tickets.index';
@@ -57,7 +57,7 @@ const userInitials = computed(() => {
         <aside class="hidden w-64 flex-col border-r border-gray-200 bg-white lg:flex">
             <!-- Logo -->
             <div class="flex h-16 items-center border-b border-gray-200 px-6">
-                <Link :href="route('dashboard')" class="flex items-center gap-3">
+                <Link :href="route('user.dashboard')" class="flex items-center gap-3">
                     <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-600">
                         <ApplicationLogo class="h-6 w-6 fill-current text-white" />
                     </div>
@@ -160,7 +160,7 @@ const userInitials = computed(() => {
                 <div class="fixed inset-0 bg-gray-600 bg-opacity-75" />
                 <aside class="fixed inset-y-0 left-0 w-64 bg-white shadow-xl" @click.stop>
                     <div class="flex h-16 items-center border-b border-gray-200 px-6">
-                        <Link :href="route('dashboard')" class="flex items-center gap-3">
+                        <Link :href="route('user.dashboard')" class="flex items-center gap-3">
                             <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-600">
                                 <ApplicationLogo class="h-6 w-6 fill-current text-white" />
                             </div>

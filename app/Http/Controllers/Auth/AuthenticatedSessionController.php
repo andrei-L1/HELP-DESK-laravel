@@ -57,15 +57,15 @@ class AuthenticatedSessionController extends Controller
             // Add more roles here in the future if needed
         ];
 
-        $routeName = $redirects[$roleName] ?? 'dashboard';
+        $routeName = $redirects[$roleName] ?? 'user.dashboard';
 
-        // Safety check: route must exist
+        // Safety check: route must exist, fallback to user dashboard
         if (! Route::has($routeName)) {
             Log::warning(
                 "Login redirect failed: route '{$routeName}' does not exist " .
                 "for user ID {$user->id} (role: {$roleName})"
             );
-            $routeName = 'dashboard';
+            $routeName = 'user.dashboard';
         }
 
         // Optional: friendly feedback

@@ -28,15 +28,33 @@ Route::get('/', fn () => Inertia::render('Index', [
 Route::middleware(['auth', 'verified'])->group(function () {
 
     // ── User Area ───────────────────────────────────
-    Route::get('/dashboard', [\App\Http\Controllers\User\UserDashboardController::class, 'index'])
-        ->name('dashboard');
+    Route:: middleware('role:user')
+        ->prefix('user')
+        ->name('user.')
+        ->group(function () {
+            Route::get('/dashboard', [\App\Http\Controllers\User\UserDashboardController::class, 'index'])
+                ->name('dashboard');
 
-    // ── USER TICKETS ────────────────────────────────
-    Route::prefix('user/tickets')->name('user.tickets.')->group(function () {
-        Route::get('/', [\App\Http\Controllers\User\UserTicketController::class, 'index'])->name('index');
-        Route::get('/create', [\App\Http\Controllers\User\UserTicketController::class, 'create'])->name('create');
-        Route::get('/{ticket}', [\App\Http\Controllers\User\UserTicketController::class, 'show'])->name('show');
-    });
+            // ── USER TICKETS ────────────────────────────────
+            Route::get('/tickets', [\App\Http\Controllers\User\UserTicketController::class, 'index'])
+                ->name('tickets.index');
+            Route::get('/tickets/create', [\App\Http\Controllers\User\UserTicketController::class, 'create'])
+                ->name('tickets.create');
+            Route::post('/tickets', [\App\Http\Controllers\User\UserTicketController::class, 'store'])
+                ->name('tickets.store');
+            Route::get('/tickets/{ticket}', [\App\Http\Controllers\User\UserTicketController::class, 'show'])
+                ->name('tickets.show')
+                ->where('ticket', '[0-9]+');
+            Route::post('/tickets/{ticket}/messages', [\App\Http\Controllers\User\UserTicketController::class, 'storeMessage'])
+                ->name('tickets.messages.store');
+            Route::post('/tickets/{ticket}/attachments', [\App\Http\Controllers\User\UserTicketController::class, 'storeAttachment'])
+                ->name('tickets.attachments.store');
+            Route::get('/tickets/{ticket}/attachments/{attachment}', [\App\Http\Controllers\User\UserTicketController::class, 'downloadAttachment'])
+                ->name('tickets.attachments.download');
+        });
+
+
+
 
     // Profile management
     Route::controller(ProfileController::class)->group(function () {
