@@ -72,6 +72,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     });
 
     // ── Admin Area ──────────────────────────────────
+
+    Route::post('/admin/users/stop-impersonate', [UserManagementController::class, 'stopImpersonate'])
+        ->name('admin.users.stop-impersonate');
+
     Route::middleware('role:admin')
         ->prefix('admin')
         ->name('admin.')
@@ -137,8 +141,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
                 ->name('users.sessions.destroy');
             Route::delete('/users/{user}/sessions', [UserManagementController::class, 'logoutAllSessions'])
                 ->name('users.sessions.destroy-all');
-            Route::post('/admin/users/stop-impersonate', [UserManagementController::class, 'stopImpersonate'])
-                ->name('admin.users.stop-impersonate');
 
             // ── ROLES (PART OF USER) ──────────────────────────────────
             Route::get('/roles', [RoleManagementController::class, 'index'])      // index()
