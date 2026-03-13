@@ -36,21 +36,29 @@ Route::middleware(['auth', 'verified'])->group(function () {
                 ->name('dashboard');
 
             // ── USER TICKETS ────────────────────────────────
-            Route::get('/tickets', [\App\Http\Controllers\User\UserTicketController::class, 'index'])
-                ->name('tickets.index');
-            Route::get('/tickets/create', [\App\Http\Controllers\User\UserTicketController::class, 'create'])
-                ->name('tickets.create');
-            Route::post('/tickets', [\App\Http\Controllers\User\UserTicketController::class, 'store'])
-                ->name('tickets.store');
-            Route::get('/tickets/{ticket}', [\App\Http\Controllers\User\UserTicketController::class, 'show'])
-                ->name('tickets.show')
-                ->where('ticket', '[0-9]+');
-            Route::post('/tickets/{ticket}/messages', [\App\Http\Controllers\User\UserTicketController::class, 'storeMessage'])
-                ->name('tickets.messages.store');
-            Route::post('/tickets/{ticket}/attachments', [\App\Http\Controllers\User\UserTicketController::class, 'storeAttachment'])
-                ->name('tickets.attachments.store');
-            Route::get('/tickets/{ticket}/attachments/{attachment}', [\App\Http\Controllers\User\UserTicketController::class, 'downloadAttachment'])
-                ->name('tickets.attachments.download');
+            Route::middleware(['permission:view_ticket'])->group(function () {
+                Route::get('/tickets', [\App\Http\Controllers\User\UserTicketController::class, 'index'])
+                    ->name('tickets.index');
+                Route::get('/tickets/{ticket}', [\App\Http\Controllers\User\UserTicketController::class, 'show'])
+                    ->name('tickets.show')
+                    ->where('ticket', '[0-9]+');
+                Route::get('/tickets/{ticket}/attachments/{attachment}', [\App\Http\Controllers\User\UserTicketController::class, 'downloadAttachment'])
+                    ->name('tickets.attachments.download');
+            });
+
+            Route::middleware(['permission:create_ticket'])->group(function () {
+
+                Route::get('/tickets/create', [\App\Http\Controllers\User\UserTicketController::class, 'create'])
+                    ->name('tickets.create');
+                Route::post('/tickets', [\App\Http\Controllers\User\UserTicketController::class, 'store'])
+                    ->name('tickets.store');
+
+                Route::post('/tickets/{ticket}/messages', [\App\Http\Controllers\User\UserTicketController::class, 'storeMessage'])
+                    ->name('tickets.messages.store');
+                Route::post('/tickets/{ticket}/attachments', [\App\Http\Controllers\User\UserTicketController::class, 'storeAttachment'])
+                    ->name('tickets.attachments.store');
+            });
+
         });
 
 
