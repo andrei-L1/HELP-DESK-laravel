@@ -10,6 +10,7 @@ use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Storage;
 
 class User extends Authenticatable implements MustVerifyEmail, CanResetPasswordContract
 {
@@ -29,8 +30,11 @@ class User extends Authenticatable implements MustVerifyEmail, CanResetPasswordC
         'timezone',
         'is_active',
         'email_verified',
-        'email_verified_at', // ← added (for compatibility with Laravel's built-in verification)
-        'last_login',       // ← added (for tracking last login time)
+        'email_verified_at', 
+        'last_login',
+        'google_id',       
+        'google_avatar',
+        'hide_google_avatar',
     ];
 
     protected $hidden = [
@@ -167,15 +171,23 @@ class User extends Authenticatable implements MustVerifyEmail, CanResetPasswordC
     }
     public function getAvatarUrlAttribute()
     {
+        // Uploaded avatar takes priority
         if (!empty($this->attributes['avatar_url'])) {
             if (str_starts_with($this->attributes['avatar_url'], 'http')) {
                 return $this->attributes['avatar_url'];
             }
             return asset('storage/' . $this->attributes['avatar_url']);
         }
-        
-        // Return default avatar if none exists
-        return 'https://ui-avatars.com/api/?name=' . urlencode($this->first_name . ' ' . $this->last_name) . '&size=64&background=475569&color=fff';
+
+        // Use Google avatar if not hidden
+        if (!empty($this->attributes['google_avatar']) && !$this->hide_google_avatar) {
+            return $this->attributes['google_avatar'];
+        }
+
+        // Fallback to initials
+        return 'https://ui-avatars.com/api/?name=' 
+            . urlencode($this->first_name . ' ' . $this->last_name) 
+            . '&size=64&background=475569&color=fff';
     }
 
     /**
@@ -196,5 +208,31 @@ class User extends Authenticatable implements MustVerifyEmail, CanResetPasswordC
         }
         
         return strtoupper(substr($this->email, 0, 2));
+    }
+
+    public function getAvatarAttribute(): string
+    {
+        // 1️⃣ Use uploaded avatar if exists
+        if (!empty($this->attributes['avatar_url'])) {
+            if (str_starts_with($this->attributes['avatar_url'], 'http')) {
+                return $this->attributes['avatar_url'];
+            }
+            return Storage::url($this->attributes['avatar_url']);
+        }
+
+        // 2️⃣ Use Google avatar if not hidden
+        if (!empty($this->google_avatar) && !$this->hide_google_avatar) {
+            return $this->google_avatar;
+        }
+
+        // 3️⃣ Fallback: generate initials avatar
+        $name = trim(($this->first_name ?? '') . ' ' . ($this->last_name ?? ''));
+        $initials = $name ?: ($this->email ?? 'U');
+        
+        $background = '475569';
+        $color = 'fff';
+        
+        return "https://ui-avatars.com/api/?name=" . urlencode($initials) . 
+            "&size=128&background={$background}&color={$color}&rounded=true";
     }
 }

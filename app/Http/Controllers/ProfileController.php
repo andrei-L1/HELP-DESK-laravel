@@ -33,12 +33,16 @@ class ProfileController extends Controller
         $user = $request->user();
         $data = $request->validated();
 
-        // Handle avatar upload
+        /*
+        |--------------------------------------------------------------------------
+        | Avatar Upload
+        |--------------------------------------------------------------------------
+        */
+
         if ($request->hasFile('avatar')) {
-            // Delete old avatar if exists
-            if ($user->avatar_url && !str_starts_with($user->avatar_url, 'http')) {
-                $oldPath = str_replace('/storage/', '', parse_url($user->avatar_url, PHP_URL_PATH));
-                Storage::disk('public')->delete($oldPath);
+            // Delete previous uploaded avatar (if exists)
+            if ($user->avatar_url) {
+                Storage::disk('public')->delete($user->avatar_url);
             }
 
             // Store new avatar
@@ -46,17 +50,43 @@ class ProfileController extends Controller
             $data['avatar_url'] = $path;
         }
 
-        // Remove avatar if requested (you can implement this feature)
-        if ($request->has('remove_avatar') && $request->remove_avatar) {
-            if ($user->avatar_url && !str_starts_with($user->avatar_url, 'http')) {
-                $oldPath = str_replace('/storage/', '', parse_url($user->avatar_url, PHP_URL_PATH));
-                Storage::disk('public')->delete($oldPath);
+        /*
+        |--------------------------------------------------------------------------
+        | Remove Uploaded Avatar
+        |--------------------------------------------------------------------------
+        */
+
+        if ($request->boolean('remove_avatar')) {
+            if ($user->avatar_url) {
+                Storage::disk('public')->delete($user->avatar_url);
             }
             $data['avatar_url'] = null;
         }
 
+        /*
+        |--------------------------------------------------------------------------
+        | Handle Google Avatar Visibility
+        |--------------------------------------------------------------------------
+        */
+        
+        // IMPORTANT: Explicitly handle hide_google_avatar checkbox
+        if ($request->has('hide_google_avatar')) {
+            // Convert to boolean (checkbox returns "1" or "0" as string)
+            $data['hide_google_avatar'] = filter_var(
+                $request->input('hide_google_avatar'), 
+                FILTER_VALIDATE_BOOLEAN
+            );
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Update Profile
+        |--------------------------------------------------------------------------
+        */
+
         $user->fill($data);
 
+        // Reset email verification if email changed
         if ($user->isDirty('email')) {
             $user->email_verified_at = null;
             $user->email_verified = false;
@@ -78,10 +108,9 @@ class ProfileController extends Controller
 
         $user = $request->user();
 
-        // Delete avatar if exists
-        if ($user->avatar_url && !str_starts_with($user->avatar_url, 'http')) {
-            $oldPath = str_replace('/storage/', '', parse_url($user->avatar_url, PHP_URL_PATH));
-            Storage::disk('public')->delete($oldPath);
+        // Delete uploaded avatar if exists
+        if ($user->avatar_url) {
+            Storage::disk('public')->delete($user->avatar_url);
         }
 
         Auth::logout();

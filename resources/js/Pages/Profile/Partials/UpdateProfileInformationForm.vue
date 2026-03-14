@@ -32,15 +32,28 @@ const form = useForm({
     phone: user.phone || '',
     timezone: user.timezone || 'Asia/Manila',
     avatar: null,
-    _method: 'PATCH', // Add this to spoof the PATCH method
+    _method: 'PATCH',
+    hide_google_avatar: user.hide_google_avatar ? Boolean(user.hide_google_avatar) : false,
 });
 
-// Track which fields have been modified
+const hasGoogleAvatar = computed(() => {
+    return user.google_avatar && !user.avatar_url;
+});
+
+// Track which fields have been modified (including hide_google_avatar)
 const modifiedFields = computed(() => {
     const modified = {};
     Object.keys(form.data()).forEach(key => {
-        if (key !== 'avatar' && key !== '_method' && form[key] !== user[key] && form[key] !== '') {
-            modified[key] = form[key];
+        if (key !== 'avatar' && key !== '_method') {
+            // Handle boolean comparison for hide_google_avatar
+            if (key === 'hide_google_avatar') {
+                const userValue = user.hide_google_avatar ? Boolean(user.hide_google_avatar) : false;
+                if (form[key] !== userValue) {
+                    modified[key] = form[key] ? 1 : 0;
+                }
+            } else if (form[key] !== user[key] && form[key] !== '') {
+                modified[key] = form[key];
+            }
         }
     });
     return modified;
@@ -103,31 +116,37 @@ const handleAvatarChange = (event) => {
 const removeAvatar = () => {
     form.avatar = null;
     avatarPreview.value = null;
-    if (fileInput.value) {
-        fileInput.value.value = '';
-    }
+    if (fileInput.value) fileInput.value.value = '';
+
+    // Send flag to backend
+    form.remove_avatar = true;
 };
 
 const submitForm = () => {
-    // Create a new FormData object
     const formData = new FormData();
-    
-    // Add _method field for Laravel
     formData.append('_method', 'PATCH');
-    
-    // Only include modified profile fields
+
+    // Include modified profile fields
     if (hasProfileChanges.value) {
         Object.keys(modifiedFields.value).forEach(key => {
             formData.append(key, modifiedFields.value[key]);
         });
     }
-    
+
     // Include avatar if changed
     if (hasAvatarChanges.value && form.avatar) {
         formData.append('avatar', form.avatar);
     }
     
-    // Use POST method with _method field for file uploads
+    // Handle remove_avatar
+    if (form.remove_avatar) {
+        formData.append('remove_avatar', 1);
+    }
+
+    // IMPORTANT: Always include hide_google_avatar in the request
+    // This ensures it gets updated even if other fields aren't changed
+    formData.append('hide_google_avatar', form.hide_google_avatar ? '1' : '0');
+
     form.post(route('profile.update'), {
         data: formData,
         preserveScroll: true,
@@ -135,11 +154,10 @@ const submitForm = () => {
             'Content-Type': 'multipart/form-data',
         },
         onSuccess: () => {
-            // Clear avatar preview after successful upload
             if (!form.avatar) {
                 avatarPreview.value = null;
             }
-            // Reset form with new user data
+            // Reset form defaults with updated user data
             form.defaults({
                 first_name: user.first_name,
                 last_name: user.last_name,
@@ -149,9 +167,11 @@ const submitForm = () => {
                 phone: user.phone || '',
                 timezone: user.timezone || 'Asia/Manila',
                 avatar: null,
+                hide_google_avatar: user.hide_google_avatar ? Boolean(user.hide_google_avatar) : false,
                 _method: 'PATCH',
             });
             form.reset();
+            form.clearErrors();
         },
         onError: (errors) => {
             console.log('Form errors:', errors);
@@ -179,6 +199,16 @@ const resetForm = () => {
     removeAvatar();
     activeTab.value = 'profile';
 };
+
+
+const currentAvatarPreview = computed(() => {
+    if (avatarPreview.value) return avatarPreview.value;
+    if (form.hide_google_avatar && !user.avatar_url) {
+        // Show initials avatar when Google avatar is hidden
+        return `https://ui-avatars.com/api/?name=${user.first_name}+${user.last_name}&size=128&background=475569&color=fff`;
+    }
+    return user.avatar;
+});
 </script>
 
 <template>
@@ -237,16 +267,10 @@ const resetForm = () => {
                             <div class="relative">
                                 <div class="w-32 h-32 rounded-full overflow-hidden bg-gray-100 ring-4 ring-white shadow-lg">
                                     <img 
-                                        :src="avatarPreview || user.avatar_url" 
+                                        :src="currentAvatarPreview" 
                                         :alt="form.display_name || 'Profile avatar'"
                                         class="w-full h-full object-cover"
-                                        v-if="avatarPreview || user.avatar_url"
                                     />
-                                    <div v-else class="w-full h-full flex items-center justify-center bg-gradient-to-br from-indigo-500 to-purple-600">
-                                        <span class="text-4xl font-bold text-white">
-                                            {{ form.first_name?.[0] || form.last_name?.[0] || 'U' }}
-                                        </span>
-                                    </div>
                                 </div>
                                 
                                 <!-- Camera button for upload -->
@@ -282,11 +306,30 @@ const resetForm = () => {
                                     <SecondaryButton 
                                         type="button"
                                         @click="removeAvatar"
-                                        v-if="form.avatar || user.avatar_url"
+                                        v-if="form.avatar || user.avatar_url || user.google_avatar"
                                         class="text-red-600 hover:text-red-700"
                                     >
                                         Remove
                                     </SecondaryButton>
+                                </div>
+                                <div class="flex items-center space-x-2 mt-4" v-if="user.google_avatar">
+                                    <input
+                                        id="hide_google_avatar"
+                                        type="checkbox"
+                                        v-model="form.hide_google_avatar"
+                                        class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                                    />
+                                    <label for="hide_google_avatar" class="text-sm text-gray-700">
+                                        Hide Google avatar
+                                    </label>
+                                    <span class="text-xs text-gray-500 ml-2">
+                                        ({{ form.hide_google_avatar ? 'Using initials' : 'Using Google profile picture' }})
+                                    </span>
+                                </div>
+
+                                <!-- Show message if no Google avatar -->
+                                <div v-else class="mt-4 text-sm text-gray-500">
+                                    <p>No Google avatar available to hide.</p>
                                 </div>
                                 
                                 <p class="mt-2 text-xs text-gray-500">
