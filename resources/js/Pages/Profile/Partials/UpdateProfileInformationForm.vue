@@ -22,7 +22,12 @@ const avatarPreview = ref(null);
 const fileInput = ref(null);
 const activeTab = ref('profile');
 
-// Initialize form with current user data
+// Check if user has a password (for OAuth users)
+const hasPassword = computed(() => {
+    return user.has_password || false;
+});
+
+// Initialize profile form with current user data
 const form = useForm({
     first_name: user.first_name,
     last_name: user.last_name,
@@ -34,6 +39,14 @@ const form = useForm({
     avatar: null,
     _method: 'PATCH',
     hide_google_avatar: user.hide_google_avatar ? Boolean(user.hide_google_avatar) : false,
+});
+
+// Initialize password form
+const passwordForm = useForm({
+    current_password: '',
+    new_password: '',
+    new_password_confirmation: '',
+    _method: 'POST',
 });
 
 const hasGoogleAvatar = computed(() => {
@@ -179,6 +192,28 @@ const submitForm = () => {
     });
 };
 
+const submitPassword = () => {
+    const routeName = hasPassword.value ? 'password.update' : 'password.set';
+    
+    // Override _method based on route
+    if (hasPassword.value) {
+        passwordForm._method = 'PUT';
+    } else {
+        passwordForm._method = 'POST';
+    }
+    
+    passwordForm.post(route(routeName), {
+        preserveScroll: true,
+        onSuccess: () => {
+            passwordForm.reset();
+            passwordForm._method = 'POST'; // Reset to default
+            if (!hasPassword.value) {
+                window.location.reload();
+            }
+        },
+    });
+};
+
 // Generate display name from first and last name
 const generateDisplayName = () => {
     if (form.first_name && form.last_name && !form.display_name) {
@@ -199,7 +234,6 @@ const resetForm = () => {
     removeAvatar();
     activeTab.value = 'profile';
 };
-
 
 const currentAvatarPreview = computed(() => {
     if (avatarPreview.value) return avatarPreview.value;
@@ -247,11 +281,22 @@ const currentAvatarPreview = computed(() => {
                     >
                         Profile Picture
                     </button>
+                    <button
+                        @click="activeTab = 'password'"
+                        :class="[
+                            activeTab === 'password'
+                                ? 'border-indigo-500 text-indigo-600'
+                                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300',
+                            'whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm'
+                        ]"
+                    >
+                        {{ hasPassword ? 'Change Password' : 'Set Password' }}
+                    </button>
                 </nav>
             </div>
 
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
-                <form @submit.prevent="submitForm" class="p-6" enctype="multipart/form-data">
+                <form @submit.prevent="submitForm" class="p-6" enctype="multipart/form-data" v-if="activeTab !== 'password'">
                     <!-- Avatar Tab -->
                     <div v-if="activeTab === 'avatar'" class="space-y-6">
                         <div>
@@ -537,6 +582,127 @@ const currentAvatarPreview = computed(() => {
                         </p>
                     </div>
                 </form>
+
+                <!-- Password Tab (Separate Form) -->
+                <div v-else-if="activeTab === 'password'" class="p-6">
+                    <form @submit.prevent="submitPassword" class="space-y-6">
+                        <div>
+                            <h3 class="text-lg font-medium text-gray-900 mb-4">
+                                {{ hasPassword ? 'Change Password' : 'Set Password' }}
+                            </h3>
+                            
+                            <!-- Different messages based on user type -->
+                            <p v-if="!hasPassword" class="text-sm text-gray-500 mb-6">
+                                You're currently using Google to login. Setting a password will allow you to login with email and password as well. This is optional - you can continue using Google login.
+                            </p>
+                            <p v-else class="text-sm text-gray-500 mb-6">
+                                Choose a strong password you don't use elsewhere. For better security, use a mix of letters, numbers, and symbols.
+                            </p>
+                        </div>
+
+                        <div class="max-w-md space-y-4">
+                            <!-- Current Password - Only show for users who already have a password -->
+                            <div v-if="hasPassword">
+                                <InputLabel for="current_password" value="Current Password" />
+                                <TextInput
+                                    id="current_password"
+                                    type="password"
+                                    class="mt-1 block w-full"
+                                    v-model="passwordForm.current_password"
+                                    autocomplete="current-password"
+                                    placeholder="Enter your current password"
+                                />
+                                <InputError :message="passwordForm.errors.current_password" class="mt-2" />
+                            </div>
+
+                            <!-- New Password -->
+                            <div>
+                                <InputLabel for="new_password" :value="hasPassword ? 'New Password' : 'Password'" />
+                                <TextInput
+                                    id="new_password"
+                                    type="password"
+                                    class="mt-1 block w-full"
+                                    v-model="passwordForm.new_password"
+                                    autocomplete="new-password"
+                                    :placeholder="hasPassword ? 'Enter new password' : 'Enter your password'"
+                                />
+                                <InputError :message="passwordForm.errors.new_password" class="mt-2" />
+                            </div>
+
+                            <!-- Confirm Password -->
+                            <div>
+                                <InputLabel for="new_password_confirmation" :value="hasPassword ? 'Confirm New Password' : 'Confirm Password'" />
+                                <TextInput
+                                    id="new_password_confirmation"
+                                    type="password"
+                                    class="mt-1 block w-full"
+                                    v-model="passwordForm.new_password_confirmation"
+                                    autocomplete="new-password"
+                                    :placeholder="hasPassword ? 'Confirm new password' : 'Confirm your password'"
+                                />
+                                <InputError :message="passwordForm.errors.new_password_confirmation" class="mt-2" />
+                            </div>
+
+                            <!-- Password Requirements -->
+                            <div class="bg-blue-50 p-4 rounded-md">
+                                <h4 class="text-sm font-medium text-blue-800 mb-2">Password Requirements:</h4>
+                                <ul class="text-xs text-blue-700 space-y-1 list-disc list-inside">
+                                    <li>Minimum 8 characters</li>
+                                    <li>At least one uppercase letter</li>
+                                    <li>At least one lowercase letter</li>
+                                    <li>At least one number</li>
+                                    <li>At least one special character (!@#$%^&*)</li>
+                                </ul>
+                            </div>
+
+                            <!-- Warning for OAuth users setting password for first time -->
+                            <div v-if="!hasPassword" class="bg-yellow-50 p-4 rounded-md">
+                                <div class="flex">
+                                    <ExclamationCircleIcon class="h-5 w-5 text-yellow-400" />
+                                    <div class="ml-3">
+                                        <h4 class="text-sm font-medium text-yellow-800">Important Note</h4>
+                                        <p class="text-xs text-yellow-700 mt-1">
+                                            After setting a password, you'll be able to login with either Google or email/password. 
+                                            Make sure to remember this password!
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Form Actions -->
+                        <div class="flex items-center gap-4 pt-4 border-t border-gray-200">
+                            <PrimaryButton 
+                                :disabled="passwordForm.processing"
+                                class="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 focus:ring-indigo-500"
+                            >
+                                {{ passwordForm.processing ? 'Saving...' : (hasPassword ? 'Update Password' : 'Set Password') }}
+                            </PrimaryButton>
+
+                            <Transition
+                                enter-active-class="transition ease-in-out"
+                                enter-from-class="opacity-0"
+                                leave-active-class="transition ease-in-out"
+                                leave-to-class="opacity-0"
+                            >
+                                <p
+                                    v-if="passwordForm.recentlySuccessful"
+                                    class="text-sm text-green-600 bg-green-50 px-3 py-2 rounded-md"
+                                >
+                                    ✓ Password {{ hasPassword ? 'updated' : 'set' }} successfully!
+                                </p>
+                            </Transition>
+
+                            <SecondaryButton 
+                                type="button"
+                                @click="passwordForm.reset(); passwordForm.clearErrors()"
+                                class="ml-auto"
+                            >
+                                Clear
+                            </SecondaryButton>
+                        </div>  
+                    </form>
+                </div>
             </div>
 
             <!-- Help Card -->
@@ -549,7 +715,16 @@ const currentAvatarPreview = computed(() => {
                     </div>
                     <div class="ml-3 flex-1 md:flex md:justify-between">
                         <p class="text-sm text-blue-700">
-                            <span class="font-medium">Tip:</span> You can update individual fields without filling out the entire form. Only changed fields will be saved.
+                            <span class="font-medium">Tip:</span> 
+                            <span v-if="activeTab === 'password' && !hasPassword">
+                                Setting a password is optional. You can continue using Google login anytime.
+                            </span>
+                            <span v-else-if="activeTab === 'password' && hasPassword">
+                                Change your password regularly to keep your account secure.
+                            </span>
+                            <span v-else>
+                                You can update individual fields without filling out the entire form. Only changed fields will be saved.
+                            </span>
                         </p>
                     </div>
                 </div>

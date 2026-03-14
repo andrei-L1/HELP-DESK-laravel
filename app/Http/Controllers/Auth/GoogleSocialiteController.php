@@ -93,7 +93,7 @@ class GoogleSocialiteController extends Controller
                 'google_id' => $googleUser->getId(),
                 'google_avatar' => $googleUser->getAvatar(),
 
-                'password' => Hash::make(Str::random(24)),
+                'password' => null, // No password since it's a social login
 
                 'role_id' => $defaultRole->id,
 

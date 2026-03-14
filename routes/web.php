@@ -4,6 +4,7 @@ use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\Auth\NoPasswordController;
 use App\Http\Controllers\Auth\GoogleSocialiteController;
 
 // Home / public page
@@ -19,6 +20,14 @@ Route::get('/auth/google', [GoogleSocialiteController::class, 'redirectToGoogle'
     ->name('google.redirect');
 Route::get('/auth/google/callback', [GoogleSocialiteController::class, 'handleGoogleCallback'])
     ->name('google.callback');
+
+// For users who already have a password
+Route::put('/password/update', [NoPasswordController::class, 'update'])
+    ->name('password.update');
+
+// For OAuth users setting a password for the first time
+Route::post('/password/set', [NoPasswordController::class, 'set'])
+    ->name('password.set');
 
 // Authenticated + Verified Routes
 Route::middleware(['auth', 'verified'])->group(function () {

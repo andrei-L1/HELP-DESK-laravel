@@ -55,12 +55,15 @@ class HandleInertiaRequests extends Middleware
 
             'auth' => [
                 'user' => $request->user()
-                    ? array_merge($request->user()->toArray(), [
-                        'role' => $request->user()->role?->name,
-                        'permissions' => $request->user()->role
-                            ? $request->user()->role->permissions->pluck('name')->toArray()
-                            : [],
-                    ])
+                    ? array_merge(
+                        $request->user()->append(['has_password', 'is_oauth_only'])->toArray(), 
+                        [
+                            'role' => $request->user()->role?->name,
+                            'permissions' => $request->user()->role
+                                ? $request->user()->role->permissions->pluck('name')->toArray()
+                                : [],
+                        ]
+                    )
                     : null,
             ],
 

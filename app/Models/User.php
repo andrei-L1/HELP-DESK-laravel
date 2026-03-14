@@ -235,4 +235,27 @@ class User extends Authenticatable implements MustVerifyEmail, CanResetPasswordC
         return "https://ui-avatars.com/api/?name=" . urlencode($initials) . 
             "&size=128&background={$background}&color={$color}&rounded=true";
     }
+
+
+    // Keep your original methods
+    public function hasPassword(): bool
+    {
+        return !is_null($this->password);
+    }
+
+    public function isOAuthOnly(): bool
+    {
+        return !is_null($this->google_id) && is_null($this->password);
+    }
+
+    // Add accessors that use them
+    public function getHasPasswordAttribute(): bool
+    {
+        return $this->hasPassword();
+    }
+
+    public function getIsOAuthOnlyAttribute(): bool
+    {
+        return $this->isOAuthOnly();
+    }
 }
