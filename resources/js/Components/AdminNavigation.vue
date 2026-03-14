@@ -8,6 +8,7 @@ import DropdownLink from '@/Components/DropdownLink.vue';
 const page = usePage();
 const showingMobileMenu = ref(false);
 const expandedMenus = ref({});
+const avatarError = ref(false);
 
 // ────────────────────────────────────────────────
 // Load / Save expanded state
@@ -129,7 +130,36 @@ const toggleMenu = (menuName, event) => {
     expandedMenus.value[menuName] = !expandedMenus.value[menuName];
 };
 
+// ────────────────────────────────────────────────
+// User and Avatar handling
+// ────────────────────────────────────────────────
+
 const user = computed(() => page.props.auth?.user || {});
+
+const userAvatar = computed(() => {
+    return user.value?.avatar_url || null;
+});
+
+const userInitials = computed(() => {
+    const first = user.value?.first_name?.[0] || '';
+    const last = user.value?.last_name?.[0] || '';
+    const name = user.value?.name?.[0] || '';
+    return (first + last).toUpperCase() || name.toUpperCase() || 'A';
+});
+
+const handleImageError = (e) => {
+    avatarError.value = true;
+    e.target.style.display = 'none';
+};
+
+const handleImageLoad = () => {
+    avatarError.value = false;
+};
+
+// Reset error when avatar changes
+watch(userAvatar, () => {
+    avatarError.value = false;
+});
 </script>
 
 <template>
@@ -221,11 +251,23 @@ const user = computed(() => page.props.auth?.user || {});
                 </ul>
             </nav>
 
-            <!-- User info -->
+            <!-- User info with avatar -->
             <div class="border-t border-gray-200 p-4">
                 <div class="flex items-center gap-3">
-                    <div class="flex h-10 w-10 items-center justify-center rounded-full bg-slate-700 text-sm font-semibold text-white">
-                        {{ user?.first_name?.[0] || user?.name?.[0] || 'A' }}
+                    <div class="relative flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-slate-700 text-sm font-semibold text-white overflow-hidden">
+                        <!-- Avatar Image -->
+                        <img 
+                            v-if="userAvatar && !avatarError"
+                            :src="userAvatar" 
+                            :alt="user?.first_name"
+                            class="absolute inset-0 h-full w-full object-cover"
+                            @error="handleImageError"
+                            @load="handleImageLoad"
+                        />
+                        <!-- Initials Fallback -->
+                        <span v-else class="relative z-10">
+                            {{ userInitials }}
+                        </span>
                     </div>
                     <div class="flex-1 min-w-0">
                         <p class="text-sm font-medium text-gray-900 truncate">
@@ -384,8 +426,20 @@ const user = computed(() => page.props.auth?.user || {});
                         <Dropdown align="right" width="48">
                             <template #trigger>
                                 <button class="flex items-center gap-3 rounded-lg p-2 text-sm hover:bg-gray-100">
-                                    <div class="flex h-8 w-8 items-center justify-center rounded-full bg-slate-700 text-xs font-semibold text-white">
-                                        {{ user?.first_name?.[0] || user?.name?.[0] || 'A' }}
+                                    <div class="relative flex h-8 w-8 items-center justify-center rounded-full bg-slate-700 text-xs font-semibold text-white overflow-hidden">
+                                        <!-- Avatar Image -->
+                                        <img 
+                                            v-if="userAvatar && !avatarError"
+                                            :src="userAvatar" 
+                                            :alt="user?.first_name"
+                                            class="absolute inset-0 h-full w-full object-cover"
+                                            @error="handleImageError"
+                                            @load="handleImageLoad"
+                                        />
+                                        <!-- Initials Fallback -->
+                                        <span v-else class="relative z-10">
+                                            {{ userInitials }}
+                                        </span>
                                     </div>
                                     <span class="hidden font-medium text-gray-700 sm:inline">
                                         {{ user?.first_name }} {{ user?.last_name || '' }}

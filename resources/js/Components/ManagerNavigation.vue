@@ -9,6 +9,7 @@ import DropdownLink from '@/Components/DropdownLink.vue';
 const page = usePage();
 const showingMobileMenu = ref(false);
 const expandedMenus = ref({});
+const avatarError = ref(false);
 
 // ────────────────────────────────────────────────
 // Load / Save expanded state
@@ -99,7 +100,7 @@ const navigation = [
     },
     {
         name: 'Settings',
-        href: '#', // or route('manager.settings.index') if it exists
+        href: '#',
         routeName: null,
         icon: 'M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z',
         children: [
@@ -152,12 +153,34 @@ const toggleMenu = (menuName, event) => {
     expandedMenus.value[menuName] = !expandedMenus.value[menuName];
 };
 
+// ────────────────────────────────────────────────
+// User and Avatar handling
+// ────────────────────────────────────────────────
+
 const user = computed(() => page.props.auth?.user || {});
+
+const userAvatar = computed(() => {
+    return user.value?.avatar_url || null;
+});
 
 const userInitials = computed(() => {
     const first = user.value?.first_name?.[0] || '';
     const last  = user.value?.last_name?.[0]  || '';
     return (first + last).toUpperCase() || user.value?.name?.[0]?.toUpperCase() || 'M';
+});
+
+const handleImageError = (e) => {
+    avatarError.value = true;
+    e.target.style.display = 'none';
+};
+
+const handleImageLoad = () => {
+    avatarError.value = false;
+};
+
+// Reset error when avatar changes
+watch(userAvatar, () => {
+    avatarError.value = false;
 });
 </script>
 
@@ -249,11 +272,23 @@ const userInitials = computed(() => {
                 </ul>
             </nav>
 
-            <!-- User Section -->
+            <!-- User Section with Avatar -->
             <div class="border-t border-gray-200 p-4">
                 <div class="flex items-center gap-3">
-                    <div class="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-700 text-sm font-semibold text-white">
-                        {{ userInitials }}
+                    <div class="relative flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-emerald-700 text-sm font-semibold text-white overflow-hidden">
+                        <!-- Avatar Image -->
+                        <img 
+                            v-if="userAvatar && !avatarError"
+                            :src="userAvatar" 
+                            :alt="user?.first_name"
+                            class="absolute inset-0 h-full w-full object-cover"
+                            @error="handleImageError"
+                            @load="handleImageLoad"
+                        />
+                        <!-- Initials Fallback -->
+                        <span v-else class="relative z-10">
+                            {{ userInitials }}
+                        </span>
                     </div>
                     <div class="flex-1 min-w-0">
                         <p class="text-sm font-medium text-gray-900 truncate">
@@ -411,8 +446,20 @@ const userInitials = computed(() => {
                         <Dropdown align="right" width="48">
                             <template #trigger>
                                 <button class="flex items-center gap-3 rounded-lg p-2 text-sm hover:bg-gray-100">
-                                    <div class="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-700 text-xs font-semibold text-white">
-                                        {{ userInitials }}
+                                    <div class="relative flex h-8 w-8 items-center justify-center rounded-full bg-emerald-700 text-xs font-semibold text-white overflow-hidden">
+                                        <!-- Avatar Image -->
+                                        <img 
+                                            v-if="userAvatar && !avatarError"
+                                            :src="userAvatar" 
+                                            :alt="user?.first_name"
+                                            class="absolute inset-0 h-full w-full object-cover"
+                                            @error="handleImageError"
+                                            @load="handleImageLoad"
+                                        />
+                                        <!-- Initials Fallback -->
+                                        <span v-else class="relative z-10">
+                                            {{ userInitials }}
+                                        </span>
                                     </div>
                                     <span class="hidden font-medium text-gray-700 sm:inline">
                                         {{ user?.first_name }} {{ user?.last_name || '' }}

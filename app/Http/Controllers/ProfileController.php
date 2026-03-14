@@ -8,6 +8,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Redirect;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -29,16 +30,41 @@ class ProfileController extends Controller
      */
     public function update(ProfileUpdateRequest $request): RedirectResponse
     {
-        $request->user()->fill($request->validated());
+        $user = $request->user();
+        $data = $request->validated();
 
-        if ($request->user()->isDirty('email')) {
-            // Mark email as unverified when the email address changes
-            $request->user()->email_verified = false;
+        // Handle avatar upload
+        if ($request->hasFile('avatar')) {
+            // Delete old avatar if exists
+            if ($user->avatar_url && !str_starts_with($user->avatar_url, 'http')) {
+                $oldPath = str_replace('/storage/', '', parse_url($user->avatar_url, PHP_URL_PATH));
+                Storage::disk('public')->delete($oldPath);
+            }
+
+            // Store new avatar
+            $path = $request->file('avatar')->store('avatars', 'public');
+            $data['avatar_url'] = $path;
         }
 
-        $request->user()->save();
+        // Remove avatar if requested (you can implement this feature)
+        if ($request->has('remove_avatar') && $request->remove_avatar) {
+            if ($user->avatar_url && !str_starts_with($user->avatar_url, 'http')) {
+                $oldPath = str_replace('/storage/', '', parse_url($user->avatar_url, PHP_URL_PATH));
+                Storage::disk('public')->delete($oldPath);
+            }
+            $data['avatar_url'] = null;
+        }
 
-        return Redirect::route('profile.edit');
+        $user->fill($data);
+
+        if ($user->isDirty('email')) {
+            $user->email_verified_at = null;
+            $user->email_verified = false;
+        }
+
+        $user->save();
+
+        return Redirect::route('profile.edit')->with('status', 'profile-updated');
     }
 
     /**
@@ -47,10 +73,16 @@ class ProfileController extends Controller
     public function destroy(Request $request): RedirectResponse
     {
         $request->validate([
-            'password' => ['required', 'current_password'],
+            'password' => ['required', 'current-password'],
         ]);
 
         $user = $request->user();
+
+        // Delete avatar if exists
+        if ($user->avatar_url && !str_starts_with($user->avatar_url, 'http')) {
+            $oldPath = str_replace('/storage/', '', parse_url($user->avatar_url, PHP_URL_PATH));
+            Storage::disk('public')->delete($oldPath);
+        }
 
         Auth::logout();
 

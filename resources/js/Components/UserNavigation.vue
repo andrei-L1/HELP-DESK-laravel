@@ -108,6 +108,15 @@ const userInitials = computed(() => {
     return (first + last).toUpperCase() || user.value?.name?.[0]?.toUpperCase() || 'U';
 });
 
+const userAvatar = computed(() => {
+    return user.value?.avatar_url || null;
+});
+
+const handleImageError = (e) => {
+    e.target.style.display = 'none';
+    e.target.parentElement.querySelector('span')?.classList.remove('hidden');
+};
+
 const impersonation = computed(() => page.props.impersonation);
 const isImpersonating = computed(() => impersonation.value !== null);
 </script>
@@ -205,8 +214,16 @@ const isImpersonating = computed(() => impersonation.value !== null);
             <!-- User Section -->
             <div class="border-t border-gray-200 p-4">
                 <div class="flex items-center gap-3">
-                    <div class="flex h-10 w-10 items-center justify-center rounded-full bg-blue-600 text-sm font-semibold text-white">
-                        {{ userInitials }}
+                    <div class="flex h-10 w-10 items-center justify-center rounded-full bg-blue-600 text-sm font-semibold text-white overflow-hidden">
+                        <img 
+                            v-if="userAvatar"
+                            :src="userAvatar" 
+                            :alt="user?.first_name"
+                            class="h-full w-full object-cover"
+                            @error="handleImageError"
+                            ref="avatarImg"
+                        />
+                        <span v-else>{{ userInitials }}</span>
                     </div>
                     <div class="flex-1 min-w-0">
                         <p class="text-sm font-medium text-gray-900 truncate">
@@ -352,8 +369,16 @@ const isImpersonating = computed(() => impersonation.value !== null);
                         <Dropdown align="right" width="48">
                             <template #trigger>
                                 <button class="flex items-center gap-3 rounded-lg p-2 text-sm hover:bg-gray-100">
-                                    <div class="flex h-8 w-8 items-center justify-center rounded-full bg-blue-600 text-xs font-semibold text-white">
-                                        {{ userInitials }}
+                                    <div class="flex h-10 w-10 items-center justify-center rounded-full bg-blue-600 text-sm font-semibold text-white overflow-hidden">
+                                        <img 
+                                            v-if="userAvatar"
+                                            :src="userAvatar" 
+                                            :alt="user?.first_name"
+                                            class="h-full w-full object-cover"
+                                            @error="handleImageError"
+                                            ref="avatarImg"
+                                        />
+                                        <span v-else>{{ userInitials }}</span>
                                     </div>
                                     <span class="hidden font-medium text-gray-700 sm:inline">
                                         {{ user?.first_name }} {{ user?.last_name || '' }}
