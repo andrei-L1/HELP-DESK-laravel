@@ -47,7 +47,7 @@ class UserTicketController extends Controller
             $query->whereHas('priority', fn ($q) => $q->where('name', $request->priority));
         }
 
-        $tickets = $query->paginate(15)->withQueryString();
+        $tickets = $query->paginate(5)->withQueryString();
 
         $tickets->getCollection()->transform(function ($ticket) {
             return [

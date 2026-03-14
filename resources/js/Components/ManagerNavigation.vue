@@ -218,6 +218,9 @@ watch(userAvatar, () => {
 
 // Tooltip helper
 const showTooltip = ref(null);
+
+const impersonation = computed(() => page.props.impersonation);
+const isImpersonating = computed(() => impersonation.value !== null);
 </script>
 
 <template>
@@ -620,6 +623,41 @@ const showTooltip = ref(null);
                         </Dropdown>
                     </div>
                 </div>
+                <!-- Impersonation banner with animation -->
+                <transition
+                    enter-active-class="transition-all duration-300 ease-out"
+                    enter-from-class="opacity-0 -translate-y-full"
+                    enter-to-class="opacity-100 translate-y-0"
+                    leave-active-class="transition-all duration-200 ease-in"
+                    leave-from-class="opacity-100 translate-y-0"
+                    leave-to-class="opacity-0 -translate-y-full"
+                >
+                    <div
+                        v-if="isImpersonating"
+                        class="bg-gradient-to-r from-red-600 to-red-700 text-white text-sm px-4 py-2 flex items-center justify-between"
+                    >
+                        <div class="flex items-center gap-2">
+                            <svg class="h-5 w-5 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                            </svg>
+                            <span>
+                                You are impersonating this user
+                                <span v-if="impersonation?.admin" class="font-semibold">
+                                    (Admin: {{ impersonation.admin.name }})
+                                </span>
+                            </span>
+                        </div>
+
+                        <Link
+                            :href="route('admin.users.stop-impersonate')"
+                            method="post"
+                            as="button"
+                            class="bg-white text-red-600 px-3 py-1 rounded text-xs font-semibold hover:bg-gray-100 transition-all hover:scale-105 active:scale-95 shadow-sm"
+                        >
+                            Stop Impersonating
+                        </Link>
+                    </div>
+                </transition>
             </header>
 
             <!-- Breadcrumb navigation (optional) -->
