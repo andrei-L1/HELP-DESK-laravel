@@ -67,16 +67,10 @@ const getGradientStyle = (colorHex) => {
     <UserNavigation>
         <template #header-title>
             <div class="flex items-center space-x-3">
-                <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 shadow-lg">
-                    <svg class="h-5 w-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-                    </svg>
-                </div>
                 <div>
                     <h1 class="text-2xl font-bold bg-gradient-to-r from-gray-900 to-gray-600 bg-clip-text">
                         Dashboard Overview
                     </h1>
-                    <p class="text-sm text-gray-500 mt-0.5">Welcome back! Here's what's happening with your tickets.</p>
                 </div>
             </div>
         </template>
