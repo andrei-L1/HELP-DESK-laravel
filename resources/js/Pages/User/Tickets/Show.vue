@@ -91,7 +91,7 @@ const showActivity = ref(false);
         </template>
 
         <div class="py-6">
-            <div class="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 space-y-6">
+            <div class="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
 
                 <!-- Breadcrumb -->
                 <nav class="flex items-center gap-2 text-sm text-gray-500">

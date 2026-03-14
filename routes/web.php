@@ -2,7 +2,7 @@
 use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Controllers\Admin\AdminDashboardController;
 use App\Http\Controllers\Admin\DepartmentManagementController;
-use App\Http\Controllers\Admin\userManagementController;
+use App\Http\Controllers\Admin\UserManagementController;
 use App\Http\Controllers\Admin\RoleManagementController;
 use App\Http\Controllers\Admin\AdminUserController;
 use App\Http\Controllers\Admin\AdminTicketController;
