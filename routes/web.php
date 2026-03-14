@@ -22,6 +22,11 @@ Route::get('/', fn () => Inertia::render('Index', [
     'phpVersion'     => PHP_VERSION,
 ]));
 
+// Google OAuth Routes
+Route::get('/auth/google', [App\Http\Controllers\Auth\GoogleSocialiteController::class, 'redirectToGoogle'])
+    ->name('google.redirect');
+Route::get('/auth/google/callback', [App\Http\Controllers\Auth\GoogleSocialiteController::class, 'handleGoogleCallback'])
+    ->name('google.callback');
 // ────────────────────────────────────────────────
 // Authenticated + Verified Routes
 // ────────────────────────────────────────────────

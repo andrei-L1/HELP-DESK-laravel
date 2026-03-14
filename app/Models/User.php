@@ -177,4 +177,24 @@ class User extends Authenticatable implements MustVerifyEmail, CanResetPasswordC
         // Return default avatar if none exists
         return 'https://ui-avatars.com/api/?name=' . urlencode($this->first_name . ' ' . $this->last_name) . '&size=64&background=475569&color=fff';
     }
+
+    /**
+     * Check if user registered via Google
+     */
+    public function isGoogleUser(): bool
+    {
+        return !is_null($this->google_id);
+    }
+
+    /**
+     * Get the user's initials for avatar fallback
+     */
+    public function getInitialsAttribute(): string
+    {
+        if ($this->first_name && $this->last_name) {
+            return strtoupper(substr($this->first_name, 0, 1) . substr($this->last_name, 0, 1));
+        }
+        
+        return strtoupper(substr($this->email, 0, 2));
+    }
 }

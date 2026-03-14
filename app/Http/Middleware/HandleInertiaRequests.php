@@ -64,6 +64,13 @@ class HandleInertiaRequests extends Middleware
                     : null,
             ],
 
+            // Flash messages for status and error
+            'flash' => [
+                'status' => fn () => $request->session()->get('status'),
+                'error' => fn () => $request->session()->get('error'),
+                'success' => fn () => $request->session()->get('success'),
+            ],
+
             // impersonation data
             'impersonation' => $impersonation,
 
