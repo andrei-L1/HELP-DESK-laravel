@@ -10,6 +10,46 @@ const props = defineProps({
     activity_logs: { type: Array, default: () => [] },
 });
 
+// Helper function to convert hex to RGB
+const hexToRgb = (hex) => {
+    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    return result ? {
+        r: parseInt(result[1], 16),
+        g: parseInt(result[2], 16),
+        b: parseInt(result[3], 16)
+    } : null;
+};
+
+// Dynamic status badge styles using color from database
+const getStatusStyles = (status, colorHex) => {
+    const color = colorHex || '#6b7280';
+    const rgb = hexToRgb(color);
+    
+    return {
+        badge: `inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium`,
+        style: {
+            backgroundColor: rgb ? `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.1)` : `${color}20`,
+            color: color,
+            borderColor: rgb ? `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.3)` : `${color}40`,
+        }
+    };
+};
+
+// Dynamic priority badge styles using color from database
+const getPriorityStyles = (priority, colorHex) => {
+    const color = colorHex || '#6b7280';
+    const rgb = hexToRgb(color);
+    
+    return {
+        badge: `inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium`,
+        style: {
+            backgroundColor: rgb ? `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.1)` : `${color}20`,
+            color: color,
+            borderColor: rgb ? `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.3)` : `${color}40`,
+        }
+    };
+};
+
 // Reply form
 const replyForm = useForm({ body: '' });
 const submitReply = () => {
@@ -27,30 +67,12 @@ const onFileChange = (e) => {
 const uploadAttachment = () => {
     if (!attachmentForm.file) return;
     attachmentForm.post(route('user.tickets.attachments.store', props.ticket.id), {
-        onSuccess: () => { attachmentForm.reset(); if (fileInput.value) fileInput.value.value = ''; },
+        onSuccess: () => { 
+            attachmentForm.reset(); 
+            if (fileInput.value) fileInput.value.value = ''; 
+        },
     });
 };
-
-function statusClass(s) {
-    const map = {
-        open: 'bg-green-100 text-green-800',
-        pending: 'bg-yellow-100 text-yellow-800',
-        'in progress': 'bg-blue-100 text-blue-800',
-        resolved: 'bg-purple-100 text-purple-800',
-        closed: 'bg-gray-100 text-gray-700',
-    };
-    return map[s?.toLowerCase()] ?? 'bg-slate-100 text-slate-700';
-}
-
-function priorityClass(p) {
-    const map = {
-        urgent: 'bg-red-100 text-red-800',
-        high: 'bg-orange-100 text-orange-800',
-        medium: 'bg-yellow-100 text-yellow-800',
-        low: 'bg-green-100 text-green-800',
-    };
-    return map[p?.toLowerCase()] ?? 'bg-slate-100 text-slate-700';
-}
 
 function formatDate(d) {
     if (!d) return '—';
@@ -79,12 +101,20 @@ const showActivity = ref(false);
 
     <UserNavigation>
         <template #header-title>
-            <div class="flex items-center gap-3">
+            <div class="flex items-center gap-3 flex-wrap">
                 <h1 class="text-xl font-semibold text-gray-900">{{ ticket.ticket_number }}</h1>
-                <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium" :class="statusClass(ticket.status)">
+                <!-- Dynamic status badge -->
+                <span 
+                    :class="getStatusStyles(ticket.status, ticket.status_color).badge"
+                    :style="getStatusStyles(ticket.status, ticket.status_color).style"
+                >
                     {{ ticket.status }}
                 </span>
-                <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium" :class="priorityClass(ticket.priority)">
+                <!-- Dynamic priority badge -->
+                <span 
+                    :class="getPriorityStyles(ticket.priority, ticket.priority_color).badge"
+                    :style="getPriorityStyles(ticket.priority, ticket.priority_color).style"
+                >
                     {{ ticket.priority }}
                 </span>
             </div>
@@ -159,7 +189,7 @@ const showActivity = ref(false);
 
                             <!-- Reply Box (disabled when closed/resolved) -->
                             <div class="px-6 py-4 border-t border-gray-100 bg-gray-50">
-                                <template v-if="['closed', 'resolved'].includes(ticket.status?.toLowerCase())">
+                                <template v-if="ticket.status?.toLowerCase() === 'closed' || ticket.status?.toLowerCase() === 'resolved'">
                                     <p class="text-sm text-center text-gray-500 italic">
                                         This ticket is <strong>{{ ticket.status }}</strong> and no longer accepts replies.
                                     </p>
@@ -208,7 +238,10 @@ const showActivity = ref(false);
                                 <div class="flex justify-between px-5 py-3">
                                     <dt class="text-xs font-medium text-gray-500">Status</dt>
                                     <dd>
-                                        <span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium" :class="statusClass(ticket.status)">
+                                        <span 
+                                            :class="getStatusStyles(ticket.status, ticket.status_color).badge"
+                                            :style="getStatusStyles(ticket.status, ticket.status_color).style"
+                                        >
                                             {{ ticket.status }}
                                         </span>
                                     </dd>
@@ -216,7 +249,10 @@ const showActivity = ref(false);
                                 <div class="flex justify-between px-5 py-3">
                                     <dt class="text-xs font-medium text-gray-500">Priority</dt>
                                     <dd>
-                                        <span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium" :class="priorityClass(ticket.priority)">
+                                        <span 
+                                            :class="getPriorityStyles(ticket.priority, ticket.priority_color).badge"
+                                            :style="getPriorityStyles(ticket.priority, ticket.priority_color).style"
+                                        >
                                             {{ ticket.priority }}
                                         </span>
                                     </dd>
@@ -279,7 +315,7 @@ const showActivity = ref(false);
                                 </a>
 
                                 <!-- Upload (only if not closed) -->
-                                <template v-if="!['closed', 'resolved'].includes(ticket.status?.toLowerCase())">
+                                <template v-if="ticket.status?.toLowerCase() !== 'closed' && ticket.status?.toLowerCase() !== 'resolved'">
                                     <form @submit.prevent="uploadAttachment" class="mt-3 pt-3 border-t border-gray-100 space-y-2">
                                         <input
                                             ref="fileInput"
@@ -331,3 +367,45 @@ const showActivity = ref(false);
         </div>
     </UserNavigation>
 </template>
+
+<style scoped>
+/* Add any necessary styles */
+.animate-spin {
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Smooth transitions */
+.transition-colors {
+    transition-property: background-color, border-color, color, fill, stroke;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    transition-duration: 150ms;
+}
+
+.transition-transform {
+    transition-property: transform;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    transition-duration: 150ms;
+}
+
+.rotate-180 {
+    transform: rotate(180deg);
+}
+
+/* Better text rendering */
+.text-gray-900,
+.text-gray-700,
+.text-gray-600 {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+}
+</style>

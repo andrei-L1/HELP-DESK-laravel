@@ -11,6 +11,69 @@ const props = defineProps({
     stats: { type: Object, default: () => ({}) },
 });
 
+// Helper function to convert hex to RGB
+const hexToRgb = (hex) => {
+    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    return result ? {
+        r: parseInt(result[1], 16),
+        g: parseInt(result[2], 16),
+        b: parseInt(result[3], 16)
+    } : null;
+};
+
+// Dynamic status badge styles using color from database
+const getStatusStyles = (status, colorHex) => {
+    const color = colorHex || '#6b7280';
+    const rgb = hexToRgb(color);
+    
+    return {
+        badge: `inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ring-1 ring-inset`,
+        style: {
+            backgroundColor: rgb ? `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.1)` : `${color}20`,
+            color: color,
+            borderColor: rgb ? `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.3)` : `${color}40`,
+        }
+    };
+};
+
+// Dynamic priority badge styles using color from database
+const getPriorityStyles = (priority, colorHex) => {
+    const color = colorHex || '#6b7280';
+    const rgb = hexToRgb(color);
+    
+    return {
+        badge: `inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ring-1 ring-inset`,
+        style: {
+            backgroundColor: rgb ? `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.1)` : `${color}20`,
+            color: color,
+            borderColor: rgb ? `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.3)` : `${color}40`,
+        }
+    };
+};
+
+// Get status icon based on status name
+const getStatusIcon = (status) => {
+    const icons = {
+        open: 'M13.5 10.5V6.75a4.5 4.5 0 119 0v3.75M3.75 21.75h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H3.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z',
+        pending: 'M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z',
+        'in progress': 'M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99',
+        resolved: 'M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z',
+        closed: 'M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636',
+    };
+    return icons[status?.toLowerCase()] ?? icons.open;
+};
+
+// Get priority icon based on priority name
+const getPriorityIcon = (priority) => {
+    const icons = {
+        urgent: 'M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z',
+        high: 'M15.362 5.214A8.252 8.252 0 0112 21 8.25 8.25 0 016.038 7.048 8.287 8.287 0 009 9.6a8.983 8.983 0 013.361-6.867 8.21 8.21 0 003 2.48z',
+        medium: 'M3 8.25V18a2.25 2.25 0 002.25 2.25h13.5A2.25 2.25 0 0021 18V8.25m-18 0V6a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 6v2.25m-18 0h18M5.25 6h.008v.008H5.25V6zM7.5 6h.008v.008H7.5V6z',
+        low: 'M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z',
+    };
+    return icons[priority?.toLowerCase()] ?? icons.medium;
+};
+
 const search   = ref(props.filters.search ?? '');
 const status   = ref(props.filters.status ?? '');
 const priority = ref(props.filters.priority ?? '');
@@ -37,27 +100,6 @@ function clearFilters() {
     applyFilters();
 }
 
-function statusClass(s) {
-    const map = {
-        open: 'bg-emerald-50 text-emerald-700 ring-emerald-600/20',
-        pending: 'bg-amber-50 text-amber-700 ring-amber-600/20',
-        'in progress': 'bg-blue-50 text-blue-700 ring-blue-600/20',
-        resolved: 'bg-violet-50 text-violet-700 ring-violet-600/20',
-        closed: 'bg-gray-50 text-gray-700 ring-gray-600/20',
-    };
-    return map[s?.toLowerCase()] ?? 'bg-slate-50 text-slate-700 ring-slate-600/20';
-}
-
-function priorityClass(p) {
-    const map = {
-        urgent: 'bg-rose-50 text-rose-700 ring-rose-600/20',
-        high: 'bg-orange-50 text-orange-700 ring-orange-600/20',
-        medium: 'bg-amber-50 text-amber-700 ring-amber-600/20',
-        low: 'bg-emerald-50 text-emerald-700 ring-emerald-600/20',
-    };
-    return map[p?.toLowerCase()] ?? 'bg-slate-50 text-slate-700 ring-slate-600/20';
-}
-
 function formatDate(d) {
     if (!d) return '—';
     const date = new Date(d);
@@ -73,27 +115,6 @@ function formatDate(d) {
         return `${diffDays} days ago`;
     }
     return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
-}
-
-function getPriorityIcon(priority) {
-    const icons = {
-        urgent: 'M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z',
-        high: 'M15.362 5.214A8.252 8.252 0 0112 21 8.25 8.25 0 016.038 7.048 8.287 8.287 0 009 9.6a8.983 8.983 0 013.361-6.867 8.21 8.21 0 003 2.48z',
-        medium: 'M3 8.25V18a2.25 2.25 0 002.25 2.25h13.5A2.25 2.25 0 0021 18V8.25m-18 0V6a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 6v2.25m-18 0h18M5.25 6h.008v.008H5.25V6zM7.5 6h.008v.008H7.5V6z',
-        low: 'M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z',
-    };
-    return icons[priority?.toLowerCase()] ?? icons.medium;
-}
-
-function getStatusIcon(status) {
-    const icons = {
-        open: 'M13.5 10.5V6.75a4.5 4.5 0 119 0v3.75M3.75 21.75h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H3.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z',
-        pending: 'M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z',
-        'in progress': 'M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99',
-        resolved: 'M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z',
-        closed: 'M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636',
-    };
-    return icons[status?.toLowerCase()] ?? icons.open;
 }
 
 const activeFilterCount = computed(() => {
@@ -251,7 +272,10 @@ const activeFilterCount = computed(() => {
                                         </div>
                                     </td>
                                     <td class="px-3 py-4">
-                                        <span class="inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ring-1 ring-inset" :class="statusClass(ticket.status)">
+                                        <span 
+                                            :class="getStatusStyles(ticket.status, ticket.status_color).badge"
+                                            :style="getStatusStyles(ticket.status, ticket.status_color).style"
+                                        >
                                             <svg class="h-3 w-3 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="getStatusIcon(ticket.status)" />
                                             </svg>
@@ -259,7 +283,10 @@ const activeFilterCount = computed(() => {
                                         </span>
                                     </td>
                                     <td class="px-3 py-4">
-                                        <span class="inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ring-1 ring-inset" :class="priorityClass(ticket.priority)">
+                                        <span 
+                                            :class="getPriorityStyles(ticket.priority, ticket.priority_color).badge"
+                                            :style="getPriorityStyles(ticket.priority, ticket.priority_color).style"
+                                        >
                                             <svg class="h-3 w-3 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="getPriorityIcon(ticket.priority)" />
                                             </svg>
@@ -299,15 +326,23 @@ const activeFilterCount = computed(() => {
                         <div v-for="ticket in tickets.data" :key="ticket.id" class="p-4 hover:bg-gray-50 transition-colors">
                             <div class="flex items-start justify-between gap-3">
                                 <div class="flex-1 min-w-0">
-                                    <div class="flex items-center gap-2 mb-2">
+                                    <div class="flex items-center gap-2 mb-2 flex-wrap">
                                         <span class="text-sm font-medium text-gray-900">#{{ ticket.ticket_number }}</span>
-                                        <span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ring-1 ring-inset" :class="statusClass(ticket.status)">
+                                        <span 
+                                            :class="getStatusStyles(ticket.status, ticket.status_color).badge"
+                                            :style="getStatusStyles(ticket.status, ticket.status_color).style"
+                                            class="inline-flex items-center px-2 py-0.5 text-xs"
+                                        >
                                             <svg class="h-2.5 w-2.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="getStatusIcon(ticket.status)" />
                                             </svg>
                                             {{ ticket.status }}
                                         </span>
-                                        <span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ring-1 ring-inset" :class="priorityClass(ticket.priority)">
+                                        <span 
+                                            :class="getPriorityStyles(ticket.priority, ticket.priority_color).badge"
+                                            :style="getPriorityStyles(ticket.priority, ticket.priority_color).style"
+                                            class="inline-flex items-center px-2 py-0.5 text-xs"
+                                        >
                                             <svg class="h-2.5 w-2.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="getPriorityIcon(ticket.priority)" />
                                             </svg>
@@ -411,3 +446,56 @@ const activeFilterCount = computed(() => {
         </div>
     </UserNavigation>
 </template>
+
+<style scoped>
+/* Add any necessary styles */
+.line-clamp-1 {
+    display: -webkit-box;
+    -webkit-line-clamp: 1;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+/* Smooth transitions */
+.transition-all {
+    transition-property: all;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    transition-duration: 150ms;
+}
+
+.transition-colors {
+    transition-property: background-color, border-color, color, fill, stroke;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    transition-duration: 150ms;
+}
+
+.transition-shadow {
+    transition-property: box-shadow;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    transition-duration: 150ms;
+}
+
+.hover\:scale-105:hover {
+    transform: scale(1.05);
+}
+
+.active\:scale-100:active {
+    transform: scale(1);
+}
+
+/* Better text rendering */
+.text-gray-900,
+.text-gray-700,
+.text-gray-600 {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+}
+
+/* Focus styles for accessibility */
+:focus-visible {
+    outline: 2px solid #3b82f6;
+    outline-offset: 2px;
+    border-radius: 0.5rem;
+}
+</style>
