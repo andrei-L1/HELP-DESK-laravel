@@ -165,7 +165,12 @@ class TicketController extends Controller
     {
         $this->authorizeAgentAccess($ticket);
 
-        $ticket->load(['status', 'priority', 'creator', 'messages.user', 'attachments']);
+        $ticket->load(['status', 'priority', 'creator', 'messages.user', 'attachments', 'activityLogs']);
+
+        // Load user names for logs if not already loaded via relationships
+        $userIds = $ticket->activityLogs->pluck('user_id')->filter()->unique();
+        $userNames = DB::table('users')->whereIn('id', $userIds)->get(['id', 'first_name', 'last_name'])
+            ->mapWithKeys(fn ($u) => [$u->id => trim($u->first_name . ' ' . $u->last_name) ?: "User #{$u->id}"]);
 
         return Inertia::render('Agent/Tickets/Show', [
             'ticket' => $ticket,
@@ -175,6 +180,14 @@ class TicketController extends Controller
                 'file_size'   => $a->file_size,
                 'uploaded_at' => $a->uploaded_at?->toDateTimeString(),
             ]),
+            'activity_logs' => $ticket->activityLogs->take(30)->map(fn ($l) => [
+                'id'         => $l->id,
+                'action'     => $l->action,
+                'old_value'  => $l->old_value,
+                'new_value'  => $l->new_value,
+                'user_name'  => $userNames[$l->user_id] ?? 'System',
+                'created_at' => $l->created_at?->toDateTimeString(),
+            ])->values(),
         ]);
     }
 

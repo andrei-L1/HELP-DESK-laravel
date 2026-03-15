@@ -12,6 +12,10 @@ const props = defineProps({
         type: Array,
         default: () => [],
     },
+    activity_logs: {
+        type: Array,
+        default: () => [],
+    },
 });
 
 const attachmentForm = useForm({
@@ -110,6 +114,13 @@ const getPriorityStyles = (priority, colorHex) => {
         }
     };
 };
+
+function formatAction(action) {
+    if (!action) return 'Unknown Action';
+    return action.replace(/_/g, ' ').replace(/^\w/, c => c.toUpperCase());
+}
+
+const showActivity = ref(false);
 
 </script>
 
@@ -364,6 +375,31 @@ const getPriorityStyles = (priority, colorHex) => {
                                 </template>
                             </div>
                         </div>
+
+                        <!-- Activity Log (collapsible) -->
+                        <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden" v-if="activity_logs && activity_logs.length">
+                            <button
+                                type="button"
+                                @click="showActivity = !showActivity"
+                                class="w-full flex items-center justify-between px-5 py-3 border-b border-gray-100 bg-gray-50 hover:bg-gray-100 transition-colors"
+                            >
+                                <h3 class="text-sm font-semibold text-gray-700">Activity Log</h3>
+                                <svg class="h-4 w-4 text-gray-400 transition-transform" :class="{ 'rotate-180': showActivity }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                                </svg>
+                            </button>
+                            <div v-if="showActivity" class="px-5 py-3 space-y-3 max-h-64 overflow-y-auto">
+                                <div v-for="log in activity_logs" :key="log.id" class="flex items-start gap-2 text-xs">
+                                    <div class="mt-0.5 h-1.5 w-1.5 rounded-full bg-emerald-400 flex-shrink-0"></div>
+                                    <div>
+                                        <span class="font-medium text-gray-700">{{ formatAction(log.action) }}</span>
+                                        <span v-if="log.new_value" class="text-gray-500"> → {{ log.new_value }}</span>
+                                        <br />
+                                        <span class="text-gray-400">{{ log.user_name }} · {{ formatDate(log.created_at) }}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -390,6 +426,16 @@ const getPriorityStyles = (priority, colorHex) => {
     transition-property: background-color, border-color, color, fill, stroke;
     transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
     transition-duration: 150ms;
+}
+
+.transition-transform {
+    transition-property: transform;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    transition-duration: 150ms;
+}
+
+.rotate-180 {
+    transform: rotate(180deg);
 }
 
 .text-gray-900,

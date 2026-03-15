@@ -1,81 +1,46 @@
 <script setup>
-import { watch } from 'vue';
+import { ref, watch } from 'vue';
 import ManagerNavigation from '@/Components/ManagerNavigation.vue';
 import { Head, Link, useForm } from '@inertiajs/vue3';
 
 const props = defineProps({
-    ticket: {
-        type: Object,
-        required: true,
-    },
-    users: {
-        type: Array,
-        default: () => [],
-    },
-    statuses: {
-        type: Array,
-        default: () => [],
-    },
-    departments: {
-        type: Array,
-        default: () => [],
-    },
-    messages: {
-        type: Array,
-        default: () => [],
-    },
-    attachments: {
-        type: Array,
-        default: () => [],
-    },
-    activity_logs: {
-        type: Array,
-        default: () => [],
-    },
-    sla_policy: {
-        type: Object,
-        default: null,
-    },
+    ticket: { type: Object, required: true },
+    users: { type: Array, default: () => [] },
+    statuses: { type: Array, default: () => [] },
+    departments: { type: Array, default: () => [] },
+    messages: { type: Array, default: () => [] },
+    attachments: { type: Array, default: () => [] },
+    activity_logs: { type: Array, default: () => [] },
+    sla_policy: { type: Object, default: null },
 });
 
-const assignForm = useForm({
+// Single combined controls form — status, dept, and assignment in one PATCH
+const managerForm = useForm({
     assigned_to: props.ticket.assigned_to_id ?? '',
-});
-
-const statusDepartmentForm = useForm({
     status_id: props.ticket.status_id ?? '',
     department_id: props.ticket.department_id ?? '',
 });
 
-const messageForm = useForm({
-    body: '',
-    is_internal: false,
-});
+watch(
+    () => [props.ticket.assigned_to_id, props.ticket.status_id, props.ticket.department_id],
+    ([assignedTo, statusId, departmentId]) => {
+        managerForm.assigned_to = assignedTo ?? '';
+        managerForm.status_id = statusId ?? '';
+        managerForm.department_id = departmentId ?? '';
+    },
+    { immediate: true }
+);
 
-const attachmentForm = useForm({
-    file: null,
-});
-
-watch(() => props.ticket.assigned_to_id, (id) => {
-    assignForm.assigned_to = id ?? '';
-}, { immediate: true });
-
-watch(() => [props.ticket.status_id, props.ticket.department_id], ([statusId, departmentId]) => {
-    statusDepartmentForm.status_id = statusId ?? '';
-    statusDepartmentForm.department_id = departmentId ?? '';
-}, { immediate: true });
-
-const submitAssign = () => {
-    const value = assignForm.assigned_to === '' ? null : Number(assignForm.assigned_to);
-    assignForm.transform(() => ({ assigned_to: value })).patch(route('manager.tickets.update', props.ticket.id));
-};
-
-const submitStatusDepartment = () => {
-    statusDepartmentForm.transform((data) => ({
+const submitManagerControls = () => {
+    managerForm.transform((data) => ({
+        assigned_to: data.assigned_to === '' ? null : Number(data.assigned_to),
         status_id: data.status_id ? Number(data.status_id) : null,
         department_id: data.department_id ? Number(data.department_id) : null,
     })).patch(route('manager.tickets.update', props.ticket.id));
 };
+
+const messageForm = useForm({ body: '', is_internal: false });
+const attachmentForm = useForm({ file: null });
 
 const submitMessage = () => {
     messageForm.post(route('manager.tickets.messages.store', props.ticket.id), {
@@ -84,8 +49,7 @@ const submitMessage = () => {
 };
 
 const onFileChange = (e) => {
-    const f = e.target.files?.[0];
-    attachmentForm.file = f || null;
+    attachmentForm.file = e.target.files?.[0] || null;
 };
 
 const submitAttachment = () => {
@@ -101,305 +65,438 @@ const submitAttachment = () => {
 };
 
 const formatBytes = (bytes) => {
+    if (!bytes) return '';
     if (bytes < 1024) return bytes + ' B';
     if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
     return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
 };
 
+const formatDate = (date) => {
+    if (!date) return '—';
+    return new Date(date).toLocaleString('en-US', {
+        year: 'numeric', month: 'short', day: 'numeric',
+        hour: '2-digit', minute: '2-digit',
+    });
+};
+
 const formatSlaMinutes = (mins) => {
+    if (!mins) return '—';
     if (mins < 60) return mins + ' min';
     const h = Math.floor(mins / 60);
     const m = mins % 60;
     return m ? `${h}h ${m}m` : `${h}h`;
 };
+
+const getSlaStatusClass = (actualDate, targetMinutes) => {
+    if (!actualDate) return 'text-gray-700';
+    const diffMinutes = (new Date(actualDate) - new Date(props.ticket.created_at)) / (1000 * 60);
+    return diffMinutes <= targetMinutes ? 'text-emerald-600 font-semibold' : 'text-red-600 font-semibold';
+};
+
+const getDueDateClass = () => {
+    if (!props.ticket.due_at) return 'text-gray-700';
+    const due = new Date(props.ticket.due_at);
+    const now = new Date();
+    if (props.ticket.resolved_at) {
+        return new Date(props.ticket.resolved_at) <= due ? 'text-emerald-600' : 'text-red-600';
+    }
+    const hoursLeft = (due - now) / (1000 * 60 * 60);
+    if (hoursLeft < 0) return 'text-red-600 font-bold';
+    if (hoursLeft < 2) return 'text-orange-600';
+    return 'text-gray-700';
+};
+
+const hexToRgb = (hex) => {
+    if (!hex) return null;
+    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    return result ? {
+        r: parseInt(result[1], 16),
+        g: parseInt(result[2], 16),
+        b: parseInt(result[3], 16),
+    } : null;
+};
+
+const getBadgeStyle = (colorHex) => {
+    const color = colorHex || '#6b7280';
+    const rgb = hexToRgb(color);
+    return {
+        backgroundColor: rgb ? `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.1)` : `${color}20`,
+        color: color,
+        borderColor: rgb ? `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.3)` : `${color}40`,
+    };
+};
+
+function formatAction(action) {
+    if (!action) return 'Unknown Action';
+    return action.replace(/_/g, ' ').replace(/^\w/, c => c.toUpperCase());
+}
+
+const showActivity = ref(false);
 </script>
 
 <template>
     <Head :title="`Ticket ${ticket.ticket_number}`" />
     <ManagerNavigation>
         <template #header-title>
-            <h1 class="text-xl font-semibold text-gray-900">Ticket {{ ticket.ticket_number }}</h1>
+            <div class="flex items-center gap-3 flex-wrap">
+                <h1 class="text-xl font-semibold text-gray-900">{{ ticket.ticket_number }}</h1>
+                <span
+                    class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium border"
+                    :style="getBadgeStyle(ticket.status_color)"
+                >{{ ticket.status }}</span>
+                <span
+                    class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium border"
+                    :style="getBadgeStyle(ticket.priority_color)"
+                >{{ ticket.priority }}</span>
+            </div>
         </template>
 
-        <div class="p-6 space-y-6">
-            <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <Link
-                    :href="route('manager.tickets.index')"
-                    class="inline-flex items-center text-sm font-medium text-gray-600 hover:text-gray-900"
-                >
-                    <svg class="mr-1 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-                    </svg>
-                    Back to tickets
-                </Link>
-            </div>
+        <div class="py-6">
+            <div class="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
 
-            <div class="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
-                <dl class="divide-y divide-gray-200">
-                    <div class="px-6 py-4 sm:grid sm:grid-cols-3 sm:gap-4">
-                        <dt class="text-sm font-medium text-gray-500">Subject</dt>
-                        <dd class="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0">{{ ticket.subject }}</dd>
-                    </div>
-                    <div class="px-6 py-4 sm:grid sm:grid-cols-3 sm:gap-4">
-                        <dt class="text-sm font-medium text-gray-500">Description</dt>
-                        <dd class="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0 whitespace-pre-wrap">{{ ticket.description }}</dd>
-                    </div>
-                    <div class="px-6 py-4 sm:grid sm:grid-cols-3 sm:gap-4">
-                        <dt class="text-sm font-medium text-gray-500">Status</dt>
-                        <dd class="mt-1 sm:col-span-2 sm:mt-0">
-                            <span
-                                class="inline-flex rounded-full px-2 py-1 text-xs font-semibold"
-                                :class="{
-                                    'bg-blue-100 text-blue-800': ticket.status?.toLowerCase() === 'open',
-                                    'bg-green-100 text-green-800': ticket.status?.toLowerCase() === 'resolved',
-                                    'bg-gray-100 text-gray-800': ticket.status?.toLowerCase() === 'closed',
-                                    'bg-yellow-100 text-yellow-800': ticket.status?.toLowerCase() === 'pending',
-                                    'bg-red-100 text-red-800': ticket.status?.toLowerCase() === 'urgent',
-                                }"
-                            >
-                                {{ ticket.status }}
-                            </span>
-                        </dd>
-                    </div>
-                    <div class="px-6 py-4 sm:grid sm:grid-cols-3 sm:gap-4">
-                        <dt class="text-sm font-medium text-gray-500">Priority</dt>
-                        <dd class="mt-1 sm:col-span-2 sm:mt-0">
-                            <span
-                                class="inline-flex rounded-full px-2 py-1 text-xs font-semibold"
-                                :class="{
-                                    'bg-red-100 text-red-800': ticket.priority?.toLowerCase() === 'high' || ticket.priority?.toLowerCase() === 'urgent',
-                                    'bg-yellow-100 text-yellow-800': ticket.priority?.toLowerCase() === 'medium',
-                                    'bg-green-100 text-green-800': ticket.priority?.toLowerCase() === 'low',
-                                }"
-                            >
-                                {{ ticket.priority }}
-                            </span>
-                        </dd>
-                    </div>
-                    <div v-if="ticket.category_title" class="px-6 py-4 sm:grid sm:grid-cols-3 sm:gap-4">
-                        <dt class="text-sm font-medium text-gray-500">Category</dt>
-                        <dd class="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0">{{ ticket.category_title }}</dd>
-                    </div>
-                    <div v-if="ticket.department_name" class="px-6 py-4 sm:grid sm:grid-cols-3 sm:gap-4">
-                        <dt class="text-sm font-medium text-gray-500">Department</dt>
-                        <dd class="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0">{{ ticket.department_name }}</dd>
-                    </div>
-                    <div class="px-6 py-4 sm:grid sm:grid-cols-3 sm:gap-4">
-                        <dt class="text-sm font-medium text-gray-500">Created by</dt>
-                        <dd class="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0">{{ ticket.created_by }}</dd>
-                    </div>
-                    <div class="px-6 py-4 sm:grid sm:grid-cols-3 sm:gap-4">
-                        <dt class="text-sm font-medium text-gray-500">Assigned to</dt>
-                        <dd class="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0">
-                            {{ ticket.assigned_to_name || 'Unassigned' }}
-                        </dd>
-                    </div>
-                    <div v-if="ticket.due_at" class="px-6 py-4 sm:grid sm:grid-cols-3 sm:gap-4">
-                        <dt class="text-sm font-medium text-gray-500">Due date</dt>
-                        <dd class="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0">{{ ticket.due_at }}</dd>
-                    </div>
-                    <div v-if="ticket.first_response_at" class="px-6 py-4 sm:grid sm:grid-cols-3 sm:gap-4">
-                        <dt class="text-sm font-medium text-gray-500">First response</dt>
-                        <dd class="mt-1 text-sm text-gray-500 sm:col-span-2 sm:mt-0">{{ ticket.first_response_at }}</dd>
-                    </div>
-                    <div v-if="ticket.resolved_at" class="px-6 py-4 sm:grid sm:grid-cols-3 sm:gap-4">
-                        <dt class="text-sm font-medium text-gray-500">Resolved at</dt>
-                        <dd class="mt-1 text-sm text-gray-500 sm:col-span-2 sm:mt-0">{{ ticket.resolved_at }}</dd>
-                    </div>
-                    <div v-if="ticket.closed_at" class="px-6 py-4 sm:grid sm:grid-cols-3 sm:gap-4">
-                        <dt class="text-sm font-medium text-gray-500">Closed at</dt>
-                        <dd class="mt-1 text-sm text-gray-500 sm:col-span-2 sm:mt-0">{{ ticket.closed_at }}</dd>
-                    </div>
-                    <div class="px-6 py-4 sm:grid sm:grid-cols-3 sm:gap-4">
-                        <dt class="text-sm font-medium text-gray-500">Created</dt>
-                        <dd class="mt-1 text-sm text-gray-500 sm:col-span-2 sm:mt-0">{{ ticket.created_at }}</dd>
-                    </div>
-                </dl>
-            </div>
+                <!-- Breadcrumb -->
+                <nav class="flex items-center gap-2 text-sm text-gray-500 mb-6">
+                    <Link :href="route('manager.tickets.index')" class="hover:text-gray-700">Tickets</Link>
+                    <span>/</span>
+                    <span class="text-gray-900 font-medium">{{ ticket.ticket_number }}</span>
+                </nav>
 
-            <!-- SLA policy -->
-            <div v-if="sla_policy" class="rounded-lg border border-gray-200 bg-slate-50 p-4 shadow-sm">
-                <h3 class="text-sm font-semibold text-gray-900 mb-2">SLA policy</h3>
-                <p class="text-sm text-gray-700">{{ sla_policy.name }}</p>
-                <p class="text-xs text-gray-500 mt-1">
-                    Response: {{ formatSlaMinutes(sla_policy.response_time) }} · Resolution: {{ formatSlaMinutes(sla_policy.resolution_time) }}
-                </p>
-            </div>
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-            <!-- Status & department -->
-            <div class="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
-                <h2 class="text-base font-semibold text-gray-900 mb-4">Status & department</h2>
-                <form @submit.prevent="submitStatusDepartment" class="flex flex-wrap items-end gap-4">
-                    <div v-if="statuses.length" class="min-w-[180px]">
-                        <label for="status_id" class="block text-sm font-medium text-gray-700">Status</label>
-                        <select
-                            id="status_id"
-                            v-model="statusDepartmentForm.status_id"
-                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm"
-                        >
-                            <option v-for="s in statuses" :key="s.id" :value="s.id">{{ s.title || s.name }}</option>
-                        </select>
-                        <p v-if="statusDepartmentForm.errors.status_id" class="mt-1 text-sm text-red-600">
-                            {{ statusDepartmentForm.errors.status_id }}
-                        </p>
-                    </div>
-                    <div class="min-w-[180px]">
-                        <label for="department_id" class="block text-sm font-medium text-gray-700">Department</label>
-                        <select
-                            id="department_id"
-                            v-model="statusDepartmentForm.department_id"
-                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm"
-                        >
-                            <option value="">— None —</option>
-                            <option v-for="d in departments" :key="d.id" :value="d.id">{{ d.name }}</option>
-                        </select>
-                        <p v-if="statusDepartmentForm.errors.department_id" class="mt-1 text-sm text-red-600">
-                            {{ statusDepartmentForm.errors.department_id }}
-                        </p>
-                    </div>
-                    <button
-                        type="submit"
-                        class="inline-flex justify-center rounded-md bg-slate-700 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-slate-800 disabled:opacity-50"
-                        :disabled="statusDepartmentForm.processing"
-                    >
-                        {{ statusDepartmentForm.processing ? 'Saving…' : 'Save' }}
-                    </button>
-                </form>
-                <p class="mt-2 text-xs text-gray-500">Set status to <strong>Resolved</strong> or <strong>Closed</strong> to record resolution/closure time.</p>
-            </div>
+                    <!-- Left: Ticket body + Conversation -->
+                    <div class="lg:col-span-2 space-y-6">
 
-            <!-- Assign ticket -->
-            <div class="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
-                <h2 class="text-base font-semibold text-gray-900 mb-4">Assign ticket</h2>
-                <form @submit.prevent="submitAssign" class="flex flex-wrap items-end gap-3">
-                    <div class="min-w-[200px] flex-1">
-                        <label for="assigned_to" class="block text-sm font-medium text-gray-700">Assign to</label>
-                        <select
-                            id="assigned_to"
-                            v-model="assignForm.assigned_to"
-                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm"
-                        >
-                            <option value="">Unassigned</option>
-                            <option v-for="user in users" :key="user.id" :value="user.id">{{ user.name }}</option>
-                        </select>
-                        <p v-if="assignForm.errors.assigned_to" class="mt-1 text-sm text-red-600">
-                            {{ assignForm.errors.assigned_to }}
-                        </p>
-                    </div>
-                    <button
-                        type="submit"
-                        class="inline-flex justify-center rounded-md bg-slate-700 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-slate-800 disabled:opacity-50"
-                        :disabled="assignForm.processing"
-                    >
-                        {{ assignForm.processing ? 'Saving…' : 'Save assignment' }}
-                    </button>
-                </form>
-            </div>
-
-            <!-- Messages -->
-            <div class="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
-                <h2 class="text-base font-semibold text-gray-900 mb-4">Conversation</h2>
-                <div class="space-y-4 mb-6">
-                    <div
-                        v-for="msg in messages"
-                        :key="msg.id"
-                        class="rounded-md border p-4"
-                        :class="msg.is_internal ? 'border-amber-200 bg-amber-50' : 'border-gray-200 bg-gray-50'"
-                    >
-                        <div class="flex items-center justify-between text-xs text-gray-500 mb-2">
-                            <span>{{ msg.author }} · {{ msg.created_at }}</span>
-                            <span v-if="msg.is_internal" class="rounded bg-amber-200 px-2 py-0.5 font-medium text-amber-900">Internal</span>
+                        <!-- Ticket Detail Card -->
+                        <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                            <div class="px-6 py-4 border-b border-gray-100">
+                                <h2 class="text-base font-semibold text-gray-900">{{ ticket.subject }}</h2>
+                                <p class="text-xs text-gray-400 mt-0.5">
+                                    Submitted by <span class="font-medium text-gray-600">{{ ticket.created_by }}</span>
+                                    on {{ formatDate(ticket.created_at) }}
+                                </p>
+                            </div>
+                            <div class="px-6 py-4">
+                                <p class="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">{{ ticket.description }}</p>
+                            </div>
                         </div>
-                        <p class="text-sm text-gray-900 whitespace-pre-wrap">{{ msg.body }}</p>
+
+                        <!-- Conversation Thread -->
+                        <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                            <div class="px-6 py-4 border-b border-gray-100">
+                                <h3 class="text-sm font-semibold text-gray-900">
+                                    Conversation
+                                    <span class="ml-1.5 inline-flex items-center justify-center h-5 w-5 rounded-full bg-slate-100 text-slate-700 text-xs font-bold">
+                                        {{ messages.length }}
+                                    </span>
+                                </h3>
+                            </div>
+                            <div class="divide-y divide-gray-50">
+                                <div v-if="messages.length === 0" class="py-10 text-center text-sm text-gray-400">
+                                    No replies yet. Start the conversation below.
+                                </div>
+                                <div
+                                    v-for="msg in messages"
+                                    :key="msg.id"
+                                    class="px-6 py-4"
+                                    :class="msg.is_internal ? 'bg-amber-50/50' : ''"
+                                >
+                                    <div class="flex items-center justify-between mb-2">
+                                        <div class="flex items-center gap-2">
+                                            <div
+                                                class="flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold text-white"
+                                                :class="msg.is_internal ? 'bg-amber-600' : 'bg-slate-600'"
+                                            >
+                                                {{ msg.author?.[0]?.toUpperCase() ?? '?' }}
+                                            </div>
+                                            <span class="text-sm font-medium text-gray-900">{{ msg.author }}</span>
+                                            <span v-if="msg.is_internal" class="rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-700 font-medium border border-amber-200">Internal Note</span>
+                                            <span v-else class="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600 font-medium border border-slate-200">Reply</span>
+                                        </div>
+                                        <span class="text-xs text-gray-400">{{ formatDate(msg.created_at) }}</span>
+                                    </div>
+                                    <p class="text-sm text-gray-800 whitespace-pre-wrap leading-relaxed ml-9">{{ msg.body }}</p>
+                                </div>
+                            </div>
+
+                            <!-- Reply Box -->
+                            <div class="px-6 py-4 border-t border-gray-100 bg-gray-50">
+                                <form @submit.prevent="submitMessage" class="space-y-3">
+                                    <label for="message-body" class="block text-sm font-medium text-gray-700">Add reply or internal note</label>
+                                    <textarea
+                                        id="message-body"
+                                        v-model="messageForm.body"
+                                        rows="4"
+                                        required
+                                        placeholder="Type your response here…"
+                                        class="block w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm placeholder-gray-400 focus:border-slate-500 focus:ring-1 focus:ring-slate-500 focus:outline-none resize-y"
+                                        :class="{ 'border-red-400': messageForm.errors.body }"
+                                    />
+                                    <p v-if="messageForm.errors.body" class="text-sm text-red-600">{{ messageForm.errors.body }}</p>
+                                    <div class="flex items-center justify-between pt-2">
+                                        <label class="inline-flex items-center text-sm text-gray-700">
+                                            <input v-model="messageForm.is_internal" type="checkbox" class="rounded border-gray-300 text-slate-600 focus:ring-slate-500 mr-2" />
+                                            <span>Internal note (not visible to customer)</span>
+                                        </label>
+                                        <button
+                                            type="submit"
+                                            class="inline-flex items-center gap-2 rounded-lg bg-slate-700 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-50 transition-colors"
+                                            :disabled="messageForm.processing || !messageForm.body?.trim()"
+                                        >
+                                            <svg v-if="messageForm.processing" class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+                                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                                            </svg>
+                                            {{ messageForm.processing ? 'Sending…' : 'Send Reply' }}
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+
                     </div>
-                    <p v-if="messages.length === 0" class="text-sm text-gray-500">No replies yet.</p>
+
+                    <!-- Right: 3-card sidebar -->
+                    <div class="space-y-5">
+
+                        <!-- Card 1: Ticket Details (with inline SLA) -->
+                        <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                            <div class="px-5 py-3 border-b border-gray-100 bg-gray-50">
+                                <h3 class="text-sm font-semibold text-gray-700">Ticket Details</h3>
+                            </div>
+                            <dl class="divide-y divide-gray-50">
+                                <div class="flex justify-between px-5 py-3">
+                                    <dt class="text-xs font-medium text-gray-500">Status</dt>
+                                    <dd>
+                                        <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium border" :style="getBadgeStyle(ticket.status_color)">
+                                            {{ ticket.status }}
+                                        </span>
+                                    </dd>
+                                </div>
+                                <div class="flex justify-between px-5 py-3">
+                                    <dt class="text-xs font-medium text-gray-500">Priority</dt>
+                                    <dd>
+                                        <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium border" :style="getBadgeStyle(ticket.priority_color)">
+                                            {{ ticket.priority }}
+                                        </span>
+                                    </dd>
+                                </div>
+                                <div v-if="ticket.category_title" class="flex justify-between px-5 py-3">
+                                    <dt class="text-xs font-medium text-gray-500">Category</dt>
+                                    <dd class="text-xs text-gray-700 font-medium">{{ ticket.category_title }}</dd>
+                                </div>
+                                <div v-if="ticket.department_name" class="flex justify-between px-5 py-3">
+                                    <dt class="text-xs font-medium text-gray-500">Department</dt>
+                                    <dd class="text-xs text-gray-700 font-medium">{{ ticket.department_name }}</dd>
+                                </div>
+                                <div class="flex justify-between px-5 py-3">
+                                    <dt class="text-xs font-medium text-gray-500">Customer</dt>
+                                    <dd class="text-xs text-gray-700 font-medium">{{ ticket.created_by }}</dd>
+                                </div>
+                                <div class="flex justify-between px-5 py-3">
+                                    <dt class="text-xs font-medium text-gray-500">Assigned To</dt>
+                                    <dd class="text-xs text-gray-700 font-medium">{{ ticket.assigned_to_name || 'Unassigned' }}</dd>
+                                </div>
+                                <div v-if="ticket.due_at" class="flex justify-between px-5 py-3">
+                                    <dt class="text-xs font-medium text-gray-500">Due</dt>
+                                    <dd class="text-xs font-medium" :class="getDueDateClass()">{{ formatDate(ticket.due_at) }}</dd>
+                                </div>
+                                <div v-if="ticket.first_response_at" class="flex justify-between px-5 py-3">
+                                    <dt class="text-xs font-medium text-gray-500">First Response</dt>
+                                    <dd class="text-xs text-gray-700">{{ formatDate(ticket.first_response_at) }}</dd>
+                                </div>
+                                <div v-if="ticket.resolved_at" class="flex justify-between px-5 py-3">
+                                    <dt class="text-xs font-medium text-gray-500">Resolved</dt>
+                                    <dd class="text-xs text-gray-700">{{ formatDate(ticket.resolved_at) }}</dd>
+                                </div>
+                                <div v-if="ticket.closed_at" class="flex justify-between px-5 py-3">
+                                    <dt class="text-xs font-medium text-gray-500">Closed</dt>
+                                    <dd class="text-xs text-gray-700">{{ formatDate(ticket.closed_at) }}</dd>
+                                </div>
+                                <div class="flex justify-between px-5 py-3">
+                                    <dt class="text-xs font-medium text-gray-500">Created</dt>
+                                    <dd class="text-xs text-gray-700">{{ formatDate(ticket.created_at) }}</dd>
+                                </div>
+                                <!-- Inline SLA summary -->
+                                <template v-if="sla_policy">
+                                    <div class="px-5 py-3 bg-gray-50/60">
+                                        <p class="text-xs font-medium text-gray-500 mb-2">SLA · {{ sla_policy.name }}</p>
+                                        <div class="grid grid-cols-2 gap-2">
+                                            <div class="rounded-lg bg-white border border-gray-100 px-3 py-2">
+                                                <p class="text-xs text-gray-400">Response</p>
+                                                <p class="text-xs font-semibold mt-0.5" :class="getSlaStatusClass(ticket.first_response_at, sla_policy.response_time)">
+                                                    {{ formatSlaMinutes(sla_policy.response_time) }}
+                                                </p>
+                                            </div>
+                                            <div class="rounded-lg bg-white border border-gray-100 px-3 py-2">
+                                                <p class="text-xs text-gray-400">Resolution</p>
+                                                <p class="text-xs font-semibold mt-0.5" :class="getSlaStatusClass(ticket.resolved_at, sla_policy.resolution_time)">
+                                                    {{ formatSlaMinutes(sla_policy.resolution_time) }}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <p v-if="sla_policy.escalate_after" class="text-xs text-amber-600 mt-2">
+                                            ⚠️ Escalates after {{ formatSlaMinutes(sla_policy.escalate_after) }}
+                                        </p>
+                                    </div>
+                                </template>
+                            </dl>
+                        </div>
+
+                        <!-- Card 2: Manager Controls (status + dept + assign — one save) -->
+                        <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                            <div class="px-5 py-3 border-b border-gray-100 bg-gray-50">
+                                <h3 class="text-sm font-semibold text-gray-700">Manager Controls</h3>
+                            </div>
+                            <div class="px-5 py-4">
+                                <form @submit.prevent="submitManagerControls" class="space-y-3">
+                                    <div v-if="statuses.length">
+                                        <label for="status_id" class="block text-xs font-medium text-gray-600 mb-1">Status</label>
+                                        <select
+                                            id="status_id"
+                                            v-model="managerForm.status_id"
+                                            class="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-slate-500 focus:ring-1 focus:ring-slate-500 focus:outline-none"
+                                        >
+                                            <option v-for="s in statuses" :key="s.id" :value="s.id">{{ s.title || s.name }}</option>
+                                        </select>
+                                        <p v-if="managerForm.errors.status_id" class="mt-1 text-xs text-red-600">{{ managerForm.errors.status_id }}</p>
+                                    </div>
+                                    <div>
+                                        <label for="department_id" class="block text-xs font-medium text-gray-600 mb-1">Department</label>
+                                        <select
+                                            id="department_id"
+                                            v-model="managerForm.department_id"
+                                            class="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-slate-500 focus:ring-1 focus:ring-slate-500 focus:outline-none"
+                                        >
+                                            <option value="">— None —</option>
+                                            <option v-for="d in departments" :key="d.id" :value="d.id">{{ d.name }}</option>
+                                        </select>
+                                        <p v-if="managerForm.errors.department_id" class="mt-1 text-xs text-red-600">{{ managerForm.errors.department_id }}</p>
+                                    </div>
+                                    <div>
+                                        <label for="assigned_to" class="block text-xs font-medium text-gray-600 mb-1">Assign To</label>
+                                        <select
+                                            id="assigned_to"
+                                            v-model="managerForm.assigned_to"
+                                            class="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-slate-500 focus:ring-1 focus:ring-slate-500 focus:outline-none"
+                                        >
+                                            <option value="">Unassigned</option>
+                                            <option v-for="user in users" :key="user.id" :value="user.id">{{ user.name }}</option>
+                                        </select>
+                                        <p v-if="managerForm.errors.assigned_to" class="mt-1 text-xs text-red-600">{{ managerForm.errors.assigned_to }}</p>
+                                    </div>
+                                    <button
+                                        type="submit"
+                                        class="w-full rounded-lg bg-slate-700 px-3 py-2 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-50 transition-colors"
+                                        :disabled="managerForm.processing"
+                                    >
+                                        {{ managerForm.processing ? 'Saving…' : 'Save Changes' }}
+                                    </button>
+                                    <p class="text-xs text-gray-400">Setting to <strong>Resolved</strong> or <strong>Closed</strong> records the timestamp.</p>
+                                </form>
+                            </div>
+                        </div>
+
+                        <!-- Card 3: Attachments + collapsible Activity Log -->
+                        <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                            <div class="px-5 py-3 border-b border-gray-100 bg-gray-50">
+                                <h3 class="text-sm font-semibold text-gray-700">
+                                    Attachments
+                                    <span v-if="attachments.length" class="ml-1 text-xs text-gray-400">({{ attachments.length }})</span>
+                                </h3>
+                            </div>
+                            <div class="px-5 py-3 space-y-2">
+                                <div v-if="attachments.length === 0" class="text-xs text-gray-400 py-1">No attachments.</div>
+                                <a
+                                    v-for="att in attachments"
+                                    :key="att.id"
+                                    :href="route('manager.tickets.attachments.download', [ticket.id, att.id])"
+                                    class="flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-2 hover:bg-gray-50 transition-colors group"
+                                >
+                                    <svg class="h-4 w-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+                                    </svg>
+                                    <div class="min-w-0 flex-1">
+                                        <p class="text-xs font-medium text-gray-700 truncate group-hover:text-slate-700">{{ att.file_name }}</p>
+                                        <p class="text-xs text-gray-400">{{ formatBytes(att.file_size) }}</p>
+                                    </div>
+                                    <svg class="h-4 w-4 text-gray-300 group-hover:text-slate-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                    </svg>
+                                </a>
+                                <form @submit.prevent="submitAttachment" class="pt-2 border-t border-gray-100 space-y-2">
+                                    <label for="attachment-file" class="block text-xs font-medium text-gray-600">Upload file <span class="text-gray-400">(max 10 MB)</span></label>
+                                    <input
+                                        id="attachment-file"
+                                        type="file"
+                                        @change="onFileChange"
+                                        class="block w-full text-xs text-gray-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-medium file:bg-slate-50 file:text-slate-700 hover:file:bg-slate-100"
+                                    />
+                                    <button
+                                        type="submit"
+                                        :disabled="!attachmentForm.file || attachmentForm.processing"
+                                        class="w-full text-xs rounded-lg border border-gray-300 py-1.5 px-3 font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 transition-colors"
+                                    >
+                                        {{ attachmentForm.processing ? 'Uploading…' : 'Upload File' }}
+                                    </button>
+                                </form>
+                            </div>
+
+                            <!-- Activity Log tucked as a collapsible footer -->
+                            <template v-if="activity_logs && activity_logs.length">
+                                <button
+                                    type="button"
+                                    @click="showActivity = !showActivity"
+                                    class="w-full flex items-center justify-between px-5 py-3 border-t border-gray-100 bg-gray-50 hover:bg-gray-100 transition-colors"
+                                >
+                                    <span class="text-xs font-semibold text-gray-500">Activity Log</span>
+                                    <svg class="h-3.5 w-3.5 text-gray-400 transition-transform" :class="{ 'rotate-180': showActivity }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                                    </svg>
+                                </button>
+                                <div v-if="showActivity" class="px-5 py-3 space-y-3 max-h-56 overflow-y-auto">
+                                    <div v-for="log in activity_logs" :key="log.id" class="flex items-start gap-2 text-xs">
+                                        <div class="mt-0.5 h-1.5 w-1.5 rounded-full bg-slate-400 flex-shrink-0"></div>
+                                        <div>
+                                            <span class="font-medium text-gray-700">{{ formatAction(log.action) }}</span>
+                                            <span v-if="log.old_value || log.new_value" class="text-gray-500">
+                                                {{ log.old_value ? log.old_value + ' → ' : '' }}{{ log.new_value }}
+                                            </span>
+                                            <br />
+                                            <span class="text-gray-400">{{ log.user_name }} · {{ formatDate(log.created_at) }}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </template>
+                        </div>
+
+                    </div>
                 </div>
-                <form @submit.prevent="submitMessage" class="space-y-3">
-                    <div>
-                        <label for="message-body" class="block text-sm font-medium text-gray-700">Add reply or note</label>
-                        <textarea
-                            id="message-body"
-                            v-model="messageForm.body"
-                            rows="3"
-                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm"
-                            placeholder="Type your reply or internal note…"
-                        />
-                        <p v-if="messageForm.errors.body" class="mt-1 text-sm text-red-600">{{ messageForm.errors.body }}</p>
-                    </div>
-                    <div class="flex items-center gap-4">
-                        <label class="inline-flex items-center text-sm text-gray-700">
-                            <input v-model="messageForm.is_internal" type="checkbox" class="rounded border-gray-300 text-slate-600 focus:ring-slate-500" />
-                            <span class="ml-2">Internal note (not visible to requester)</span>
-                        </label>
-                        <button
-                            type="submit"
-                            class="rounded-md bg-slate-700 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-slate-800 disabled:opacity-50"
-                            :disabled="messageForm.processing || !messageForm.body?.trim()"
-                        >
-                            {{ messageForm.processing ? 'Sending…' : 'Send' }}
-                        </button>
-                    </div>
-                </form>
-            </div>
 
-            <!-- Attachments -->
-            <div class="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
-                <h2 class="text-base font-semibold text-gray-900 mb-4">Attachments</h2>
-                <ul v-if="attachments.length" class="space-y-2 mb-4">
-                    <li
-                        v-for="a in attachments"
-                        :key="a.id"
-                        class="flex items-center justify-between rounded border border-gray-200 px-3 py-2 text-sm"
-                    >
-                        <span class="text-gray-700">{{ a.file_name }}</span>
-                        <span class="text-gray-500 text-xs">{{ formatBytes(a.file_size) }} · {{ a.uploaded_at }}</span>
-                        <a
-                            :href="route('manager.tickets.attachments.download', [ticket.id, a.id])"
-                            class="text-slate-600 hover:text-slate-800 font-medium"
-                        >
-                            Download
-                        </a>
-                    </li>
-                </ul>
-                <p v-else class="text-sm text-gray-500 mb-4">No attachments.</p>
-                <form @submit.prevent="submitAttachment" class="flex flex-wrap items-end gap-3">
-                    <div>
-                        <label for="attachment-file" class="block text-sm font-medium text-gray-700">Upload file (max 10 MB)</label>
-                        <input
-                            id="attachment-file"
-                            type="file"
-                            class="mt-1 block w-full text-sm text-gray-500 file:mr-2 file:rounded-md file:border-0 file:bg-slate-100 file:px-3 file:py-2 file:text-sm file:font-medium file:text-slate-700 hover:file:bg-slate-200"
-                            @change="onFileChange"
-                        />
-                    </div>
-                    <button
-                        type="submit"
-                        class="rounded-md bg-slate-700 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-slate-800 disabled:opacity-50"
-                        :disabled="attachmentForm.processing || !attachmentForm.file"
-                    >
-                        {{ attachmentForm.processing ? 'Uploading…' : 'Upload' }}
-                    </button>
-                </form>
-            </div>
-
-            <!-- Activity log -->
-            <div class="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
-                <h2 class="text-base font-semibold text-gray-900 mb-4">Activity</h2>
-                <ul class="space-y-2">
-                    <li
-                        v-for="log in activity_logs"
-                        :key="log.id"
-                        class="flex flex-col text-sm border-l-2 border-gray-200 pl-3 py-1"
-                    >
-                        <span class="text-gray-900 font-medium">{{ log.action.replace(/_/g, ' ') }}</span>
-                        <span class="text-gray-500">{{ log.user_name }} · {{ log.created_at }}</span>
-                        <span v-if="log.old_value || log.new_value" class="text-gray-600 text-xs">
-                            {{ log.old_value ? log.old_value + ' → ' : '' }}{{ log.new_value }}
-                        </span>
-                    </li>
-                    <p v-if="activity_logs.length === 0" class="text-sm text-gray-500">No activity yet.</p>
-                </ul>
             </div>
         </div>
     </ManagerNavigation>
 </template>
+
+<style scoped>
+.animate-spin {
+    animation: spin 1s linear infinite;
+}
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+.transition-colors {
+    transition-property: background-color, border-color, color, fill, stroke;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    transition-duration: 150ms;
+}
+.transition-transform {
+    transition-property: transform;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    transition-duration: 150ms;
+}
+.rotate-180 {
+    transform: rotate(180deg);
+}
+</style>
