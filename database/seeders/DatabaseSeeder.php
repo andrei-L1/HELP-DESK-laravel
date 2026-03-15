@@ -23,6 +23,7 @@ class DatabaseSeeder extends Seeder
             TicketStatusSeeder::class,
             TicketPrioritySeeder::class,
             DepartmentSeeder::class,
+            RegularUserSeeder::class,
             AgentSeeder::class,
             TicketCategorySeeder::class,
             SlaPolicySeeder::class,

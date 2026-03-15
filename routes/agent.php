@@ -1,17 +1,113 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\Admin\AdminTicketController;
-use Inertia\Inertia;
+use App\Http\Controllers\Agent\AgentDashboardController;
+use App\Http\Controllers\Agent\TicketController;
+use App\Http\Controllers\Agent\KnowledgeBaseController;
+use App\Http\Controllers\Agent\SettingsController;
+use App\Http\Controllers\ProfileController;
 
 Route::middleware(['role:agent'])
     ->prefix('agent')
     ->name('agent.')
     ->group(function () {
-        Route::get('/dashboard', fn() => Inertia::render('Agent/Dashboard'))
+
+        // ────────────────────────────────────────────────
+        // Dashboard
+        // ────────────────────────────────────────────────
+        Route::get('/dashboard', [AgentDashboardController::class, 'index'])
             ->name('dashboard');
 
-        // Example agent routes
-        Route::get('/tickets', [AdminTicketController::class, 'index'])->name('tickets.index');
-        Route::post('/tickets/{ticket}/messages', [AdminTicketController::class, 'storeMessage'])->name('tickets.messages.store');
+        // Convenience redirect: /agent → /agent/dashboard
+        Route::redirect('/', '/dashboard');
+
+
+        // ────────────────────────────────────────────────
+        // Tickets (matches the "Tickets" menu + sub-items)
+        // ────────────────────────────────────────────────
+        Route::prefix('tickets')->group(function () {
+
+            // Main list – also used as "All My Tickets"
+            Route::get('/', [TicketController::class, 'index'])
+                ->name('tickets.index');
+
+            // Quick filters (shown as children in sidebar)
+            Route::get('/open',    [TicketController::class, 'open'])   ->name('tickets.open');
+            Route::get('/pending', [TicketController::class, 'pending'])->name('tickets.pending');
+            Route::get('/resolved',[TicketController::class, 'resolved'])->name('tickets.resolved');
+            Route::get('/closed',  [TicketController::class, 'closed'])  ->name('tickets.closed');
+
+            // CRUD actions
+            Route::get('/create',  [TicketController::class, 'create']) ->name('tickets.create');
+            Route::post('/',       [TicketController::class, 'store'])  ->name('tickets.store');
+
+            Route::get('/{ticket}',       [TicketController::class, 'show'])   ->name('tickets.show');
+            Route::get('/{ticket}/edit',  [TicketController::class, 'edit'])   ->name('tickets.edit');
+            Route::patch('/{ticket}',     [TicketController::class, 'update'])->name('tickets.update');
+
+            // Common agent actions (you can add more later)
+            Route::post('/{ticket}/reply',   [TicketController::class, 'reply'])   ->name('tickets.reply');
+            Route::post('/{ticket}/resolve', [TicketController::class, 'resolve']) ->name('tickets.resolve');
+            Route::post('/{ticket}/reopen',  [TicketController::class, 'reopen'])  ->name('tickets.reopen');
+        });
+
+
+        // ────────────────────────────────────────────────
+        // Knowledge Base (matches "Knowledge Base" menu item)
+        // ────────────────────────────────────────────────
+        Route::prefix('kb')->group(function () {
+            Route::get('/', [KnowledgeBaseController::class, 'index'])
+                ->name('kb.index');
+
+            Route::get('/{article}', [KnowledgeBaseController::class, 'show'])
+                ->name('kb.show');
+        });
+
+
+        // ────────────────────────────────────────────────
+        // Settings (matches children under "Settings")
+        // ────────────────────────────────────────────────
+        Route::prefix('settings')->group(function () {
+
+            Route::get('/notifications', [SettingsController::class, 'notifications'])
+                ->name('settings.notifications');
+
+            Route::patch('/notifications', [SettingsController::class, 'updateNotifications'])
+                ->name('settings.notifications.update');
+
+            Route::get('/signature', [SettingsController::class, 'signature'])
+                ->name('settings.signature');
+
+            Route::patch('/signature', [SettingsController::class, 'updateSignature'])
+                ->name('settings.signature.update');
+
+            // You can easily add more later, for example:
+            // Route::get('/canned-responses', ...) → name('settings.canned-responses')
+            // Route::get('/availability', ...)     → name('settings.availability')
+        });
+
+
+        // ────────────────────────────────────────────────
+        // Profile (used in Settings → Profile)
+        // Usually shared across roles
+        // ────────────────────────────────────────────────
+        Route::prefix('profile')->group(function () {
+            Route::get('/', [ProfileController::class, 'edit'])
+                ->name('profile.edit');
+
+            Route::patch('/', [ProfileController::class, 'update'])
+                ->name('profile.update');
+
+            // Optional – if you have avatar upload
+            // Route::post('/avatar', [ProfileController::class, 'updateAvatar'])
+            //     ->name('profile.avatar');
+        });
+
+
+        // ────────────────────────────────────────────────
+        // Logout (optional – if you want role-specific logout)
+        // Most applications handle this globally
+        // ────────────────────────────────────────────────
+        // Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])
+        //     ->name('logout');
     });

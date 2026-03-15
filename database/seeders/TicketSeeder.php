@@ -16,12 +16,27 @@ class TicketSeeder extends Seeder
     {
         // Optional: Clear existing tickets (careful in production!)
         // DB::table('tickets')->truncate();
-
-        // Get existing IDs to reference (fallback to null if empty)
+        
         $userIds = DB::table('users')->pluck('id')->toArray();
+
+        // Get specific role users
+        $agentRoleId = DB::table('roles')->where('name', 'agent')->value('id');
+        $userRoleId = DB::table('roles')->where('name', 'user')->value('id');
+        
+        $agentIds = $agentRoleId ? DB::table('users')->where('role_id', $agentRoleId)->pluck('id')->toArray() : [];
+        if (empty($agentIds)) $agentIds = $userIds;
+
+        $creatorIds = $userRoleId ? DB::table('users')->where('role_id', $userRoleId)->pluck('id')->toArray() : [];
+        if (empty($creatorIds)) $creatorIds = $userIds;
+
+        // If there are absolutely no users in the database, abort to prevent constraint errors
+        if (empty($userIds)) {
+            $this->command->error('No users found in database. Please run UserSeeder first.');
+            return;
+        }
+
         $statusIds = DB::table('ticket_statuses')->pluck('id', 'name')->toArray();
         $priorityIds = DB::table('ticket_priorities')->pluck('id', 'name')->toArray();
-        
         // Get SLA policies for assignment
         $slaPolicies = DB::table('sla_policies')
             ->where('is_active', true)
@@ -64,9 +79,9 @@ class TicketSeeder extends Seeder
                 $statusId = $statusIds[$statusName] ?? $defaultStatusId;
                 $priorityId = $priorityIds[$priorityName] ?? $defaultPriorityId;
 
-                // 70% chance assigned to someone, 30% unassigned
-                $assignedTo = (rand(1, 10) <= 7 && !empty($userIds))
-                    ? fake()->randomElement($userIds)
+                // 70% chance assigned to an agent, 30% unassigned
+                $assignedTo = (rand(1, 10) <= 7 && !empty($agentIds))
+                    ? fake()->randomElement($agentIds)
                     : null;
 
                 // Find the appropriate SLA policy
@@ -126,7 +141,7 @@ class TicketSeeder extends Seeder
                     'priority_id'        => $priorityId,
                     'sla_policy_id'      => $slaPolicy?->id, // ← ADD THIS LINE
                     'department_id'      => $department->id,
-                    'created_by'         => !empty($userIds) ? fake()->randomElement($userIds) : null,
+                    'created_by'         => !empty($creatorIds) ? fake()->randomElement($creatorIds) : null,
                     'assigned_to'        => $assignedTo,
                     'first_response_at'  => $firstResponseAt,
                     'resolved_at'        => $resolvedAt,
@@ -161,7 +176,7 @@ class TicketSeeder extends Seeder
                     'priority_id'        => $priorityId,
                     'sla_policy_id'      => $slaPolicy?->id, // ← ADD THIS LINE
                     'department_id'      => null, // No department
-                    'created_by'         => fake()->randomElement($userIds),
+                    'created_by'         => !empty($creatorIds) ? fake()->randomElement($creatorIds) : null,
                     'assigned_to'        => null,
                     'due_at'             => $dueAt,
                     'created_at'         => $createdAt,

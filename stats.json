@@ -1,0 +1,33 @@
+{
+    "departments": [
+        {
+            "name": "Technical Support",
+            "total_tickets": 10,
+            "assigned_tickets": "7",
+            "unassigned_tickets": "3"
+        },
+        {
+            "name": "Billing",
+            "total_tickets": 10,
+            "assigned_tickets": "8",
+            "unassigned_tickets": "2"
+        },
+        {
+            "name": "Sales",
+            "total_tickets": 10,
+            "assigned_tickets": "10",
+            "unassigned_tickets": "0"
+        },
+        {
+            "name": "General",
+            "total_tickets": 10,
+            "assigned_tickets": "7",
+            "unassigned_tickets": "3"
+        }
+    ],
+    "global": {
+        "total": 5,
+        "assigned": 0,
+        "unassigned": 5
+    }
+}
