@@ -128,8 +128,8 @@ class TicketController extends Controller
         $ticket = Cache::lock('ticket_number_' . $year, 10)->block(5, function () use ($validated, $statusId, $priorityId, $departmentId, $dueAt, $assignedTo, $slaPolicy, $year) {
             return DB::transaction(function () use ($validated, $statusId, $priorityId, $departmentId, $dueAt, $assignedTo, $slaPolicy, $year) {
                 $prefix   = 'TICKET-' . $year . '-';
-                $existing = DB::table('tickets')->where('ticket_number', 'like', $prefix . '%')->pluck('ticket_number');
-                $maxNum   = $existing->isEmpty() ? 0 : $existing->max(fn ($n) => (int) Str::afterLast($n, '-'));
+                $lastTicket = DB::table('tickets')->where('ticket_number', 'like', $prefix . '%')->orderByRaw('LENGTH(ticket_number) DESC')->orderBy('ticket_number', 'desc')->value('ticket_number');
+                $maxNum   = $lastTicket ? (int) Str::afterLast($lastTicket, '-') : 0;
 
                 $ticket = Ticket::create([
                     'ticket_number' => $prefix . str_pad($maxNum + 1, 4, '0', STR_PAD_LEFT),
@@ -236,7 +236,7 @@ class TicketController extends Controller
             'body'        => $validated['body'],
         ]);
 
-        if (!$ticket->first_response_at && !$isInternal) {
+        if (!$ticket->first_response_at && !$isInternal && Auth::id() !== $ticket->created_by) {
             $ticket->first_response_at = now();
         }
 
