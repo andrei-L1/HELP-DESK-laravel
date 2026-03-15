@@ -26,6 +26,7 @@ class Ticket extends Model
         'due_at',
         'resolved_at',
         'closed_at',
+        'first_response_at',
         'sla_policy_id',
     ];
 

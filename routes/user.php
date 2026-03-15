@@ -27,6 +27,9 @@ Route::middleware('role:user')
                 ->name('tickets.create');
             Route::post('/tickets', [UserTicketController::class, 'store'])
                 ->name('tickets.store');
+        });
+
+        Route::middleware(['permission:edit_ticket'])->group(function () {
             Route::post('/tickets/{ticket}/messages', [UserTicketController::class, 'storeMessage'])
                 ->name('tickets.messages.store');
             Route::post('/tickets/{ticket}/attachments', [UserTicketController::class, 'storeAttachment'])

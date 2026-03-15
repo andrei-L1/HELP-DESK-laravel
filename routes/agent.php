@@ -27,30 +27,32 @@ Route::middleware(['role:agent'])
         // ────────────────────────────────────────────────
         Route::prefix('tickets')->group(function () {
 
-            // Main list – also used as "All My Tickets"
-            Route::get('/', [TicketController::class, 'index'])
-                ->name('tickets.index');
+            // View routes
+            Route::middleware(['permission:view_ticket'])->group(function () {
+                Route::get('/', [TicketController::class, 'index'])->name('tickets.index');
+                Route::get('/open',    [TicketController::class, 'open'])   ->name('tickets.open');
+                Route::get('/pending', [TicketController::class, 'pending'])->name('tickets.pending');
+                Route::get('/resolved',[TicketController::class, 'resolved'])->name('tickets.resolved');
+                Route::get('/closed',  [TicketController::class, 'closed'])  ->name('tickets.closed');
+                Route::get('/{ticket}',       [TicketController::class, 'show'])   ->name('tickets.show');
+                Route::get('/{ticket}/attachments/{attachment}/download', [TicketController::class, 'downloadAttachment'])->name('tickets.attachments.download');
+            });
 
-            // Quick filters (shown as children in sidebar)
-            Route::get('/open',    [TicketController::class, 'open'])   ->name('tickets.open');
-            Route::get('/pending', [TicketController::class, 'pending'])->name('tickets.pending');
-            Route::get('/resolved',[TicketController::class, 'resolved'])->name('tickets.resolved');
-            Route::get('/closed',  [TicketController::class, 'closed'])  ->name('tickets.closed');
+            // Create routes
+            Route::middleware(['permission:create_ticket'])->group(function () {
+                Route::get('/create',  [TicketController::class, 'create']) ->name('tickets.create');
+                Route::post('/',       [TicketController::class, 'store'])  ->name('tickets.store');
+            });
 
-            // CRUD actions
-            Route::get('/create',  [TicketController::class, 'create']) ->name('tickets.create');
-            Route::post('/',       [TicketController::class, 'store'])  ->name('tickets.store');
-
-            Route::get('/{ticket}',       [TicketController::class, 'show'])   ->name('tickets.show');
-            Route::get('/{ticket}/edit',  [TicketController::class, 'edit'])   ->name('tickets.edit');
-            Route::patch('/{ticket}',     [TicketController::class, 'update'])->name('tickets.update');
-
-            // Common agent actions (you can add more later)
-            Route::post('/{ticket}/reply',   [TicketController::class, 'reply'])   ->name('tickets.reply');
-            Route::post('/{ticket}/resolve', [TicketController::class, 'resolve']) ->name('tickets.resolve');
-            Route::post('/{ticket}/reopen',  [TicketController::class, 'reopen'])  ->name('tickets.reopen');
-            Route::post('/{ticket}/attachments', [TicketController::class, 'storeAttachment'])->name('tickets.attachments.store');
-            Route::get('/{ticket}/attachments/{attachment}/download', [TicketController::class, 'downloadAttachment'])->name('tickets.attachments.download');
+            // Edit routes
+            Route::middleware(['permission:edit_ticket'])->group(function () {
+                Route::get('/{ticket}/edit',  [TicketController::class, 'edit'])   ->name('tickets.edit');
+                Route::patch('/{ticket}',     [TicketController::class, 'update'])->name('tickets.update');
+                Route::post('/{ticket}/reply',   [TicketController::class, 'reply'])   ->name('tickets.reply');
+                Route::post('/{ticket}/resolve', [TicketController::class, 'resolve']) ->name('tickets.resolve');
+                Route::post('/{ticket}/reopen',  [TicketController::class, 'reopen'])  ->name('tickets.reopen');
+                Route::post('/{ticket}/attachments', [TicketController::class, 'storeAttachment'])->name('tickets.attachments.store');
+            });
         });
 
 
