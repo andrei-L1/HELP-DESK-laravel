@@ -157,6 +157,53 @@ const getUserCountText = (role) => {
     if (!role.users_count) return 'No users';
     return role.users_count + (role.users_count === 1 ? ' user' : ' users');
 };
+
+const defaultPermissionsByRole = {
+    admin:   [], // special case – all permissions
+    manager: ['view_ticket', 'edit_ticket', 'manage_users', 'manage_roles'],
+    agent:   ['view_ticket', 'edit_ticket'],
+    user:    ['create_ticket', 'view_ticket'],
+    default: [],
+};
+
+const getDefaultPermissionIds = (roleName) => {
+    if (!roleName) return [];
+
+    const lowerName = roleName.trim().toLowerCase();
+    const permissionNames = defaultPermissionsByRole[lowerName] || defaultPermissionsByRole.default;
+
+    if (lowerName === 'admin') {
+        return props.permissions.map(p => p.id);
+    }
+
+    return permissionNames
+        .map(name => props.permissions.find(p => p.name === name)?.id)
+        .filter(Boolean);
+};
+
+
+const resetToDefaultPermissions = () => {
+    let form;
+    let roleName;
+
+    if (showEditModal.value) {
+        form = editForm;
+        roleName = editForm.name;
+    } else if (showCreateModal.value) {
+        form = createForm;
+        roleName = createForm.name;
+    } else {
+        return;
+    }
+
+    if (!roleName?.trim()) {
+        alert('Please enter a role name first to apply default permissions.');
+        return;
+    }
+
+    form.permissions = getDefaultPermissionIds(roleName);
+};
+
 </script>
 
 <template>
@@ -219,7 +266,16 @@ const getUserCountText = (role) => {
 
                             <!-- Permissions Checkboxes -->
                             <div class="border-t border-gray-200 pt-4 mt-4">
-                                <h4 class="text-sm font-medium text-gray-900 mb-2">Permissions</h4>
+                                <div class="flex items-center justify-between mb-2">
+                                    <h4 class="text-sm font-medium text-gray-900">Permissions</h4>
+                                    <button
+                                        type="button"
+                                        @click="resetToDefaultPermissions"
+                                        class="text-xs text-slate-600 hover:text-slate-800 underline hover:no-underline"
+                                    >
+                                        Reset to default
+                                    </button>
+                                </div>
                                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-48 overflow-y-auto pr-2">
                                     <div v-for="permission in permissions" :key="permission.id" class="flex items-start">
                                         <div class="flex h-5 items-center">
@@ -314,7 +370,16 @@ const getUserCountText = (role) => {
 
                             <!-- Permissions Checkboxes -->
                             <div class="border-t border-gray-200 pt-4 mt-4">
-                                <h4 class="text-sm font-medium text-gray-900 mb-2">Permissions</h4>
+                                <div class="flex items-center justify-between mb-2">
+                                    <h4 class="text-sm font-medium text-gray-900">Permissions</h4>
+                                    <button
+                                        type="button"
+                                        @click="resetToDefaultPermissions"
+                                        class="text-xs text-slate-600 hover:text-slate-800 underline hover:no-underline"
+                                    >
+                                        Reset to default
+                                    </button>
+                                </div>
                                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-48 overflow-y-auto pr-2">
                                     <div v-for="permission in permissions" :key="permission.id" class="flex items-start">
                                         <div class="flex h-5 items-center">
