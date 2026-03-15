@@ -163,6 +163,9 @@ class AdminTicketController extends Controller
     {
         $ticket = Ticket::findOrFail($id);
 
+        // Admins are globally scoped, so no department auth check is enforced here.
+        // If you need per-department admin restriction, override this method in a subclass.
+
         // Resolve the effective department FIRST — it may be changing in this same request.
         // We must validate assigned_to against the *new* department, not the old one.
         $effectiveDepartmentId = $request->filled('department_id')
@@ -177,24 +180,40 @@ class AdminTicketController extends Controller
             'department_id' => 'nullable|integer|exists:departments,id',
         ]);
 
-        $oldStatusId = $ticket->status_id;
-        $newStatusId = $validated['status_id'] ?? $ticket->status_id;
+        $oldStatusId     = $ticket->status_id;
+        $newStatusId     = $validated['status_id'] ?? $ticket->status_id;
         $oldDepartmentId = $ticket->department_id;
-        $newDepartmentId = array_key_exists('department_id', $validated) ? $validated['department_id'] : $ticket->department_id;
+        $newDepartmentId = array_key_exists('department_id', $validated)
+            ? $validated['department_id']
+            : $ticket->department_id;
 
-        // Handle assignment changes
+        // ── Assignment change ────────────────────────────────────────────────
         if (array_key_exists('assigned_to', $validated)) {
             $oldAssigned = $ticket->assigned_to;
-            $ticket->assigned_to = $validated['assigned_to'] ?? null;
-            if ($oldAssigned != $ticket->assigned_to) {
-                $this->logTicketActivity($ticket->id, 'assignment_changed', (string) $oldAssigned, (string) $ticket->assigned_to);
+            $newAssigned = $validated['assigned_to'] ?? null;
+
+            if ($oldAssigned != $newAssigned) {
+                // Resolve human-readable names so the log is auditable after soft-deletes
+                $oldName = $oldAssigned
+                    ? (\App\Models\User::withTrashed()->find($oldAssigned)?->first_name . ' '
+                       . \App\Models\User::withTrashed()->find($oldAssigned)?->last_name)
+                    : 'Unassigned';
+                $newName = $newAssigned
+                    ? (\App\Models\User::withTrashed()->find($newAssigned)?->first_name . ' '
+                       . \App\Models\User::withTrashed()->find($newAssigned)?->last_name)
+                    : 'Unassigned';
+
+                $ticket->assigned_to = $newAssigned;
+                $this->logTicketActivity($ticket->id, 'assignment_changed', trim($oldName), trim($newName));
             }
         }
 
-        // Handle status changes
+        // ── Status change ────────────────────────────────────────────────────
         if ($newStatusId && $newStatusId != $oldStatusId) {
             $ticket->status_id = $newStatusId;
-            $statusName = DB::table('ticket_statuses')->where('id', $newStatusId)->value('name');
+            $statusName    = DB::table('ticket_statuses')->where('id', $newStatusId)->value('name');
+            $oldStatusName = DB::table('ticket_statuses')->where('id', $oldStatusId)->value('name');
+
             if ($statusName === 'Resolved') {
                 $ticket->resolved_at = $ticket->resolved_at ?? now();
                 $ticket->resolver_id = Auth::id();
@@ -203,23 +222,29 @@ class AdminTicketController extends Controller
                 $ticket->closed_at = $ticket->closed_at ?? now();
                 $ticket->closed_by = Auth::id();
             }
-            $oldStatusName = DB::table('ticket_statuses')->where('id', $oldStatusId)->value('name');
-            $this->logTicketActivity($ticket->id, 'status_changed', $oldStatusName ?? '', $statusName ?? '');
+
+            $this->logTicketActivity($ticket->id, 'status_changed', $oldStatusName ?? 'Unknown', $statusName ?? 'Unknown');
         }
 
-        // Handle department changes - may affect SLA
+        // ── Department change ────────────────────────────────────────────────
         if ($oldDepartmentId != $newDepartmentId) {
+            $oldDeptName = DB::table('departments')->where('id', $oldDepartmentId)->value('name') ?? 'None';
+            $newDeptName = DB::table('departments')->where('id', $newDepartmentId)->value('name') ?? 'None';
+
             $ticket->department_id = $newDepartmentId;
-            $this->logTicketActivity($ticket->id, 'department_changed', (string) $oldDepartmentId, (string) $newDepartmentId);
-            
+            $this->logTicketActivity($ticket->id, 'department_changed', $oldDeptName, $newDeptName);
+
             // Recalculate SLA for the new department
             $newSlaPolicy = $this->findSlaPolicy($ticket->priority_id, $newDepartmentId);
             if ($newSlaPolicy && $newSlaPolicy->id != $ticket->sla_policy_id) {
-                $oldSlaId = $ticket->sla_policy_id;
+                $oldSlaName = $ticket->sla_policy_id
+                    ? DB::table('sla_policies')->where('id', $ticket->sla_policy_id)->value('name') ?? 'Unknown'
+                    : 'None';
+
                 $ticket->sla_policy_id = $newSlaPolicy->id;
-                $ticket->due_at = now()->addMinutes((int) $newSlaPolicy->resolution_time);
-                
-                $this->logTicketActivity($ticket->id, 'sla_changed', (string) $oldSlaId, (string) $newSlaPolicy->id);
+                $ticket->due_at        = now()->addMinutes((int) $newSlaPolicy->resolution_time);
+
+                $this->logTicketActivity($ticket->id, 'sla_changed', $oldSlaName, $newSlaPolicy->name);
             }
         }
 
@@ -350,13 +375,21 @@ class AdminTicketController extends Controller
                 ]);
 
                 $this->logTicketActivity($ticket->id, 'ticket_created', null, $ticketNumber);
+
+                // Log initial assignment with a human-readable name
                 if ($assignedTo) {
-                    $this->logTicketActivity($ticket->id, 'assignment_changed', null, (string) $assignedTo);
+                    $assigneeName = \App\Models\User::find($assignedTo);
+                    $assigneeLabel = $assigneeName
+                        ? trim($assigneeName->first_name . ' ' . $assigneeName->last_name)
+                        : "User #{$assignedTo}";
+                    $this->logTicketActivity($ticket->id, 'assignment_changed', 'Unassigned', $assigneeLabel);
                 }
-                
-                // Log which SLA was applied (optional but helpful)
+
+                // Log which SLA was applied with its name, not its ID
                 if ($slaPolicyId) {
-                    $this->logTicketActivity($ticket->id, 'sla_applied', null, (string) $slaPolicyId);
+                    $slaName = \Illuminate\Support\Facades\DB::table('sla_policies')
+                        ->where('id', $slaPolicyId)->value('name') ?? "SLA #{$slaPolicyId}";
+                    $this->logTicketActivity($ticket->id, 'sla_applied', null, $slaName);
                 }
 
                 return $ticket;

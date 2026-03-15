@@ -211,6 +211,7 @@ class ManagerTicketController extends AdminTicketController
                 'resolved_at'       => $ticket->resolved_at ? \Carbon\Carbon::parse($ticket->resolved_at)->toDateTimeString() : null,
                 'closed_at'         => $ticket->closed_at ? \Carbon\Carbon::parse($ticket->closed_at)->toDateTimeString() : null,
                 'created_at'        => $ticket->created_at ? \Carbon\Carbon::parse($ticket->created_at)->toDateTimeString() : null,
+                'updated_at'        => $ticket->updated_at ? \Carbon\Carbon::parse($ticket->updated_at)->toDateTimeString() : null,
                 'sla_policy_id'     => $ticket->sla_policy_id,
             ],
             'statuses'      => $statuses,

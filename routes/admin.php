@@ -23,32 +23,42 @@ Route::middleware('role:admin')
             ->name('dashboard');
 
         // ── TICKETS ──────────────────────────────────
-        Route::get('/tickets', [AdminTicketController::class, 'index'])
-            ->name('tickets.index');
+        // Fix #1 (Critical): Admin ticket routes now guarded by permission middleware,
+        // consistent with Manager and User routes.
 
-        Route::get('/all', [AdminTicketController::class, 'all'])
-            ->name('tickets.all');
+        // View & navigate
+        Route::middleware(['permission:view_ticket'])->group(function () {
+            Route::get('/tickets', [AdminTicketController::class, 'index'])
+                ->name('tickets.index');
+            Route::get('/all', [AdminTicketController::class, 'all'])
+                ->name('tickets.all');
+            Route::get('/open', [AdminTicketController::class, 'open'])
+                ->name('tickets.open');
+            Route::get('/assigned', [AdminTicketController::class, 'assigned'])
+                ->name('tickets.assigned');
+            Route::get('/tickets/{ticket}', [AdminTicketController::class, 'show'])
+                ->name('tickets.show');
+            Route::get('/tickets/{ticket}/attachments/{attachment}', [AdminTicketController::class, 'downloadAttachment'])
+                ->name('tickets.attachments.download');
+        });
 
-        Route::get('/open', [AdminTicketController::class, 'open'])
-            ->name('tickets.open');
+        // Create new ticket
+        Route::middleware(['permission:create_ticket'])->group(function () {
+            Route::get('/tickets/create', [AdminTicketController::class, 'create'])
+                ->name('tickets.create');
+            Route::post('/tickets', [AdminTicketController::class, 'store'])
+                ->name('tickets.store');
+        });
 
-        Route::get('/assigned', [AdminTicketController::class, 'assigned'])
-            ->name('tickets.assigned');
-
-        Route::get('/tickets/create', [AdminTicketController::class, 'create'])
-            ->name('tickets.create');
-        Route::post('/tickets', [AdminTicketController::class, 'store'])
-            ->name('tickets.store');
-        Route::get('/tickets/{ticket}', [AdminTicketController::class, 'show'])
-            ->name('tickets.show');
-        Route::patch('/tickets/{ticket}', [AdminTicketController::class, 'update'])
-            ->name('tickets.update');
-        Route::post('/tickets/{ticket}/messages', [AdminTicketController::class, 'storeMessage'])
-            ->name('tickets.messages.store');
-        Route::post('/tickets/{ticket}/attachments', [AdminTicketController::class, 'storeAttachment'])
-            ->name('tickets.attachments.store');
-        Route::get('/tickets/{ticket}/attachments/{attachment}', [AdminTicketController::class, 'downloadAttachment'])
-            ->name('tickets.attachments.download');
+        // Mutate existing ticket
+        Route::middleware(['permission:edit_ticket'])->group(function () {
+            Route::patch('/tickets/{ticket}', [AdminTicketController::class, 'update'])
+                ->name('tickets.update');
+            Route::post('/tickets/{ticket}/messages', [AdminTicketController::class, 'storeMessage'])
+                ->name('tickets.messages.store');
+            Route::post('/tickets/{ticket}/attachments', [AdminTicketController::class, 'storeAttachment'])
+                ->name('tickets.attachments.store');
+        });
 
         // ── USER ──────────────────────────────────
         Route::get('/users', [AdminUserController::class, 'index'])
@@ -119,7 +129,7 @@ Route::middleware('role:admin')
             Route::get('/general', [SettingsController::class, 'general'])->name('general');
             Route::post('/general', [SettingsController::class, 'updateGeneral'])->name('general.update');
             Route::get('/ticket', [SettingsController::class, 'ticket'])->name('ticket');
-            
+
             Route::post('/ticket/priorities', [TicketSettingsController::class, 'storePriority'])->name('priorities.store');
             Route::put('/ticket/priorities/{id}', [TicketSettingsController::class, 'updatePriority'])->name('priorities.update');
             Route::delete('/ticket/priorities/{id}', [TicketSettingsController::class, 'destroyPriority'])->name('priorities.destroy');
