@@ -5,6 +5,7 @@ import { Link, usePage } from '@inertiajs/vue3';
 import ApplicationLogo from '@/Components/ApplicationLogo.vue';
 import Dropdown from '@/Components/Dropdown.vue';
 import DropdownLink from '@/Components/DropdownLink.vue';
+import ToastNotification from '@/Components/ToastNotification.vue';
 
 const page = usePage();
 const showingMobileMenu = ref(false);
@@ -192,6 +193,7 @@ const isImpersonating = computed(() => impersonation.value !== null);
 
 <template>
     <div class="flex h-screen bg-gray-100">
+        <ToastNotification />
         <!-- Desktop Sidebar -->
         <aside class="hidden w-64 flex-col border-r border-gray-200 bg-white lg:flex transition-all duration-300">
             <!-- Logo -->

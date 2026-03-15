@@ -17,7 +17,7 @@ class CheckRole
     public function handle(Request $request, Closure $next, string $role): Response
     {
         if (!Auth::check()) {
-            abort(403, 'Unauthorized');
+            return redirect()->route('login')->with('error', 'Hold your horses! You need to be logged in to view this page.');
         }
 
         $roles = explode('|', $role);
@@ -34,7 +34,7 @@ class CheckRole
         }
 
         if (!$hasRole) {
-            abort(403, 'Unauthorized');
+            return redirect()->back()->with('error', 'Access Denied: You don\'t have the required role to perform this action! 🚧');
         }
 
         return $next($request);

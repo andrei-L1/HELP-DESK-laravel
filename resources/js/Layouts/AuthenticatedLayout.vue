@@ -6,6 +6,7 @@ import DropdownLink from '@/Components/DropdownLink.vue';
 import NavLink from '@/Components/NavLink.vue';
 import ResponsiveNavLink from '@/Components/ResponsiveNavLink.vue';
 import { Link, usePage } from '@inertiajs/vue3';
+import ToastNotification from '@/Components/ToastNotification.vue';
 
 const showingNavigationDropdown = ref(false);
 
@@ -32,6 +33,7 @@ const dashboardRoute = computed(() => {
 
 <template>
     <div>
+        <ToastNotification />
         <div class="min-h-screen bg-gray-100">
             <nav
                 class="border-b border-gray-100 bg-white"

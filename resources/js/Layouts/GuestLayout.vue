@@ -2,6 +2,7 @@
 import ApplicationLogo from '@/Components/ApplicationLogo.vue';
 import { Link } from '@inertiajs/vue3';
 import { onMounted, ref } from 'vue';
+import ToastNotification from '@/Components/ToastNotification.vue';
 
 const currentTestimonial = ref(0);
 const testimonials = [
@@ -32,6 +33,7 @@ onMounted(() => {
 
 <template>
     <div class="flex min-h-screen bg-gray-50">
+        <ToastNotification />
         <!-- Left side - Enhanced Branding with animated background -->
         <div
             class="relative hidden lg:flex lg:w-1/2 lg:flex-col lg:items-center lg:justify-center lg:overflow-hidden"

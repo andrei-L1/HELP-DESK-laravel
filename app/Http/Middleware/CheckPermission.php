@@ -15,7 +15,7 @@ class CheckPermission
         $user = Auth::user();
 
         if (!$user) {
-            abort(403, 'Unauthorized');
+            return redirect()->route('login')->with('error', 'Hold your horses! You need to be logged in to do that.');
         }
 
         // Explode permissions separated by '|'
@@ -30,7 +30,7 @@ class CheckPermission
         }
 
         if (!$hasPermission) {
-            abort(403, 'Unauthorized');
+            return redirect()->back()->with('error', 'Access Denied: Your account lacks the required permissions to perform this specific action! 🛑');
         }
 
         return $next($request);
