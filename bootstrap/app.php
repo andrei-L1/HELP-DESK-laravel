@@ -26,10 +26,18 @@ return Application::configure(basePath: dirname(__DIR__))
             'role' => \App\Http\Middleware\CheckRole::class,
         ]);
 
-        // Optional: you can add more config here in the future, e.g.
-        // $middleware->append(...);
-        // $middleware->prepend(...);
-        // $middleware->priority([...]);
+        // Define where to redirect authenticated users when they access guest routes (e.g. login)
+        $middleware->redirectUsersTo(function (\Illuminate\Http\Request $request) {
+            $user = \Illuminate\Support\Facades\Auth::user();
+            $roleName = $user?->role?->name ?? 'user';
+            
+            return route(match ($roleName) {
+                'admin'   => 'admin.dashboard',
+                'agent'   => 'agent.dashboard',
+                'manager' => 'manager.dashboard',
+                default   => 'user.dashboard',
+            });
+        });
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

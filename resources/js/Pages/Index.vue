@@ -1,9 +1,22 @@
 <script setup>
-import { Link, Head } from '@inertiajs/vue3';
+import { Link, Head, usePage } from '@inertiajs/vue3';
 import ApplicationLogo from '@/Components/ApplicationLogo.vue';
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 
+const page = usePage();
 const isScrolled = ref(false);
+
+const dashboardRoute = computed(() => {
+    const user = page.props.auth.user;
+    if (!user || !user.role) return route('user.dashboard');
+    
+    switch (user.role) {
+        case 'admin': return route('admin.dashboard');
+        case 'manager': return route('manager.dashboard');
+        case 'agent': return route('agent.dashboard');
+        default: return route('user.dashboard');
+    }
+});
 
 onMounted(() => {
     window.addEventListener('scroll', () => {
@@ -40,18 +53,28 @@ onMounted(() => {
 
                     <!-- Navigation Links -->
                     <div class="flex items-center gap-4">
-                        <Link
-                            :href="route('login')"
-                            class="relative text-sm font-medium text-gray-700 after:absolute after:-bottom-1 after:left-0 after:h-0.5 after:w-0 after:bg-slate-700 after:transition-all hover:text-slate-700 hover:after:w-full"
-                        >
-                            Sign In
-                        </Link>
-                        <Link
-                            :href="route('register')"
-                            class="rounded-xl bg-gradient-to-r from-slate-700 to-slate-900 px-5 py-2.5 text-sm font-semibold text-white shadow-lg transition-all hover:shadow-xl hover:scale-105 hover:from-slate-800 hover:to-slate-950"
-                        >
-                            Get Started Free
-                        </Link>
+                        <template v-if="$page.props.auth.user">
+                            <Link
+                                :href="dashboardRoute"
+                                class="rounded-xl bg-gradient-to-r from-slate-700 to-slate-900 px-5 py-2.5 text-sm font-semibold text-white shadow-lg transition-all hover:shadow-xl hover:scale-105 hover:from-slate-800 hover:to-slate-950"
+                            >
+                                Go to Dashboard
+                            </Link>
+                        </template>
+                        <template v-else>
+                            <Link
+                                :href="route('login')"
+                                class="relative text-sm font-medium text-gray-700 after:absolute after:-bottom-1 after:left-0 after:h-0.5 after:w-0 after:bg-slate-700 after:transition-all hover:text-slate-700 hover:after:w-full"
+                            >
+                                Sign In
+                            </Link>
+                            <Link
+                                :href="route('register')"
+                                class="rounded-xl bg-gradient-to-r from-slate-700 to-slate-900 px-5 py-2.5 text-sm font-semibold text-white shadow-lg transition-all hover:shadow-xl hover:scale-105 hover:from-slate-800 hover:to-slate-950"
+                            >
+                                Get Started Free
+                            </Link>
+                        </template>
                     </div>
                 </div>
             </div>
@@ -92,19 +115,30 @@ onMounted(() => {
 
                     <!-- CTA Buttons with micro-interactions -->
                     <div class="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
-                        <Link
-                            :href="route('register')"
-                            class="group relative w-full overflow-hidden rounded-xl bg-gradient-to-r from-slate-700 to-slate-900 px-8 py-4 text-lg font-semibold text-white shadow-lg transition-all hover:shadow-xl hover:scale-105 sm:w-auto"
-                        >
-                            <span class="relative z-10">Start Free Trial</span>
-                            <div class="absolute inset-0 -translate-x-full group-hover:translate-x-0 bg-gradient-to-r from-slate-600 to-slate-800 transition-transform duration-300"></div>
-                        </Link>
-                        <Link
-                            :href="route('login')"
-                            class="group relative w-full overflow-hidden rounded-xl border-2 border-gray-300 bg-white/80 backdrop-blur-sm px-8 py-4 text-lg font-semibold text-gray-700 shadow-sm transition-all hover:border-slate-500 hover:shadow-lg sm:w-auto"
-                        >
-                            <span class="relative z-10">Watch Demo →</span>
-                        </Link>
+                        <template v-if="$page.props.auth.user">
+                            <Link
+                                :href="dashboardRoute"
+                                class="group relative w-full overflow-hidden rounded-xl bg-gradient-to-r from-slate-700 to-slate-900 px-8 py-4 text-lg font-semibold text-white shadow-lg transition-all hover:shadow-xl hover:scale-105 sm:w-auto"
+                            >
+                                <span class="relative z-10">Access Dashboard</span>
+                                <div class="absolute inset-0 -translate-x-full group-hover:translate-x-0 bg-gradient-to-r from-slate-600 to-slate-800 transition-transform duration-300"></div>
+                            </Link>
+                        </template>
+                        <template v-else>
+                            <Link
+                                :href="route('register')"
+                                class="group relative w-full overflow-hidden rounded-xl bg-gradient-to-r from-slate-700 to-slate-900 px-8 py-4 text-lg font-semibold text-white shadow-lg transition-all hover:shadow-xl hover:scale-105 sm:w-auto"
+                            >
+                                <span class="relative z-10">Start Free Trial</span>
+                                <div class="absolute inset-0 -translate-x-full group-hover:translate-x-0 bg-gradient-to-r from-slate-600 to-slate-800 transition-transform duration-300"></div>
+                            </Link>
+                            <Link
+                                :href="route('login')"
+                                class="group relative w-full overflow-hidden rounded-xl border-2 border-gray-300 bg-white/80 backdrop-blur-sm px-8 py-4 text-lg font-semibold text-gray-700 shadow-sm transition-all hover:border-slate-500 hover:shadow-lg sm:w-auto"
+                            >
+                                <span class="relative z-10">Sign In &rarr;</span>
+                            </Link>
+                        </template>
                     </div>
 
                     <!-- Trust indicators -->
