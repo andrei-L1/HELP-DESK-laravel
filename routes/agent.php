@@ -49,6 +49,8 @@ Route::middleware(['role:agent'])
             Route::post('/{ticket}/reply',   [TicketController::class, 'reply'])   ->name('tickets.reply');
             Route::post('/{ticket}/resolve', [TicketController::class, 'resolve']) ->name('tickets.resolve');
             Route::post('/{ticket}/reopen',  [TicketController::class, 'reopen'])  ->name('tickets.reopen');
+            Route::post('/{ticket}/attachments', [TicketController::class, 'storeAttachment'])->name('tickets.attachments.store');
+            Route::get('/{ticket}/attachments/{attachment}/download', [TicketController::class, 'downloadAttachment'])->name('tickets.attachments.download');
         });
 
 

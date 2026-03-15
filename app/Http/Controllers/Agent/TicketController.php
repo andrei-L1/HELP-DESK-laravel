@@ -6,11 +6,14 @@ use App\Http\Controllers\Controller;
 use App\Models\Ticket;
 use App\Models\TicketStatus;
 use App\Models\TicketActivityLog;
+use App\Models\TicketMessage;
+use App\Models\TicketAttachment;
 use App\Http\Requests\StoreTicketRequest;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 
@@ -162,10 +165,16 @@ class TicketController extends Controller
     {
         $this->authorizeAgentAccess($ticket);
 
-        $ticket->load(['status', 'priority', 'creator', 'replies.author']);
+        $ticket->load(['status', 'priority', 'creator', 'messages.user', 'attachments']);
 
         return Inertia::render('Agent/Tickets/Show', [
             'ticket' => $ticket,
+            'attachments' => $ticket->attachments->map(fn($a) => [
+                'id'          => $a->id,
+                'file_name'   => $a->file_name,
+                'file_size'   => $a->file_size,
+                'uploaded_at' => $a->uploaded_at?->toDateTimeString(),
+            ]),
         ]);
     }
 
@@ -201,8 +210,37 @@ class TicketController extends Controller
     {
         $this->authorizeAgentAccess($ticket);
 
-        // Validate + create reply
-        // Update ticket status if needed (e.g. to Pending)
+        $validated = $request->validate([
+            'body'        => 'required|string|max:10000',
+            'is_internal' => 'boolean',
+        ]);
+        $isInternal = $request->boolean('is_internal');
+
+        $message = TicketMessage::create([
+            'ticket_id'   => $ticket->id,
+            'user_id'     => Auth::id(),
+            'is_internal' => $isInternal,
+            'body'        => $validated['body'],
+        ]);
+
+        if (!$ticket->first_response_at && !$isInternal) {
+            $ticket->first_response_at = now();
+        }
+
+        $pendingStatusId = TicketStatus::where('name', 'Pending')->value('id');
+        if ($pendingStatusId) {
+             $ticket->status_id = $pendingStatusId;
+        }
+        
+        $ticket->save();
+
+        TicketActivityLog::create([
+            'ticket_id' => $ticket->id,
+            'user_id'   => Auth::id(),
+            'action'    => 'message_added',
+            'old_value' => null,
+            'new_value' => $isInternal ? 'Internal note' : 'Reply',
+        ]);
 
         return back()->with('success', 'Reply added.');
     }
@@ -227,6 +265,57 @@ class TicketController extends Controller
         ]);
 
         return back()->with('success', 'Ticket reopened.');
+    }
+
+    public function storeAttachment(Request $request, int $id)
+    {
+        $ticket = Ticket::findOrFail($id);
+        $this->authorizeAgentAccess($ticket);
+
+        $validated = $request->validate([
+            'file'       => 'required|file|max:10240', // 10MB
+            'message_id' => 'nullable|integer|exists:ticket_messages,id',
+        ]);
+        $file = $request->file('file');
+        $dir = 'ticket-attachments/' . $ticket->id;
+        $path = $file->store($dir, 'local');
+        $storedName = basename($path);
+
+        TicketAttachment::create([
+            'ticket_id'   => $ticket->id,
+            'message_id'  => $validated['message_id'] ?? null,
+            'file_name'   => $file->getClientOriginalName(),
+            'stored_name' => $storedName,
+            'file_path'   => $path,
+            'file_size'   => $file->getSize(),
+            'mime_type'   => $file->getMimeType(),
+            'uploaded_by' => Auth::id(),
+        ]);
+
+        TicketActivityLog::create([
+            'ticket_id' => $ticket->id,
+            'user_id'   => Auth::id(),
+            'action'    => 'attachment_added',
+            'old_value' => null,
+            'new_value' => $file->getClientOriginalName(),
+        ]);
+
+        return redirect()->route('agent.tickets.show', $ticket->id);
+    }
+
+    public function downloadAttachment(int $ticketId, int $attachmentId)
+    {
+        $ticket = Ticket::findOrFail($ticketId);
+        $this->authorizeAgentAccess($ticket);
+
+        $attachment = TicketAttachment::where('ticket_id', $ticketId)->where('id', $attachmentId)->firstOrFail();
+        $path = Storage::disk('local')->path($attachment->file_path);
+        if (!is_file($path)) {
+            abort(404);
+        }
+        return response()->download($path, $attachment->file_name, [
+            'Content-Type' => $attachment->mime_type,
+        ]);
     }
 
     // ─── Private helpers ────────────────────────────────────────────────
