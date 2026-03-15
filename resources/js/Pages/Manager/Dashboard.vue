@@ -328,12 +328,35 @@ const getPriorityColor = (priority) => {
             <!-- Quick Actions -->
             <div class="mt-8">
                 <h3 class="text-lg font-semibold text-gray-900">Quick Actions</h3>
-                <div class="mt-4 grid gap-4 md:grid-cols-3">
+                <div class="mt-4 grid gap-4 md:grid-cols-4">
+                    <!-- Create Ticket -->
+                    <button
+                        @click="router.visit(route('manager.tickets.create'))"
+                        class="flex w-full items-center gap-3 rounded-lg border border-gray-200 bg-white p-4 text-left shadow-sm transition-all hover:border-emerald-300 hover:shadow-md cursor-pointer"
+                    >
+                        <div
+                            class="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-100"
+                        >
+                            <svg
+                                class="h-5 w-5 text-emerald-600"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                            >
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                            </svg>
+                        </div>
+                        <div>
+                            <p class="font-medium text-gray-900">Create Ticket</p>
+                            <p class="text-sm text-gray-500">Submit a new request</p>
+                        </div>
+                    </button>
+
                     <!-- Assign Tickets -->
                     <button
                         v-if="canEditTickets"
                         @click="assignTickets"
-                        class="flex w-full items-center gap-3 rounded-lg border border-gray-200 bg-white p-4 text-left shadow-sm transition-all hover:border-emerald-300 hover:shadow-md"
+                        class="flex w-full items-center gap-3 rounded-lg border border-gray-200 bg-white p-4 text-left shadow-sm transition-all hover:border-emerald-300 hover:shadow-md cursor-pointer"
                     >
                         <div
                             class="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-100"

@@ -1,0 +1,32 @@
+Manager ID: 2 (ts_manager@example.com)
+  Departments: 1
+  Agents found: 5
+    Agent 26 (Name: Agent 1): Assigned in DEPT = 0, Resolved = 0. Total = 0
+    Agent 27 (Name: Agent 2): Assigned in DEPT = 0, Resolved = 0. Total = 2
+    Agent 28 (Name: Agent 3): Assigned in DEPT = 0, Resolved = 0. Total = 0
+    Agent 29 (Name: Agent 4): Assigned in DEPT = 1, Resolved = 0. Total = 1
+    Agent 30 (Name: Agent 5): Assigned in DEPT = 2, Resolved = 1. Total = 2
+Manager ID: 3 (bill_manager@example.com)
+  Departments: 2
+  Agents found: 5
+    Agent 31 (Name: Agent 1): Assigned in DEPT = 0, Resolved = 0. Total = 0
+    Agent 32 (Name: Agent 2): Assigned in DEPT = 0, Resolved = 0. Total = 0
+    Agent 33 (Name: Agent 3): Assigned in DEPT = 2, Resolved = 2. Total = 4
+    Agent 34 (Name: Agent 4): Assigned in DEPT = 1, Resolved = 0. Total = 1
+    Agent 35 (Name: Agent 5): Assigned in DEPT = 2, Resolved = 2. Total = 2
+Manager ID: 4 (sales_manager@example.com)
+  Departments: 3
+  Agents found: 5
+    Agent 36 (Name: Agent 1): Assigned in DEPT = 1, Resolved = 1. Total = 2
+    Agent 37 (Name: Agent 2): Assigned in DEPT = 0, Resolved = 0. Total = 0
+    Agent 38 (Name: Agent 3): Assigned in DEPT = 0, Resolved = 0. Total = 0
+    Agent 39 (Name: Agent 4): Assigned in DEPT = 0, Resolved = 0. Total = 0
+    Agent 40 (Name: Agent 5): Assigned in DEPT = 0, Resolved = 0. Total = 0
+Manager ID: 5 (gen_manager@example.com)
+  Departments: 4
+  Agents found: 5
+    Agent 41 (Name: Agent 1): Assigned in DEPT = 0, Resolved = 0. Total = 0
+    Agent 42 (Name: Agent 2): Assigned in DEPT = 0, Resolved = 0. Total = 4
+    Agent 43 (Name: Agent 3): Assigned in DEPT = 1, Resolved = 0. Total = 1
+    Agent 44 (Name: Agent 4): Assigned in DEPT = 0, Resolved = 0. Total = 0
+    Agent 45 (Name: Agent 5): Assigned in DEPT = 1, Resolved = 0. Total = 2

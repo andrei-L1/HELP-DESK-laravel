@@ -97,6 +97,13 @@ const navigation = [
         ],
     },
     {
+        name: 'New Ticket',
+        href: route('manager.tickets.create'),
+        routeName: 'manager.tickets.create',
+        icon: 'M12 4v16m8-8H4',
+        description: 'Create a new ticket'
+    },
+    {
         name: 'Team',
         href: route('manager.team.index'),
         routeName: 'manager.team.index',
