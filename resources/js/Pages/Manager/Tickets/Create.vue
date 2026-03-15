@@ -11,12 +11,16 @@ const props = defineProps({
         type: Array,
         default: () => [],
     },
+    priorities: {
+        type: Array,
+        default: () => [],
+    },
 });
 
 const form = useForm({
     subject: '',
     description: '',
-    priority: 'medium',
+    priority: '',
     category_id: '',
     department_id: '',
 });
@@ -63,16 +67,14 @@ const submit = () => {
                     />
                     <p v-if="form.errors.description" class="mt-1 text-sm text-red-600">{{ form.errors.description }}</p>
                 </div>
-                <div>
+                <div v-if="priorities.length">
                     <label for="priority" class="block text-sm font-medium text-gray-700">Priority</label>
                     <select
                         id="priority"
                         v-model="form.priority"
                         class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm"
                     >
-                        <option value="low">Low</option>
-                        <option value="medium">Medium</option>
-                        <option value="high">High</option>
+                        <option v-for="p in priorities" :key="p.id" :value="p.name.toLowerCase()">{{ p.name }}</option>
                     </select>
                 </div>
                 <div v-if="categories.length">

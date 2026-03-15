@@ -132,7 +132,7 @@ const viewTicket = (ticketId) => {
                     <button
                         type="button"
                         class="inline-flex items-center rounded-md bg-slate-700 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-slate-800"
-                        @click="$emit('create-ticket')"
+                        @click="router.visit(route('manager.tickets.create'))"
                     >
                         <svg
                             class="-ml-0.5 mr-1.5 h-4 w-4"

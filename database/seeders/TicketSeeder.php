@@ -79,9 +79,25 @@ class TicketSeeder extends Seeder
                 $statusId = $statusIds[$statusName] ?? $defaultStatusId;
                 $priorityId = $priorityIds[$priorityName] ?? $defaultPriorityId;
 
-                // 70% chance assigned to an agent, 30% unassigned
-                $assignedTo = (rand(1, 10) <= 7 && !empty($agentIds))
-                    ? fake()->randomElement($agentIds)
+                // Build a per-department agent cache to avoid repeated queries
+                // Only pick agents who are actually members of this ticket's department
+                static $deptAgentCache = [];
+                if (!isset($deptAgentCache[$department->id])) {
+                    $deptAgentCache[$department->id] = DB::table('user_departments')
+                        ->join('users', 'users.id', '=', 'user_departments.user_id')
+                        ->join('roles', 'users.role_id', '=', 'roles.id')
+                        ->where('user_departments.department_id', $department->id)
+                        ->whereIn('roles.name', ['agent', 'manager'])
+                        ->whereNull('users.deleted_at')
+                        ->distinct()
+                        ->pluck('users.id')
+                        ->toArray();
+                }
+                $deptAgentIds = $deptAgentCache[$department->id];
+
+                // 70% chance assigned to a dept agent, 30% unassigned
+                $assignedTo = (rand(1, 10) <= 7 && !empty($deptAgentIds))
+                    ? fake()->randomElement($deptAgentIds)
                     : null;
 
                 // Find the appropriate SLA policy

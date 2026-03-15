@@ -142,7 +142,7 @@ const viewTicket = (ticketId) => {
                     <button
                         type="button"
                         class="inline-flex items-center rounded-md bg-slate-700 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-slate-800"
-                        @click="$emit('create-ticket')"
+                        @click="router.visit(route('manager.tickets.create'))"
                     >
                         <svg
                             class="-ml-0.5 mr-1.5 h-4 w-4"
@@ -205,7 +205,14 @@ const viewTicket = (ticketId) => {
                             </td>
                             <td class="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
                                 <span
-                                    class="inline-flex rounded-full px-2 py-1 text-xs font-semibold bg-blue-100 text-blue-800"
+                                    class="inline-flex rounded-full px-2 py-1 text-xs font-semibold"
+                                    :class="{
+                                        'bg-blue-100 text-blue-800': ticket.status?.toLowerCase() === 'open',
+                                        'bg-green-100 text-green-800': ticket.status?.toLowerCase() === 'resolved',
+                                        'bg-gray-100 text-gray-800': ticket.status?.toLowerCase() === 'closed',
+                                        'bg-yellow-100 text-yellow-800': ticket.status?.toLowerCase() === 'pending',
+                                        'bg-red-100 text-red-800': ticket.status?.toLowerCase() === 'urgent',
+                                    }"
                                 >
                                     {{ ticket.status }}
                                 </span>

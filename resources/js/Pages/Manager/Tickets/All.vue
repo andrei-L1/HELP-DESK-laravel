@@ -49,6 +49,10 @@ const props = defineProps({
         type: Array,
         default: () => [],
     },
+    priorities: {
+        type: Array,
+        default: () => [],
+    },
     categories: {
         type: Array,
         default: () => [],
@@ -146,16 +150,14 @@ const viewTicket = (ticketId) => {
                                     {{ createForm.errors.description }}
                                 </p>
                             </div>
-                            <div>
+                            <div v-if="priorities.length">
                                 <label for="create-priority" class="block text-sm font-medium text-gray-700">Priority</label>
                                 <select
                                     id="create-priority"
                                     v-model="createForm.priority"
                                     class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm"
                                 >
-                                    <option value="low">Low</option>
-                                    <option value="medium">Medium</option>
-                                    <option value="high">High</option>
+                                    <option v-for="p in priorities" :key="p.id" :value="p.name.toLowerCase()">{{ p.name }}</option>
                                 </select>
                             </div>
                             <div v-if="categories.length">

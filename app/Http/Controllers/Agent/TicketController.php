@@ -5,8 +5,13 @@ namespace App\Http\Controllers\Agent;
 use App\Http\Controllers\Controller;
 use App\Models\Ticket;
 use App\Models\TicketStatus;
+use App\Models\TicketActivityLog;
+use App\Http\Requests\StoreTicketRequest;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
 
 class TicketController extends Controller
@@ -79,33 +84,77 @@ class TicketController extends Controller
 
     public function create()
     {
+        $categories = DB::table('ticket_categories')
+            ->where('is_active', true)
+            ->orderBy('sort_order')
+            ->get(['id', 'name', 'title']);
+
+        $departments = DB::table('departments')
+            ->whereNull('deleted_at')
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get(['id', 'name']);
+
+        $priorities = DB::table('ticket_priorities')
+            ->orderBy('sort_order')
+            ->get(['id', 'name']);
+
         return Inertia::render('Agent/Tickets/Create', [
-            'priorities' => \App\Models\TicketPriority::all(),
+            'categories'  => $categories,
+            'departments' => $departments,
+            'priorities'  => $priorities,
         ]);
     }
 
-    public function store(Request $request)
+    public function store(StoreTicketRequest $request)
     {
-        // Validation + create logic here
-        // Example:
-        $validated = $request->validate([
-            'subject'     => 'required|string|max:255',
-            'description' => 'required|string',
-            'priority_id' => 'required|exists:priorities,id',
-            // etc.
-        ]);
+        $validated = $request->validated();
+        $priorityId = $request->getPriorityId();
+        $statusId = $request->getStatusId();
 
-        $ticket = Ticket::create([
-            'subject'      => $validated['subject'],
-            'description'  => $validated['description'],
-            'priority_id'  => $validated['priority_id'],
-            'assigned_to'  => Auth::id(),
-            'status_id'    => TicketStatus::where('name', 'Open')->firstOrFail()->id,
-            'created_by'   => Auth::id(),
-            // customer_id, department_id, etc.
-        ]);
+        if (!$priorityId || !$statusId) {
+            return back()->withErrors(['priority' => 'Invalid priority or status. Please contact an administrator.']);
+        }
 
-        return redirect()->route('agent.tickets.show', $ticket)
+        $departmentId = isset($validated['department_id']) ? (int) $validated['department_id'] : null;
+        $slaPolicy    = $this->findSlaPolicy($priorityId, $departmentId);
+        $dueAt        = $slaPolicy ? now()->addMinutes((int) $slaPolicy->resolution_time)->toDateTimeString() : null;
+        $assignedTo   = $this->pickAutoAssignUserId($departmentId);
+
+        $year = date('Y');
+        $ticket = Cache::lock('ticket_number_' . $year, 10)->block(5, function () use ($validated, $statusId, $priorityId, $departmentId, $dueAt, $assignedTo, $slaPolicy, $year) {
+            return DB::transaction(function () use ($validated, $statusId, $priorityId, $departmentId, $dueAt, $assignedTo, $slaPolicy, $year) {
+                $prefix   = 'TICKET-' . $year . '-';
+                $existing = DB::table('tickets')->where('ticket_number', 'like', $prefix . '%')->pluck('ticket_number');
+                $maxNum   = $existing->isEmpty() ? 0 : $existing->max(fn ($n) => (int) Str::afterLast($n, '-'));
+
+                $ticket = Ticket::create([
+                    'ticket_number' => $prefix . str_pad($maxNum + 1, 4, '0', STR_PAD_LEFT),
+                    'subject'       => $validated['subject'],
+                    'description'   => $validated['description'],
+                    'status_id'     => $statusId,
+                    'priority_id'   => $priorityId,
+                    'category_id'   => $validated['category_id'] ?? null,
+                    'department_id' => $departmentId,
+                    'sla_policy_id' => $slaPolicy?->id,
+                    'created_by'    => Auth::id(),
+                    'assigned_to'   => $assignedTo,
+                    'due_at'        => $dueAt,
+                ]);
+
+                TicketActivityLog::create([
+                    'ticket_id' => $ticket->id,
+                    'user_id'   => Auth::id(),
+                    'action'    => 'ticket_created',
+                    'old_value' => null,
+                    'new_value' => $ticket->ticket_number,
+                ]);
+
+                return $ticket;
+            });
+        });
+
+        return redirect()->route('agent.tickets.show', $ticket->id)
             ->with('success', 'Ticket created successfully.');
     }
 
@@ -178,5 +227,78 @@ class TicketController extends Controller
         ]);
 
         return back()->with('success', 'Ticket reopened.');
+    }
+
+    // ─── Private helpers ────────────────────────────────────────────────
+
+    private function findSlaPolicy(int $priorityId, ?int $departmentId): ?object
+    {
+        if ($departmentId) {
+            $sla = DB::table('sla_policies')
+                ->where('priority_id', $priorityId)
+                ->where('department_id', $departmentId)
+                ->where('is_active', true)
+                ->whereNull('deleted_at')
+                ->first();
+            if ($sla) {
+                return $sla;
+            }
+        }
+
+        return DB::table('sla_policies')
+            ->where('priority_id', $priorityId)
+            ->whereNull('department_id')
+            ->where('is_active', true)
+            ->whereNull('deleted_at')
+            ->first();
+    }
+
+    private function pickAutoAssignUserId(?int $departmentId = null): ?int
+    {
+        if ($departmentId === null) {
+            return null;
+        }
+
+        $openStatusId = DB::table('ticket_statuses')->where('name', 'Open')->value('id');
+        if (!$openStatusId) {
+            return null;
+        }
+
+        $query = DB::table('users')
+            ->join('roles', 'users.role_id', '=', 'roles.id')
+            ->whereNull('users.deleted_at')
+            ->whereIn('roles.name', ['manager', 'agent']);
+
+        if ($departmentId) {
+            $query->join('user_departments', 'users.id', '=', 'user_departments.user_id')
+                  ->where('user_departments.department_id', $departmentId);
+        }
+
+        $assignableIds = $query->distinct()->pluck('users.id')->unique()->values()->all();
+
+        if (empty($assignableIds)) {
+            return null;
+        }
+
+        $counts = Ticket::query()
+            ->where('status_id', $openStatusId)
+            ->whereIn('assigned_to', $assignableIds)
+            ->selectRaw('assigned_to as user_id, count(*) as open_count')
+            ->groupBy('assigned_to')
+            ->pluck('open_count', 'user_id')
+            ->all();
+
+        $minCount = null;
+        $pickId   = null;
+        foreach ($assignableIds as $id) {
+            $userId = (int) $id;
+            $c = $counts[$userId] ?? 0;
+            if ($minCount === null || $c < $minCount) {
+                $minCount = $c;
+                $pickId   = $userId;
+            }
+        }
+
+        return $pickId ?? $assignableIds[0];
     }
 }

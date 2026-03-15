@@ -45,19 +45,19 @@ const canManageUsers = computed(() => hasPermission('manage_users'));
 
 // Navigation actions
 const viewTeamTickets = () => {
-    router.visit(route('manager.tickets.team'));
+    router.visit(route('manager.tickets.all'));
 };
 
 const viewPendingReviews = () => {
-    router.visit(route('manager.tickets.pending'));
+    router.visit(route('manager.tickets.index', { status: 'Pending' }));
 };
 
 const viewTeamMembers = () => {
-    router.visit(route('manager.team.members'));
+    router.visit(route('manager.team.index'));
 };
 
 const assignTickets = () => {
-    router.visit(route('manager.tickets.assign'));
+    router.visit(route('manager.tickets.index'));
 };
 
 const viewTicket = (ticketId) => {

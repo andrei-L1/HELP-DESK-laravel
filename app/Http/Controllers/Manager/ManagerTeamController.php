@@ -133,7 +133,15 @@ class ManagerTeamController extends Controller
                 'tickets_open'     => $ticketsOpen,
                 'tickets_resolved' => $ticketsResolved,
             ],
-            'recentTickets' => $recentTickets
+            'recentTickets' => $recentTickets->map(fn ($t) => [
+                'id'          => $t->id,
+                'ticket_number' => $t->ticket_number,
+                'subject'     => $t->subject,
+                'created_at'  => $t->created_at?->toDateTimeString(),
+                'status'      => $t->status  ? ['name' => $t->status->name]   : null,
+                'priority'    => $t->priority ? ['name' => $t->priority->name] : null,
+                'department'  => $t->department ? ['name' => $t->department->name] : null,
+            ]),
         ]);
     }
 }

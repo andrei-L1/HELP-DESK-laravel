@@ -3,6 +3,14 @@ import AgentNavigation from '@/Components/AgentNavigation.vue';
 import { Head, Link, useForm } from '@inertiajs/vue3';
 
 const props = defineProps({
+    categories: {
+        type: Array,
+        default: () => [],
+    },
+    departments: {
+        type: Array,
+        default: () => [],
+    },
     priorities: {
         type: Array,
         default: () => [],
@@ -12,11 +20,17 @@ const props = defineProps({
 const form = useForm({
     subject: '',
     description: '',
-    priority_id: '',
+    priority: '',
+    category_id: '',
+    department_id: '',
 });
 
 const submit = () => {
-    form.post(route('agent.tickets.store'));
+    form.transform((data) => ({
+        ...data,
+        category_id: data.category_id || null,
+        department_id: data.department_id || null,
+    })).post(route('agent.tickets.store'));
 };
 </script>
 
@@ -32,12 +46,13 @@ const submit = () => {
             <div class="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
                 <form @submit.prevent="submit" class="space-y-6">
                     <div>
-                        <label for="subject" class="block text-sm font-medium text-gray-700">Subject / Issue Summary</label>
+                        <label for="subject" class="block text-sm font-medium text-gray-700">Subject</label>
                         <input
                             id="subject"
                             v-model="form.subject"
                             type="text"
                             required
+                            maxlength="200"
                             class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm"
                             placeholder="Briefly describe the issue..."
                         />
@@ -45,7 +60,7 @@ const submit = () => {
                     </div>
 
                     <div>
-                        <label for="description" class="block text-sm font-medium text-gray-700">Detailed Description</label>
+                        <label for="description" class="block text-sm font-medium text-gray-700">Description</label>
                         <textarea
                             id="description"
                             v-model="form.description"
@@ -57,33 +72,45 @@ const submit = () => {
                         <p v-if="form.errors.description" class="mt-1 text-sm text-red-600">{{ form.errors.description }}</p>
                     </div>
 
-                    <div v-if="priorities && priorities.length > 0">
-                        <label for="priority_id" class="block text-sm font-medium text-gray-700">Priority Level</label>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div v-if="departments.length > 0">
+                            <label for="department_id" class="block text-sm font-medium text-gray-700">Department</label>
+                            <select
+                                id="department_id"
+                                v-model="form.department_id"
+                                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm"
+                            >
+                                <option value="">— None (Global) —</option>
+                                <option v-for="d in departments" :key="d.id" :value="d.id">{{ d.name }}</option>
+                            </select>
+                            <p v-if="form.errors.department_id" class="mt-1 text-sm text-red-600">{{ form.errors.department_id }}</p>
+                        </div>
+                        <div v-if="categories.length > 0">
+                            <label for="category_id" class="block text-sm font-medium text-gray-700">Category</label>
+                            <select
+                                id="category_id"
+                                v-model="form.category_id"
+                                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm"
+                            >
+                                <option value="">— None —</option>
+                                <option v-for="c in categories" :key="c.id" :value="c.id">{{ c.title ?? c.name }}</option>
+                            </select>
+                            <p v-if="form.errors.category_id" class="mt-1 text-sm text-red-600">{{ form.errors.category_id }}</p>
+                        </div>
+                    </div>
+
+                    <div v-if="priorities.length > 0">
+                        <label for="priority" class="block text-sm font-medium text-gray-700">Priority Level</label>
                         <select
-                            id="priority_id"
-                            v-model="form.priority_id"
+                            id="priority"
+                            v-model="form.priority"
                             required
                             class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm"
                         >
                             <option value="" disabled>Select a priority level</option>
-                            <option v-for="p in priorities" :key="p.id" :value="p.id">{{ p.name }}</option>
+                            <option v-for="p in priorities" :key="p.id" :value="p.name.toLowerCase()">{{ p.name }}</option>
                         </select>
-                        <p v-if="form.errors.priority_id" class="mt-1 text-sm text-red-600">{{ form.errors.priority_id }}</p>
-                    </div>
-                    
-                    <!-- Fallback if priorities prop is empty -->
-                    <div v-else>
-                        <label for="priority_fallback" class="block text-sm font-medium text-gray-700">Priority Level (ID)</label>
-                        <input
-                            id="priority_fallback"
-                            v-model="form.priority_id"
-                            type="number"
-                            required
-                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm"
-                            placeholder="Enter Priority ID (e.g., 1 for Low, 2 for Medium)"
-                        />
-                         <p v-if="form.errors.priority_id" class="mt-1 text-sm text-red-600">{{ form.errors.priority_id }}</p>
-                         <p class="mt-1 text-xs text-gray-500">Priorities not loaded from backend. Entering ID manually.</p>
+                        <p v-if="form.errors.priority" class="mt-1 text-sm text-red-600">{{ form.errors.priority }}</p>
                     </div>
 
                     <div class="flex items-center gap-4 pt-4 border-t border-gray-100">

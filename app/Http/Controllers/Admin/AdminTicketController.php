@@ -162,7 +162,14 @@ class AdminTicketController extends Controller
     public function update(Request $request, int $id)
     {
         $ticket = Ticket::findOrFail($id);
-        $assignableIds = $this->getAssignableUserIds($ticket->department_id);
+
+        // Resolve the effective department FIRST — it may be changing in this same request.
+        // We must validate assigned_to against the *new* department, not the old one.
+        $effectiveDepartmentId = $request->filled('department_id')
+            ? (int) $request->input('department_id')
+            : $ticket->department_id;
+
+        $assignableIds = $this->getAssignableUserIds($effectiveDepartmentId);
 
         $validated = $request->validate([
             'assigned_to'   => ['nullable', 'integer', Rule::in($assignableIds)],
@@ -376,11 +383,13 @@ class AdminTicketController extends Controller
 
         return $query->orderBy('users.first_name')
             ->orderBy('users.last_name')
+            ->distinct()
             ->get(['users.id', 'users.first_name', 'users.last_name'])
             ->map(fn ($u) => [
                 'id'   => $u->id,
                 'name' => trim("{$u->first_name} {$u->last_name}") ?: "User #{$u->id}",
             ])
+            ->unique('id')
             ->values()
             ->all();
     }
@@ -397,14 +406,21 @@ class AdminTicketController extends Controller
                   ->where('user_departments.department_id', $departmentId);
         }
 
-        return $query->pluck('users.id')->all();
+        return $query->distinct()->pluck('users.id')->unique()->values()->all();
     }
 
     /**
      * Pick a user for auto-assign: the assignable user with the fewest open tickets (round-robin style).
+     * Returns null if no department is specified — we never auto-assign across departments.
      */
     protected function pickAutoAssignUserId(?int $departmentId = null): ?int
     {
+        // Never auto-assign if no department is given — we'd be picking from ALL agents globally
+        // which would incorrectly assign billing agents to technical support tickets, etc.
+        if ($departmentId === null) {
+            return null;
+        }
+
         $openStatusId = DB::table('ticket_statuses')->where('name', 'Open')->value('id');
         if (!$openStatusId) {
             return null;
@@ -534,7 +550,7 @@ class AdminTicketController extends Controller
     /**
      * Find SLA policy: department-specific first, then global (department_id null).
      */
-    private function findSlaPolicy(int $priorityId, ?int $departmentId): ?object
+    protected function findSlaPolicy(int $priorityId, ?int $departmentId): ?object
     {
         if ($departmentId) {
             $sla = DB::table('sla_policies')

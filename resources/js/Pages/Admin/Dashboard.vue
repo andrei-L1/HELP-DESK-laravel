@@ -27,13 +27,11 @@ const viewAllTickets = () => {
 };
 
 const createTicket = () => {
-    // Navigate to create ticket page when route is created
-    alert('Create ticket page coming soon!');
+    router.visit(route('admin.tickets.create'));
 };
 
 const addUser = () => {
-    // Navigate to add user page when route is created
-    alert('Add user page coming soon!');
+    router.visit(route('admin.users.create'));
 };
 
 const viewReports = () => {
