@@ -527,11 +527,21 @@ const bulkDeactivate = () => {
                         v-for="(user, index) in users.data"
                         :key="user.id"
                         class="flex flex-col lg:flex-row lg:items-center justify-between py-6 px-8 hover:bg-slate-50/50 transition-all cursor-pointer group relative"
-                        :class="[selectedUsers.includes(user.id) ? 'bg-slate-50/80' : '', `stagger-${Math.min(index + 5, 5)}`]"
+                        :class="[selectedUsers.includes(user.id) ? 'bg-slate-50/80 text-slate-900 shadow-sm' : '', `stagger-${Math.min(index + 5, 5)}`]"
                         @click="viewUser(user.id)"
                     >
                         <!-- Selection Indicator -->
                         <div class="absolute left-0 top-0 bottom-0 w-1 bg-slate-900 scale-y-0 group-hover:scale-y-100 transition-transform origin-center"></div>
+
+                        <!-- Selection Checkbox -->
+                        <div class="relative z-10 flex-shrink-0 mr-4" @click.stop>
+                            <input 
+                                type="checkbox" 
+                                :checked="selectedUsers.includes(user.id)" 
+                                @change="toggleUserSelection(user.id)" 
+                                class="h-5 w-5 rounded-lg border-slate-300 text-slate-900 focus:ring-slate-900/20 cursor-pointer" 
+                            />
+                        </div>
 
                         <!-- User Profile Card -->
                         <div class="flex items-center gap-6 min-w-0 flex-1">

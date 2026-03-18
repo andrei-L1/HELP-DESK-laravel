@@ -292,6 +292,48 @@ class UserManagementController extends Controller
     }
 
     /**
+     * Bulk remove the specified users.
+     */
+    public function bulkDestroy(Request $request)
+    {
+        $ids = $request->input('ids', []);
+        
+        if (empty($ids)) {
+            return redirect()->back()->with('error', 'No users selected.');
+        }
+
+        // Prevent deleting yourself
+        if (in_array(Auth::id(), $ids)) {
+            return redirect()->back()->with('error', 'You cannot delete your own account.');
+        }
+
+        \App\Models\User::whereIn('id', $ids)->delete();
+
+        return redirect()->back()->with('success', count($ids) . ' users deleted successfully.');
+    }
+
+    /**
+     * Bulk update the specified users.
+     */
+    public function bulkUpdate(Request $request)
+    {
+        $ids = $request->input('ids', []);
+        $status = $request->input('status');
+
+        if (empty($ids)) {
+            return redirect()->back()->with('error', 'No users selected.');
+        }
+
+        $query = \App\Models\User::whereIn('id', $ids);
+
+        if ($status !== null) {
+            $query->update(['is_active' => $status === 'active']);
+        }
+
+        return redirect()->back()->with('success', count($ids) . ' users updated successfully.');
+    }
+
+    /**
      * Calculate average response time for user's tickets.
      */
     private function calculateAvgResponseTime($userId)

@@ -78,6 +78,12 @@ Route::middleware('role:admin')
         Route::delete('/users/{user}', [UserManagementController::class, 'destroy'])
             ->name('users.destroy');
 
+        // Bulk operations
+        Route::delete('/users-bulk/destroy', [UserManagementController::class, 'bulkDestroy'])
+            ->name('users.bulk-destroy');
+        Route::post('/users-bulk/update', [UserManagementController::class, 'bulkUpdate'])
+            ->name('users.bulk-update');
+
         // Additional user management routes
         Route::put('/users/{user}/password', [UserManagementController::class, 'updatePassword'])
             ->name('users.password.update');
