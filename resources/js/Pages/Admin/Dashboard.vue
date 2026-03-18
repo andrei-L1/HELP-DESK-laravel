@@ -53,14 +53,6 @@ const viewTicket = (ticketId) => {
             </div>
         </template>
 
-        <template #breadcrumb>
-            <div class="flex items-center gap-2 text-[11px] font-bold text-slate-500">
-                <span class="hover:text-slate-700 cursor-pointer">Admin</span>
-                <svg class="h-2 w-2 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7" /></svg>
-                <span class="text-slate-900">Overview</span>
-            </div>
-        </template>
-
         <div class="max-w-[1400px] mx-auto space-y-12 pb-20 pt-4">
             <!-- New Minimalist Welcome -->
             <div class="flex flex-col md:flex-row md:items-end justify-between gap-6 px-2 stagger-1">
