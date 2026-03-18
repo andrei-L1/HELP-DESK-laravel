@@ -44,6 +44,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
     require __DIR__ . '/admin.php';
     require __DIR__ . '/manager.php';
     require __DIR__ . '/agent.php';
+
+    // Pusher Test Routes
+    Route::get('/pusher-test', fn () => Inertia::render('PusherTest'))
+        ->name('pusher.test');
+    Route::post('/pusher-send', function (\Illuminate\Http\Request $request) {
+        broadcast(new \App\Events\MyEvent($request->input('message')));
+        return response()->json(['status' => 'success']);
+    })->name('pusher.send');
 });
 
 require __DIR__ . '/auth.php';
