@@ -1,6 +1,7 @@
 <script setup>
 import AdminNavigation from '@/Components/AdminNavigation.vue';
 import { Head, Link, router } from '@inertiajs/vue3';
+import TrendCard from '@/Components/TrendCard.vue';
 
 const props = defineProps({
     stats: {
@@ -79,33 +80,42 @@ const viewTicket = (ticketId) => {
                 </div>
             </div>
 
-            <!-- Clean Floating Stats -->
+            <!-- Clean Floating Stats / Upgraded with Trends -->
             <div class="grid gap-8 md:grid-cols-2 lg:grid-cols-4 px-1 stagger-2">
-                <button v-for="stat in [
-                    { label: 'Total Tickets', value: stats.total_tickets, sub: 'Total volume', color: 'slate', action: viewAllTickets },
-                    { label: 'Open Tickets', value: stats.open_tickets, sub: 'Needs attention', color: 'rose', action: viewAllTickets },
-                    { label: 'Active Users', value: stats.active_users, sub: 'Total members', color: 'emerald', action: addUser },
-                    { label: 'Departments', value: stats.total_departments, sub: 'Active groups', color: 'violet', action: null }
-                ]" :key="stat.label" 
-                @click="stat.action?.()"
-                class="group relative py-2 text-left transition-all active:scale-[0.98] hover-tilt"
-                :class="{ 'cursor-pointer': stat.action }">
-                    <div class="flex flex-col">
-                        <p class="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-3">{{ stat.label }}</p>
-                        <div class="flex items-baseline gap-2">
-                            <span class="text-4xl font-bold text-slate-900 tracking-tighter">{{ stat.value }}</span>
-                            <span class="text-xs font-bold text-slate-500">{{ stat.sub }}</span>
-                        </div>
-                        <div class="mt-4 h-1.5 w-12 rounded-full overflow-hidden bg-slate-100">
-                             <div :class="{
-                                'bg-slate-900': stat.color === 'slate',
-                                'bg-rose-500': stat.color === 'rose',
-                                'bg-emerald-500': stat.color === 'emerald',
-                                'bg-violet-500': stat.color === 'violet'
-                             }" class="h-full w-2/3 rounded-full group-hover:w-full transition-all duration-700"></div>
-                        </div>
-                    </div>
-                </button>
+                <TrendCard 
+                    label="Total Tickets" 
+                    :value="stats.total_tickets" 
+                    :trend="[20, 35, 30, 45, 40, 60, 55]" 
+                    percentage="+18%"
+                    color="slate"
+                    @click="viewAllTickets"
+                    class="cursor-pointer"
+                />
+                <TrendCard 
+                    label="Open Tickets" 
+                    :value="stats.open_tickets" 
+                    :trend="[10, 15, 8, 12, 20, 14, 18]" 
+                    percentage="+4%"
+                    color="rose"
+                    @click="viewAllTickets"
+                    class="cursor-pointer"
+                />
+                <TrendCard 
+                    label="Active Members" 
+                    :value="stats.active_users" 
+                    :trend="[50, 52, 55, 54, 58, 60, 62]" 
+                    percentage="+12%"
+                    color="emerald"
+                    @click="addUser"
+                    class="cursor-pointer"
+                />
+                <TrendCard 
+                    label="Departments" 
+                    :value="stats.total_departments" 
+                    :trend="[8, 8, 9, 9, 9, 10, 10]" 
+                    percentage="+2%"
+                    color="violet"
+                />
             </div>
 
             <!-- Balanced Content Area -->

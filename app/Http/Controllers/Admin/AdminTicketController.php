@@ -575,6 +575,8 @@ class AdminTicketController extends Controller
             'closed'    => $statusCounts[$statusMap['Closed'] ?? 0] ?? 0,
             'urgent'    => $priorityCounts[$priorityMap['Urgent'] ?? 0] ?? 0,
             'high'      => $priorityCounts[$priorityMap['High'] ?? 0] ?? 0,
+            'medium'    => $priorityCounts[$priorityMap['Medium'] ?? 0] ?? 0,
+            'low'       => $priorityCounts[$priorityMap['Low'] ?? 0] ?? 0,
         ];
 
         // Retrieve dropdown filter maps

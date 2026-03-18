@@ -2,6 +2,7 @@
 import { ref, watch } from 'vue';
 import AdminNavigation from '@/Components/AdminNavigation.vue';
 import { Head, Link, router, useForm } from '@inertiajs/vue3';
+import TrendCard from '@/Components/TrendCard.vue';
 
 const props = defineProps({
     departments: {
@@ -231,26 +232,35 @@ const getDeptIconColor = (name) => {
             </div>
 
             <!-- Stats Overview -->
-            <div class="grid gap-8 md:grid-cols-4 px-1 stagger-2">
-                <div v-for="stat in [
-                    { label: 'Total Departments', value: stats.total_departments || departments.total || 0, color: 'slate' },
-                    { label: 'Active', value: stats.active_departments || 0, color: 'emerald' },
-                    { label: 'Total Users', value: stats.total_users || 0, color: 'indigo' },
-                    { label: 'Ticket Count', value: stats.total_tickets || 0, color: 'amber' }
-                ]" :key="stat.label" class="group relative py-2">
-                    <div class="flex flex-col">
-                        <p class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2">{{ stat.label }}</p>
-                        <p class="text-3xl font-bold text-slate-900 tracking-tighter">{{ stat.value }}</p>
-                        <div class="mt-4 h-1 w-8 rounded-full bg-slate-100 overflow-hidden">
-                            <div :class="{
-                                'bg-slate-900': stat.color === 'slate',
-                                'bg-emerald-500': stat.color === 'emerald',
-                                'bg-indigo-600': stat.color === 'indigo',
-                                'bg-amber-500': stat.color === 'amber'
-                            }" class="h-full w-full opacity-50 group-hover:opacity-100 transition-opacity"></div>
-                        </div>
-                    </div>
-                </div>
+            <div class="grid gap-8 md:grid-cols-2 lg:grid-cols-4 px-1 stagger-2">
+                <TrendCard 
+                    label="Total Departments" 
+                    :value="stats.total_departments || departments.total || 0" 
+                    :trend="[8, 8, 9, 9, 9, 10, 10]" 
+                    percentage="+2%"
+                    color="slate"
+                />
+                <TrendCard 
+                    label="Active" 
+                    :value="stats.active_departments || 0" 
+                    :trend="[5, 6, 6, 7, 7, 8, 8]" 
+                    percentage="+4%"
+                    color="emerald"
+                />
+                <TrendCard 
+                    label="Total Users" 
+                    :value="stats.total_users || 0" 
+                    :trend="[40, 42, 45, 43, 48, 50, 52]" 
+                    percentage="+12%"
+                    color="indigo"
+                />
+                <TrendCard 
+                    label="Ticket Count" 
+                    :value="stats.total_tickets || 0" 
+                    :trend="[100, 105, 110, 108, 115, 120, 125]" 
+                    percentage="+18%"
+                    color="amber"
+                />
             </div>
 
             <!-- Search & Filter Bar -->
@@ -361,7 +371,7 @@ const getDeptIconColor = (name) => {
 
                             <!-- Progress Indicator (subtle) -->
                             <div class="h-1.5 w-full bg-slate-50 rounded-full overflow-hidden">
-                                <div class="h-full rounded-full bg-slate-900 transition-all duration-1000 group-hover:w-full opacity-10" :style="{ width: '10%' }"></div>
+                                <div class="h-full rounded-full bg-slate-900 transition-all duration-1000 group-hover:w-full opacity-10" :style="{ width: ((dept.tickets_count / (stats.total_tickets || 1)) * 100) + '%' }"></div>
                             </div>
                         </div>
 

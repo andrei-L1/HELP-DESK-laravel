@@ -5,6 +5,8 @@ import ApplicationLogo from '@/Components/ApplicationLogo.vue';
 import Dropdown from '@/Components/Dropdown.vue';
 import DropdownLink from '@/Components/DropdownLink.vue';
 import ToastNotification from '@/Components/ToastNotification.vue';
+import NotificationDropdown from '@/Components/NotificationDropdown.vue';
+import CommandPalette from '@/Components/CommandPalette.vue';
 
 const page = usePage();
 const showingMobileMenu = ref(false);
@@ -202,6 +204,7 @@ const showTooltip = ref(null);
 <template>
     <div class="flex h-screen bg-[#F8FAFC]">
         <ToastNotification />
+        <CommandPalette />
         
         <!-- Desktop Sidebar -->
         <aside 
@@ -226,11 +229,15 @@ const showTooltip = ref(null);
                     <input
                         v-model="searchQuery"
                         type="text"
-                        placeholder="Quick search..."
+                        placeholder="Search... (Ctrl+K)"
                         class="w-full rounded-xl border-none bg-slate-100/80 px-4 py-2.5 pl-10 text-sm placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-slate-900/5 transition-all duration-300"
                         @focus="isSearchFocused = true"
                         @blur="isSearchFocused = false"
                     />
+                    <div class="absolute right-3.5 top-2.5 hidden lg:flex items-center gap-1 opacity-40 group-focus-within:opacity-0 transition-opacity">
+                        <span class="px-1.5 py-0.5 rounded-lg border border-slate-300 text-[9px] font-black text-slate-500 uppercase">CMD</span>
+                        <span class="px-1.5 py-0.5 rounded-lg border border-slate-300 text-[9px] font-black text-slate-500 uppercase">K</span>
+                    </div>
                     <svg
                         class="absolute left-3.5 top-3 h-4 w-4 text-slate-400 transition-colors duration-300"
                         :class="{ 'text-slate-900': isSearchFocused }"
@@ -400,11 +407,7 @@ const showTooltip = ref(null);
 
                     <div class="flex items-center gap-4">
                         <div class="hidden sm:flex items-center gap-1 bg-slate-100 p-1 rounded-xl">
-                            <button class="p-2 text-slate-500 hover:text-slate-900 hover:bg-white rounded-lg transition-all duration-300 shadow-none hover:shadow-sm">
-                                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-                                </svg>
-                            </button>
+                            <NotificationDropdown />
                             <button class="p-2 text-slate-500 hover:text-slate-900 hover:bg-white rounded-lg transition-all duration-300 shadow-none hover:shadow-sm">
                                 <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />

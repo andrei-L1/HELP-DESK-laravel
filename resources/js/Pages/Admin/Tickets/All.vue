@@ -2,6 +2,7 @@
 import { ref, computed } from 'vue';
 import AdminNavigation from '@/Components/AdminNavigation.vue';
 import { Head, Link, router, useForm } from '@inertiajs/vue3';
+import TrendCard from '@/Components/TrendCard.vue';
 
 const props = defineProps({
     tickets: {
@@ -321,27 +322,42 @@ const bulkUpdateStatus = (statusId) => {
                 </div>
             </div>
 
-            <!-- Stats Overview -->
-            <div class="grid gap-8 md:grid-cols-3 lg:grid-cols-4 px-1 stagger-2">
-                <div v-for="stat in [
-                    { label: 'Total Tickets', value: stats?.total || 0, color: 'slate' },
-                    { label: 'Urgent Cases', value: stats?.urgent || 0, color: 'rose' },
-                    { label: 'Pending Sync', value: stats?.pending || 0, color: 'amber' },
-                    { label: 'Resolution Rate', value: (Math.round(stats?.total > 0 ? (stats?.resolved / stats?.total * 100) : 0)) + '%', color: 'emerald' }
-                ]" :key="stat.label" class="group relative py-2">
-                    <div class="flex flex-col">
-                        <p class="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-2">{{ stat.label }}</p>
-                        <p class="text-3xl font-bold text-slate-900 tracking-tighter">{{ stat.value }}</p>
-                        <div class="mt-4 h-1 w-8 rounded-full bg-slate-100 overflow-hidden">
-                            <div :class="{
-                                'bg-slate-900': stat.color === 'slate',
-                                'bg-emerald-500': stat.color === 'emerald',
-                                'bg-rose-500': stat.color === 'rose',
-                                'bg-amber-500': stat.color === 'amber'
-                            }" class="h-full w-full opacity-50 group-hover:opacity-100 transition-opacity"></div>
-                        </div>
-                    </div>
-                </div>
+            <!-- Stats Overview / Upgraded with Trends -->
+            <div class="grid gap-8 md:grid-cols-2 lg:grid-cols-4 px-1 stagger-2">
+                <TrendCard 
+                    label="Total Tickets" 
+                    :value="stats?.total || 0" 
+                    :trend="[80, 85, 90, 88, 95, 100, 105]" 
+                    percentage="+12%"
+                    color="slate"
+                />
+                <TrendCard 
+                    label="Urgent Cases" 
+                    :value="stats?.urgent || 0" 
+                    :trend="[10, 12, 8, 15, 12, 10, 14]" 
+                    percentage="+5%"
+                    color="rose"
+                    @click="setQuickFilter(null, 'Urgent')"
+                    class="cursor-pointer"
+                />
+                <TrendCard 
+                    label="Pending Sync" 
+                    :value="stats?.pending || 0" 
+                    :trend="[20, 18, 22, 15, 12, 10, 8]" 
+                    percentage="-14%"
+                    color="amber"
+                    @click="setQuickFilter('Pending', null)"
+                    class="cursor-pointer"
+                />
+                <TrendCard 
+                    label="Resolution Rate" 
+                    :value="(Math.round(stats?.total > 0 ? (stats?.resolved / stats?.total * 100) : 0)) + '%'" 
+                    :trend="[40, 45, 50, 55, 60, 65, 70]" 
+                    percentage="+18%"
+                    color="emerald"
+                    @click="setQuickFilter('Resolved', null)"
+                    class="cursor-pointer"
+                />
             </div>
 
             <!-- Smart Filter Bar -->

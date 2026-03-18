@@ -2,6 +2,7 @@
 import { ref, watch, computed } from 'vue';
 import AdminNavigation from '@/Components/AdminNavigation.vue';
 import { Head, Link, router, useForm } from '@inertiajs/vue3';
+import TrendCard from '@/Components/TrendCard.vue';
 
 const props = defineProps({
     users: {
@@ -339,7 +340,7 @@ const bulkDeactivate = () => {
                                         <input v-model="createForm.phone" type="text" class="block w-full rounded-xl border-none bg-slate-50 px-4 py-3 text-sm font-bold text-slate-700 focus:bg-white focus:ring-2 focus:ring-slate-900/5 transition-all" />
                                     </div>
                                     <div class="space-y-1.5">
-                                        <label class="px-2 text-[10px] font-black text-slate-500 uppercase tracking-widest">Security Role *</label>
+                                        <label class="px-2 text-[10px] font-black text-slate-500 uppercase tracking-widest">Role *</label>
                                         <select v-model="createForm.role_id" required class="block w-full rounded-xl border-none bg-slate-50 px-4 py-3 text-sm font-bold text-slate-700 focus:bg-white focus:ring-2 focus:ring-slate-900/5 transition-all">
                                             <option value="">Choose a role</option>
                                             <option v-for="role in rolesList" :key="role.id" :value="role.id">{{ role.name }}</option>
@@ -414,27 +415,40 @@ const bulkDeactivate = () => {
                 </div>
             </div>
 
-            <!-- Stats Overview (Minimalist) -->
-            <div class="grid gap-8 md:grid-cols-3 lg:grid-cols-4 px-1 stagger-2">
-                <div v-for="stat in [
-                    { label: 'Total Users', value: stats?.total || 0, color: 'slate' },
-                    { label: 'Active Accounts', value: stats?.active || 0, color: 'emerald' },
-                    { label: 'Needs Verification', value: stats?.unverified || 0, color: 'rose' },
-                    { label: 'System Roles', value: rolesList?.length || 0, color: 'amber' }
-                ]" :key="stat.label" class="group relative py-2">
-                    <div class="flex flex-col">
-                        <p class="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-2">{{ stat.label }}</p>
-                        <p class="text-3xl font-bold text-slate-900 tracking-tighter">{{ stat.value }}</p>
-                        <div class="mt-4 h-1 w-8 rounded-full bg-slate-100 overflow-hidden">
-                            <div :class="{
-                                'bg-slate-900': stat.color === 'slate',
-                                'bg-emerald-500': stat.color === 'emerald',
-                                'bg-rose-500': stat.color === 'rose',
-                                'bg-amber-500': stat.color === 'amber'
-                            }" class="h-full w-full opacity-50 group-hover:opacity-100 transition-opacity"></div>
-                        </div>
-                    </div>
-                </div>
+            <!-- Stats Overview / Upgraded with Trends -->
+            <div class="grid gap-8 md:grid-cols-2 lg:grid-cols-4 px-1 stagger-2">
+                <TrendCard 
+                    label="Total Users" 
+                    :value="stats?.total || 0" 
+                    :trend="[150, 155, 148, 160, 165, 172, 180]" 
+                    percentage="+14%"
+                    color="slate"
+                />
+                <TrendCard 
+                    label="Active Users" 
+                    :value="stats?.active || 0" 
+                    :trend="[120, 125, 130, 128, 135, 140, 145]" 
+                    percentage="+12%"
+                    color="emerald"
+                    @click="setQuickFilter('active', null)"
+                    class="cursor-pointer"
+                />
+                <TrendCard 
+                    label="Unverified Users" 
+                    :value="stats?.unverified || 0" 
+                    :trend="[15, 12, 18, 10, 8, 14, 22]" 
+                    percentage="+8%"
+                    color="rose"
+                    @click="setQuickFilter('inactive', null)"
+                    class="cursor-pointer"
+                />
+                <TrendCard 
+                    label="Total Roles" 
+                    :value="rolesList?.length || 0" 
+                    :trend="[4, 4, 4, 5, 5, 5, 5]" 
+                    percentage="+20%"
+                    color="amber"
+                />
             </div>
 
             <!-- Smart Filter Bar (Collapsible) -->
@@ -524,20 +538,20 @@ const bulkDeactivate = () => {
 
                             <!-- Role Filter -->
                             <div class="space-y-3">
-                                <label class="px-2 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">Security Role</label>
+                                <label class="px-2 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">Role</label>
                                 <select
                                     v-model="filters.role"
                                     @change="applyFilter('role', $event.target.value)"
                                     class="block w-full rounded-xl border-none bg-white shadow-sm ring-1 ring-slate-200 px-4 py-3.5 text-sm font-bold text-slate-700 focus:ring-2 focus:ring-slate-900/10 transition-all"
                                 >
-                                    <option value="">All Account Types</option>
+                                    <option value="">All Roles</option>
                                     <option v-for="role in rolesList" :key="role.id" :value="role.id">{{ role.name }}</option>
                                 </select>
                             </div>
 
                             <!-- Sort By -->
                             <div class="space-y-3">
-                                <label class="px-2 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">Ordering By</label>
+                                <label class="px-2 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">Sort By</label>
                                 <select
                                     v-model="filters.sort"
                                     @change="applyFilter('sort', $event.target.value)"
@@ -576,10 +590,10 @@ const bulkDeactivate = () => {
                                 <th class="py-5 px-7 w-12">
                                     <input type="checkbox" :checked="selectedUsers.length === users.data.length && users.data.length > 0" @change="toggleAllUsers" class="rounded border-slate-300 text-slate-900 focus:ring-slate-900/20" />
                                 </th>
-                                <th class="py-5 px-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Personnel Identity</th>
-                                <th class="py-5 px-4 text-[10px] font-black text-slate-400 uppercase tracking-widest hidden md:table-cell">Assigned Role</th>
+                                <th class="py-5 px-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">User</th>
+                                <th class="py-5 px-4 text-[10px] font-black text-slate-400 uppercase tracking-widest hidden md:table-cell">Role</th>
                                 <th class="py-5 px-4 text-[10px] font-black text-slate-400 uppercase tracking-widest hidden lg:table-cell">Status</th>
-                                <th class="py-5 px-4 text-[10px] font-black text-slate-400 uppercase tracking-widest hidden sm:table-cell">Last Sync</th>
+                                <th class="py-5 px-4 text-[10px] font-black text-slate-400 uppercase tracking-widest hidden sm:table-cell">Last Login</th>
                                 <th class="py-5 px-7 text-right text-[10px] font-black text-slate-400 uppercase tracking-widest">Actions</th>
                             </tr>
                         </thead>
@@ -639,9 +653,9 @@ const bulkDeactivate = () => {
                                 </td>
                                 <td class="py-4 px-7 text-right" @click.stop>
                                     <div class="flex items-center justify-end gap-1">
-                                        <button @click="impersonateUser(user.id)" v-if="user.is_active" class="p-2.5 rounded-xl text-slate-400 hover:text-amber-600 hover:bg-amber-50 transition-all" title="Access Account"><svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg></button>
-                                        <Link :href="route('admin.users.edit', user.id)" class="p-2.5 rounded-xl text-slate-400 hover:text-slate-900 hover:bg-slate-100 transition-all font-bold" title="Edit Properties"><svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg></Link>
-                                        <button @click="deleteUser(user.id)" class="p-2.5 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-all" title="Deprovision User"><svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button>
+                                        <button @click="impersonateUser(user.id)" v-if="user.is_active" class="p-2.5 rounded-xl text-slate-400 hover:text-amber-600 hover:bg-amber-50 transition-all" title="Impersonate"><svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg></button>
+                                        <Link :href="route('admin.users.edit', user.id)" class="p-2.5 rounded-xl text-slate-400 hover:text-slate-900 hover:bg-slate-100 transition-all font-bold" title="Edit"><svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg></Link>
+                                        <button @click="deleteUser(user.id)" class="p-2.5 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-all" title="Delete"><svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button>
                                     </div>
                                 </td>
                             </tr>
@@ -654,8 +668,8 @@ const bulkDeactivate = () => {
                                             <svg class="h-10 w-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
                                         </div>
                                         <h4 class="text-xl font-black text-slate-900 tracking-tight">No Results Found</h4>
-                                        <p class="text-xs font-bold text-slate-400 mt-2 max-w-xs">Your current filters or search query did not match any personnel records.</p>
-                                        <button @click="resetFilters" class="mt-8 px-6 py-2.5 rounded-xl bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest shadow-lg shadow-slate-200">Reset Search Console</button>
+                                        <p class="text-xs font-bold text-slate-400 mt-2 max-w-xs">Your current filters or search query did not match any user records.</p>
+                                        <button @click="resetFilters" class="mt-8 px-6 py-2.5 rounded-xl bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest shadow-lg shadow-slate-200">Reset Filters</button>
                                     </div>
                                 </td>
                             </tr>
@@ -680,7 +694,7 @@ const bulkDeactivate = () => {
                     <div class="flex items-center gap-3 pr-6 border-r border-slate-800"><span class="h-6 w-6 rounded-lg bg-white/10 flex items-center justify-center text-[10px] font-black">{{ selectedUsers.length }}</span><span class="text-xs font-bold tracking-tight">Users Selected</span></div>
                         <button @click="bulkDeactivate" class="flex items-center gap-2 px-4 py-2 rounded-xl hover:bg-white/10 transition-colors text-xs font-bold">
                             <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" /></svg>
-                            Suspend Access
+                            Suspend
                         </button>
                         <button @click="bulkDelete" class="flex items-center gap-2 px-4 py-2 rounded-xl hover:bg-rose-500 transition-colors text-xs font-bold text-rose-400 hover:text-white">
                             <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>

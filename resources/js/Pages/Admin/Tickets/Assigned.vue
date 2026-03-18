@@ -2,6 +2,7 @@
 import { ref, computed } from 'vue';
 import AdminNavigation from '@/Components/AdminNavigation.vue';
 import { Head, Link, router, useForm } from '@inertiajs/vue3';
+import TrendCard from '@/Components/TrendCard.vue';
 
 const props = defineProps({
     tickets: {
@@ -305,27 +306,36 @@ const bulkUpdateStatus = (statusId) => {
                 </div>
             </div>
 
-            <!-- Stats Overview -->
-            <div class="grid gap-8 md:grid-cols-3 lg:grid-cols-4 px-1 stagger-2">
-                <div v-for="stat in [
-                    { label: 'My Active Cases', value: tickets.total || 0, color: 'blue' },
-                    { label: 'System Urgent', value: stats?.urgent || 0, color: 'rose' },
-                    { label: 'System Open', value: stats?.open || 0, color: 'orange' },
-                    { label: 'Total Volume', value: stats?.total || 0, color: 'slate' }
-                ]" :key="stat.label" class="group relative py-2">
-                    <div class="flex flex-col">
-                        <p class="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-2">{{ stat.label }}</p>
-                        <p class="text-3xl font-bold text-slate-900 tracking-tighter">{{ stat.value }}</p>
-                        <div class="mt-4 h-1 w-8 rounded-full bg-slate-100 overflow-hidden">
-                            <div :class="{
-                                'bg-slate-900': stat.color === 'slate',
-                                'bg-blue-500': stat.color === 'blue',
-                                'bg-rose-500': stat.color === 'rose',
-                                'bg-orange-500': stat.color === 'orange'
-                            }" class="h-full w-full opacity-50 group-hover:opacity-100 transition-opacity"></div>
-                        </div>
-                    </div>
-                </div>
+            <!-- Upgraded Stats with Trends -->
+            <div class="grid gap-8 md:grid-cols-2 lg:grid-cols-4 px-1 stagger-2">
+                <TrendCard 
+                    label="My Active Cases" 
+                    :value="tickets.total || 0" 
+                    :trend="[12, 14, 10, 15, 12, 11, 13]" 
+                    percentage="+8%"
+                    color="blue"
+                />
+                <TrendCard 
+                    label="System Urgent" 
+                    :value="stats?.urgent || 0" 
+                    :trend="[5, 8, 4, 10, 7, 6, 9]" 
+                    percentage="+12%"
+                    color="rose"
+                />
+                <TrendCard 
+                    label="System Open" 
+                    :value="stats?.open || 0" 
+                    :trend="[40, 45, 38, 50, 42, 48, 44]" 
+                    percentage="+4%"
+                    color="orange"
+                />
+                <TrendCard 
+                    label="Total Volume" 
+                    :value="stats?.total || 0" 
+                    :trend="[100, 105, 110, 108, 115, 120, 125]" 
+                    percentage="+18%"
+                    color="slate"
+                />
             </div>
 
             <!-- Smart Filter Bar -->

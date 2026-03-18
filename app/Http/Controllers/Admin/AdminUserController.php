@@ -81,6 +81,10 @@ class AdminUserController extends Controller
             'verified'  => \App\Models\User::where('email_verified', true)->count(),
             'unverified'=> \App\Models\User::where('email_verified', false)->count(),
             'with_avatar' => \App\Models\User::whereNotNull('avatar_url')->count(),
+            'roles_distribution' => \App\Models\User::select('role_id', DB::raw('count(*) as count'))
+                ->groupBy('role_id')
+                ->pluck('count', 'role_id')
+                ->toArray(),
         ];
 
         // Possible filters for dropdowns

@@ -90,6 +90,7 @@ class DepartmentManagementController extends Controller
             'total_users' => DB::table('user_departments')->distinct('user_id')->count('user_id'),
             'total_assignments' => DB::table('user_departments')->count(),
             'departments_with_managers' => DB::table('departments')->whereNotNull('manager_id')->count(),
+            'total_tickets' => DB::table('tickets')->count(),
         ];
 
         return Inertia::render('Admin/Departments/Departments', [
