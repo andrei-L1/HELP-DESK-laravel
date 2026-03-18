@@ -205,15 +205,17 @@ class UserManagementController extends Controller
      */
     public function impersonate($id)
     {
-        session()->put('impersonate', [
-            'admin_id' => Auth::id(),
-        ]);
-
         $targetUser = \App\Models\User::with('role')->findOrFail($id);
 
         if ($targetUser->role->name === 'admin') {
             abort(403, 'Cannot impersonate another admin.');
         }
+
+        session()->put('impersonate', [
+            'admin_id' => Auth::id(),
+            'original_url' => url()->previous(),
+        ]);
+
         Auth::loginUsingId($id);
 
         $roleName = $targetUser->role?->name ?? 'user';
@@ -234,6 +236,7 @@ class UserManagementController extends Controller
     public function stopImpersonate()
     {
         $impersonate = session()->get('impersonate');
+        $redirectUrl = $impersonate['original_url'] ?? route('admin.users.index');
 
         if ($impersonate && isset($impersonate['admin_id'])) {
 
@@ -242,7 +245,7 @@ class UserManagementController extends Controller
             session()->forget('impersonate');
         }
 
-        return redirect()->route('admin.users.index');
+        return redirect($redirectUrl);
     }
 
     /**
