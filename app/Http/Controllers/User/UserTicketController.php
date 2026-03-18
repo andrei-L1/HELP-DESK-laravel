@@ -221,7 +221,8 @@ class UserTicketController extends Controller
 
         $ticket = Ticket::with([
             'status', 'priority', 'category', 'department',
-            'messages', 'attachments', 'activityLogs',
+            'messages' => fn ($q) => $q->where('is_internal', false),
+            'attachments', 'activityLogs',
         ])->where('created_by', $user->id)->findOrFail($id);
 
         // Load user names for messages / logs

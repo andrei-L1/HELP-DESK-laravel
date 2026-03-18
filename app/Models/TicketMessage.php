@@ -10,6 +10,15 @@ class TicketMessage extends Model
 {
     use SoftDeletes;
 
+    protected static function booted()
+    {
+        static::created(function ($message) {
+            // Eager load the user relation to ensure 'author' data in the broadcast event
+            $message->load('user');
+            broadcast(new \App\Events\TicketMessageSent($message));
+        });
+    }
+
     protected $fillable = ['ticket_id', 'user_id', 'is_internal', 'body'];
 
     protected $casts = [

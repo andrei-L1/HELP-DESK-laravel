@@ -1,7 +1,7 @@
 <script setup>
-import { ref } from 'vue';
+import { ref, onMounted, onUnmounted, watch } from 'vue';
 import AgentNavigation from '@/Components/AgentNavigation.vue';
-import { Head, Link, useForm, router } from '@inertiajs/vue3';
+import { Head, Link, useForm, router, usePage } from '@inertiajs/vue3';
 
 const props = defineProps({
     ticket: {
@@ -16,6 +16,43 @@ const props = defineProps({
         type: Array,
         default: () => [],
     },
+});
+
+const page = usePage();
+
+// Local reactive copy of messages for real-time updates
+const localMessages = ref([...(props.ticket.messages || [])]);
+
+// Sync when Inertia reloads props
+watch(() => props.ticket.messages, (newVal) => {
+    localMessages.value = [...(newVal || [])];
+}, { deep: true });
+
+onMounted(() => {
+    if (window.Echo) {
+        // Listen to public ticket channel
+        window.Echo.private(`ticket.${props.ticket.id}`)
+            .listen('.TicketMessageSent', (e) => {
+                if (!localMessages.value.find(m => m.id === e.messageData.id)) {
+                    localMessages.value.push(e.messageData);
+                }
+            });
+
+        // Listen to internal ticket channel
+        window.Echo.private(`ticket.${props.ticket.id}.internal`)
+            .listen('.TicketMessageSent', (e) => {
+                if (!localMessages.value.find(m => m.id === e.messageData.id)) {
+                    localMessages.value.push(e.messageData);
+                }
+            });
+    }
+});
+
+onUnmounted(() => {
+    if (window.Echo) {
+        window.Echo.leave(`ticket.${props.ticket.id}`);
+        window.Echo.leave(`ticket.${props.ticket.id}.internal`);
+    }
 });
 
 const attachmentForm = useForm({
@@ -191,18 +228,18 @@ const showActivity = ref(false);
                                 <h3 class="text-sm font-semibold text-gray-900">
                                     Conversation
                                     <span class="ml-1.5 inline-flex items-center justify-center h-5 w-5 rounded-full bg-blue-100 text-blue-700 text-xs font-bold">
-                                        {{ ticket.messages?.length || 0 }}
+                                        {{ localMessages.length }}
                                     </span>
                                 </h3>
                             </div>
 
                             <!-- Messages list -->
                             <div class="divide-y divide-gray-50">
-                                <div v-if="!ticket.messages || ticket.messages.length === 0" class="py-10 text-center text-sm text-gray-400">
+                                <div v-if="localMessages.length === 0" class="py-10 text-center text-sm text-gray-400">
                                     No replies yet. Start the conversation below.
                                 </div>
                                 <div
-                                    v-for="reply in ticket.messages"
+                                    v-for="reply in localMessages"
                                     :key="reply.id"
                                     class="px-6 py-4"
                                     :class="[

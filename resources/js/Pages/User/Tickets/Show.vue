@@ -1,6 +1,6 @@
 <script setup>
-import { ref } from 'vue';
-import { Head, Link, useForm } from '@inertiajs/vue3';
+import { ref, watch, onMounted, onUnmounted } from 'vue';
+import { Head, Link, useForm, usePage } from '@inertiajs/vue3';
 import UserNavigation from '@/Components/UserNavigation.vue';
 
 const props = defineProps({
@@ -8,6 +8,38 @@ const props = defineProps({
     messages: { type: Array, default: () => [] },
     attachments: { type: Array, default: () => [] },
     activity_logs: { type: Array, default: () => [] },
+});
+
+const page = usePage();
+
+// Local reactive copy of messages to allow real-time updates
+const localMessages = ref([...props.messages]);
+
+// Sync localMessages when Inertia updates props (e.g. after a manual reload or navigation)
+watch(() => props.messages, (newVal) => {
+    localMessages.value = [...newVal];
+}, { deep: true });
+
+onMounted(() => {
+    if (window.Echo) {
+        window.Echo.private(`ticket.${props.ticket.id}`)
+            .listen('.TicketMessageSent', (e) => {
+                // Check if message is already in the list (e.g. added by optimistic UI or Inertia reload)
+                if (!localMessages.value.find(m => m.id === e.messageData.id)) {
+                    // Decide if "is_mine" based on current user
+                    localMessages.value.push({
+                        ...e.messageData,
+                        is_mine: e.messageData.user_id === page.props.auth.user.id
+                    });
+                }
+            });
+    }
+});
+
+onUnmounted(() => {
+    if (window.Echo) {
+        window.Echo.leave(`ticket.${props.ticket.id}`);
+    }
 });
 
 // Helper function to convert hex to RGB
@@ -152,18 +184,18 @@ const showActivity = ref(false);
                                 <h3 class="text-sm font-semibold text-gray-900">
                                     Conversation
                                     <span class="ml-1.5 inline-flex items-center justify-center h-5 w-5 rounded-full bg-blue-100 text-blue-700 text-xs font-bold">
-                                        {{ messages.length }}
+                                        {{ localMessages.length }}
                                     </span>
                                 </h3>
                             </div>
 
                             <!-- Messages list -->
-                            <div class="divide-y divide-gray-50">
-                                <div v-if="messages.length === 0" class="py-10 text-center text-sm text-gray-400">
+                            <div class="divide-y divide-gray-50 text-wrap break-words">
+                                <div v-if="localMessages.length === 0" class="py-10 text-center text-sm text-gray-400">
                                     No replies yet.
                                 </div>
                                 <div
-                                    v-for="msg in messages"
+                                    v-for="msg in localMessages"
                                     :key="msg.id"
                                     class="px-6 py-4"
                                     :class="{ 'bg-blue-50/50': msg.is_mine }"

@@ -1,7 +1,7 @@
 <script setup>
-import { ref, watch } from 'vue';
+import { ref, watch, onMounted, onUnmounted } from 'vue';
 import ManagerNavigation from '@/Components/ManagerNavigation.vue';
-import { Head, Link, useForm } from '@inertiajs/vue3';
+import { Head, Link, useForm, usePage } from '@inertiajs/vue3';
 
 const props = defineProps({
     ticket: { type: Object, required: true },
@@ -12,6 +12,48 @@ const props = defineProps({
     attachments: { type: Array, default: () => [] },
     activity_logs: { type: Array, default: () => [] },
     sla_policy: { type: Object, default: null },
+});
+
+const page = usePage();
+
+// Local reactivity for messages
+const localMessages = ref([...props.messages]);
+
+watch(() => props.messages, (newVal) => {
+    localMessages.value = [...newVal];
+}, { deep: true });
+
+onMounted(() => {
+    if (window.Echo) {
+        // Listen to public ticket channel
+        window.Echo.private(`ticket.${props.ticket.id}`)
+            .listen('.TicketMessageSent', (e) => {
+                if (!localMessages.value.find(m => m.id === e.messageData.id)) {
+                    localMessages.value.push({
+                        ...e.messageData,
+                        is_mine: e.messageData.user_id === page.props.auth.user.id
+                    });
+                }
+            });
+
+        // Listen to internal ticket channel
+        window.Echo.private(`ticket.${props.ticket.id}.internal`)
+            .listen('.TicketMessageSent', (e) => {
+                if (!localMessages.value.find(m => m.id === e.messageData.id)) {
+                    localMessages.value.push({
+                        ...e.messageData,
+                        is_mine: e.messageData.user_id === page.props.auth.user.id
+                    });
+                }
+            });
+    }
+});
+
+onUnmounted(() => {
+    if (window.Echo) {
+        window.Echo.leave(`ticket.${props.ticket.id}`);
+        window.Echo.leave(`ticket.${props.ticket.id}.internal`);
+    }
 });
 
 // Single combined controls form — status, dept, and assignment in one PATCH
@@ -186,16 +228,16 @@ const showActivity = ref(false);
                                 <h3 class="text-sm font-semibold text-gray-900">
                                     Conversation
                                     <span class="ml-1.5 inline-flex items-center justify-center h-5 w-5 rounded-full bg-slate-100 text-slate-700 text-xs font-bold">
-                                        {{ messages.length }}
+                                        {{ localMessages.length }}
                                     </span>
                                 </h3>
                             </div>
                             <div class="divide-y divide-gray-50">
-                                <div v-if="messages.length === 0" class="py-10 text-center text-sm text-gray-400">
+                                <div v-if="localMessages.length === 0" class="py-10 text-center text-sm text-gray-400">
                                     No replies yet. Start the conversation below.
                                 </div>
                                 <div
-                                    v-for="msg in messages"
+                                    v-for="msg in localMessages"
                                     :key="msg.id"
                                     class="px-6 py-4"
                                     :class="msg.is_internal ? 'bg-amber-50/50' : ''"
