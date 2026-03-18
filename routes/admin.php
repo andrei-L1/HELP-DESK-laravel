@@ -22,6 +22,9 @@ Route::middleware('role:admin')
         Route::get('/dashboard', [AdminDashboardController::class, 'index'])
             ->name('dashboard');
 
+        Route::get('/analytics', [AdminDashboardController::class, 'analytics'])
+            ->name('analytics');
+
         // ── TICKETS ──────────────────────────────────
         // Fix #1 (Critical): Admin ticket routes now guarded by permission middleware,
         // consistent with Manager and User routes.

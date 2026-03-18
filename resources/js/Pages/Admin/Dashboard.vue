@@ -36,7 +36,7 @@ const addUser = () => {
 };
 
 const viewReports = () => {
-    alert('Reports page coming soon!');
+    router.visit(route('admin.analytics'));
 };
 
 const viewTicket = (ticketId) => {
@@ -53,7 +53,7 @@ const viewTicket = (ticketId) => {
             </div>
         </template>
 
-        <template #breadcrumbs>
+        <template #breadcrumb>
             <div class="flex items-center gap-2 text-[11px] font-bold text-slate-500">
                 <span class="hover:text-slate-700 cursor-pointer">Admin</span>
                 <svg class="h-2 w-2 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7" /></svg>

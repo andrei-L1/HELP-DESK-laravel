@@ -88,6 +88,13 @@ const navigation = [
         description: 'Overview of your admin panel'
     },
     {
+        name: 'Analytics',
+        route: 'admin.analytics',
+        href: route('admin.analytics'),
+        icon: 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z',
+        description: 'Performance and statistics'
+    },
+    {
         name: 'Tickets',
         route: 'admin.tickets.index',
         href: route('admin.tickets.index'),
@@ -197,6 +204,9 @@ watch(userAvatar, () => {
     avatarError.value = false;
 });
 
+const impersonation = computed(() => page.props.impersonation);
+const isImpersonating = computed(() => !!impersonation.value);
+
 // Tooltip helper
 const showTooltip = ref(null);
 </script>
@@ -254,9 +264,9 @@ const showTooltip = ref(null);
             <nav class="flex-1 overflow-y-auto px-4 pb-6 custom-scrollbar">
                 <div class="space-y-6">
                     <div v-for="section in [
-                        { label: 'Main Menu', items: filteredNavigation.slice(0, 1) },
-                        { label: 'Management', items: filteredNavigation.slice(1, 4) },
-                        { label: 'System', items: filteredNavigation.slice(4) }
+                        { label: 'Platform', items: filteredNavigation.slice(0, 3) },
+                        { label: 'Management', items: filteredNavigation.slice(3, 5) },
+                        { label: 'System', items: filteredNavigation.slice(5) }
                     ]" :key="section.label">
                         <h3 v-if="section.items.length > 0" class="px-4 text-[11px] font-bold text-slate-400 uppercase tracking-[0.15em] mb-3">{{ section.label }}</h3>
                         <ul class="space-y-1">
@@ -499,7 +509,7 @@ const showTooltip = ref(null);
 
             <!-- Main Content Area -->
             <main class="flex-1 overflow-y-auto custom-scrollbar p-6 lg:p-10 bg-slate-100/30">
-                <div class="mx-auto max-w-[1600px] animate-in fade-in slide-in-from-bottom-4 duration-700 ease-out">
+                <div class="mx-auto max-w-[1600px]">
                     <!-- Global Loading State Overlay -->
                     <transition
                         enter-active-class="transition-opacity duration-300"

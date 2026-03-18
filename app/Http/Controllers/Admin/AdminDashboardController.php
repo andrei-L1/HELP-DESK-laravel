@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
@@ -98,5 +99,118 @@ class AdminDashboardController extends Controller
             'recent_tickets' => $recent_tickets,
             'tickets_by_status' => $tickets_by_status,
         ]);
+    }
+
+    public function analytics(Request $request)
+    {
+        // 1. Setup Time Periods based on Filter
+        $period = (int) $request->get('period', 7);
+        $periodValue = in_array($period, [7, 30, 90]) ? $period : 7;
+        
+        $now = now();
+        $startDate = $now->copy()->subDays($periodValue);
+        $prevStartDate = $now->copy()->subDays($periodValue * 2);
+
+        // Resolution Time (ART)
+        $resRow = DB::table('tickets')
+            ->whereNotNull('resolved_at')
+            ->whereNull('deleted_at')
+            ->where('created_at', '>=', $startDate)
+            ->select(DB::raw('AVG(TIMESTAMPDIFF(SECOND, created_at, resolved_at)) as avg_time'))
+            ->first();
+        $avgResolutionSeconds = $resRow ? $resRow->avg_time : 0;
+        
+        // First Response Time (FRT)
+        $respRow = DB::table('tickets')
+            ->whereNotNull('first_response_at')
+            ->whereNull('deleted_at')
+            ->where('created_at', '>=', $startDate)
+            ->select(DB::raw('AVG(TIMESTAMPDIFF(SECOND, created_at, first_response_at)) as avg_time'))
+            ->first();
+        $avgResponseSeconds = $respRow ? $respRow->avg_time : 0;
+
+        $overview_stats = [
+            'resolution_time' => $this->formatSeconds($avgResolutionSeconds),
+            'first_response' => $this->formatSeconds($avgResponseSeconds),
+            'csat' => '4.8/5', // Mocked as not collected yet
+            'satisfaction_trend' => '+1.2%' // Mocked
+        ];
+
+        // 2. Volume & Growth
+        $thisPeriodCount = DB::table('tickets')
+            ->where('created_at', '>=', $startDate)
+            ->whereNull('deleted_at')
+            ->count();
+        
+        $prevPeriodCount = DB::table('tickets')
+            ->where('created_at', '>=', $prevStartDate)
+            ->where('created_at', '<', $startDate)
+            ->whereNull('deleted_at')
+            ->count();
+
+        $growth = $prevPeriodCount > 0 
+            ? round((($thisPeriodCount - $prevPeriodCount) / $prevPeriodCount) * 100, 1) 
+            : 100;
+
+        // 3. Dynamic Volume Data (Daily)
+        $limit = $periodValue; // Limit to number of days in period
+        $dailyVolume = DB::table('tickets')
+            ->where('created_at', '>=', $startDate)
+            ->whereNull('deleted_at')
+            ->select(DB::raw('DATE(created_at) as date'), DB::raw('count(*) as count'))
+            ->groupBy('date')
+            ->orderBy('date')
+            ->get()
+            ->map(function ($item) {
+                return [
+                    'day' => Carbon::parse($item->date)->format('D'),
+                    'count' => $item->count
+                ];
+            });
+
+        // 4. Agent Performance within period
+        $agentPerformance = User::whereHas('role', function($q) {
+                $q->whereIn('name', ['admin', 'manager', 'agent']);
+            })
+            ->withCount(['assignedTickets as resolved_count' => function($q) use ($startDate) {
+                $q->whereNotNull('resolved_at')->where('resolved_at', '>=', $startDate);
+            }])
+            ->get()
+            ->map(function($user) use ($startDate) {
+                $agentResRow = DB::table('tickets')
+                    ->where('assigned_to', $user->id)
+                    ->where('created_at', '>=', $startDate)
+                    ->whereNotNull('first_response_at')
+                    ->select(DB::raw('AVG(TIMESTAMPDIFF(SECOND, created_at, first_response_at)) as avg_time'))
+                    ->first();
+                $avgRes = $agentResRow ? $agentResRow->avg_time : 0;
+
+                return [
+                    'name' => $user->first_name . ' ' . $user->last_name,
+                    'avatar' => substr($user->first_name, 0, 1) . substr($user->last_name, 0, 1),
+                    'resolved' => $user->resolved_count,
+                    'avg_time' => $this->formatSeconds($avgRes),
+                    'rating' => number_format(4.5 + (rand(0, 5) / 10), 1) // Mocked
+                ];
+            })
+            ->sortByDesc('resolved')
+            ->values()
+            ->take(5);
+
+        return Inertia::render('Admin/Analytics', [
+            'overview_stats' => $overview_stats,
+            'volume_data' => $dailyVolume,
+            'weekly_total' => $thisPeriodCount,
+            'weekly_growth' => $growth > 0 ? "+$growth%" : "$growth%",
+            'agent_performance' => $agentPerformance,
+            'current_period' => $periodValue
+        ]);
+    }
+
+    private function formatSeconds($seconds)
+    {
+        if ($seconds < 60) return round($seconds) . 's';
+        if ($seconds < 3600) return round($seconds / 60, 1) . 'm';
+        return round($seconds / 3600, 1) . 'h';
     }
 }
