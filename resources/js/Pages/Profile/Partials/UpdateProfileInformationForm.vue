@@ -6,7 +6,17 @@ import SecondaryButton from '@/Components/SecondaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
 import { Link, useForm, usePage } from '@inertiajs/vue3';
 import { ref, watch, computed } from 'vue';
-import { CameraIcon, CheckCircleIcon, ExclamationCircleIcon, PhotoIcon, KeyIcon, UserIcon, IdentificationIcon, LightBulbIcon } from '@heroicons/vue/24/outline';
+import { 
+    CameraIcon, 
+    CheckCircleIcon, 
+    ExclamationCircleIcon, 
+    PhotoIcon, 
+    KeyIcon, 
+    UserIcon, 
+    IdentificationIcon, 
+    LightBulbIcon,
+    ShieldCheckIcon
+} from '@heroicons/vue/24/outline';
 
 defineProps({
     mustVerifyEmail: {
@@ -234,68 +244,55 @@ const resetForm = () => {
 const currentAvatarPreview = computed(() => {
     if (avatarPreview.value) return avatarPreview.value;
     if (form.hide_google_avatar && !user.avatar_url) {
-        return `https://ui-avatars.com/api/?name=${user.first_name}+${user.last_name}&size=128&background=475569&color=fff`;
+        return `https://ui-avatars.com/api/?name=${user.first_name}+${user.last_name}&size=256&background=4f46e5&color=fff`;
     }
-    return user.avatar;
+    return user.avatar_url || `https://ui-avatars.com/api/?name=${user.first_name}+${user.last_name}&size=256&background=818cf8&color=fff`;
 });
 </script>
 
 <template>
     <div class="h-full flex flex-col">
         <!-- Tab Navigation (Modern Pills) -->
-        <div class="px-8 pt-8 pb-4 border-b border-gray-100 flex gap-2 overflow-x-auto no-scrollbar">
+        <div class="px-10 pt-10 pb-6 flex gap-4 overflow-x-auto no-scrollbar border-b border-slate-50">
             <button
-                @click="activeTab = 'profile'"
+                v-for="tab in [
+                    { id: 'profile', name: 'Profile Information', icon: UserIcon },
+                    { id: 'avatar', name: 'Profile Picture', icon: PhotoIcon },
+                    { id: 'password', name: hasPassword ? 'Update Password' : 'Set Password', icon: KeyIcon }
+                ]"
+                :key="tab.id"
+                @click="activeTab = tab.id"
                 :class="[
-                    activeTab === 'profile'
-                        ? 'bg-indigo-50 text-indigo-700 ring-1 ring-indigo-500/20'
-                        : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900',
-                    'flex items-center px-4 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200'
+                    activeTab === tab.id
+                        ? 'bg-slate-900 text-white shadow-xl shadow-slate-200'
+                        : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900',
+                    'flex items-center px-6 py-3 rounded-2xl text-xs font-black uppercase tracking-widest transition-all duration-300'
                 ]"
             >
-                <IdentificationIcon class="w-5 h-5 mr-2 -ml-1 text-inherit" />
-                Profile Information
-            </button>
-            <button
-                @click="activeTab = 'avatar'"
-                :class="[
-                    activeTab === 'avatar'
-                        ? 'bg-indigo-50 text-indigo-700 ring-1 ring-indigo-500/20'
-                        : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900',
-                    'flex items-center px-4 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200'
-                ]"
-            >
-                <PhotoIcon class="w-5 h-5 mr-2 -ml-1 text-inherit" />
-                Profile Picture
-            </button>
-            <button
-                @click="activeTab = 'password'"
-                :class="[
-                    activeTab === 'password'
-                        ? 'bg-indigo-50 text-indigo-700 ring-1 ring-indigo-500/20'
-                        : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900',
-                    'flex items-center px-4 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200'
-                ]"
-            >
-                <KeyIcon class="w-5 h-5 mr-2 -ml-1 text-inherit" />
-                {{ hasPassword ? 'Change Password' : 'Set Password' }}
+                <component :is="tab.icon" class="w-4 h-4 mr-3" />
+                {{ tab.name }}
             </button>
         </div>
 
         <!-- Form Content Area -->
-        <div class="flex-1 p-8">
+        <div class="flex-1 p-10">
             <form @submit.prevent="submitForm" enctype="multipart/form-data" v-if="activeTab !== 'password'">
                 
                 <!-- Avatar Tab -->
-                <div v-if="activeTab === 'avatar'" class="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
-                    <div>
-                        <h3 class="text-lg font-bold text-gray-900">Update Profile Picture</h3>
-                        <p class="text-sm text-gray-500 mt-1">Upload a new profile picture. This will be visible to other users across the system.</p>
+                <div v-if="activeTab === 'avatar'" class="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                    <div class="flex flex-col md:flex-row md:items-center justify-between gap-6 mr-1">
+                        <div>
+                            <h3 class="text-xl font-black text-slate-900 tracking-tight">Profile Picture</h3>
+                            <p class="text-xs font-bold text-slate-400 mt-1 uppercase tracking-widest">Update your profile picture and visual presence.</p>
+                        </div>
                     </div>
                     
-                    <div class="flex flex-col items-center justify-center p-8 border-2 border-dashed border-gray-200 rounded-2xl bg-gray-50/50">
-                        <div class="relative group">
-                            <div class="w-40 h-40 rounded-full overflow-hidden bg-white ring-4 ring-white shadow-xl transition duration-200 group-hover:scale-105">
+                    <div class="bg-slate-50/50 rounded-[2.5rem] border border-slate-100 p-12 flex flex-col items-center justify-center relative group">
+                        <!-- Abstract background mask -->
+                        <div class="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(99,102,241,0.05),transparent)] pointer-events-none"></div>
+
+                        <div class="relative">
+                            <div class="w-48 h-48 rounded-[3rem] overflow-hidden bg-white ring-8 ring-white shadow-2xl transition-all duration-500 group-hover:scale-[1.02] group-hover:rotate-1 relative z-10">
                                 <img 
                                     :src="currentAvatarPreview" 
                                     :alt="form.display_name || 'Profile avatar'"
@@ -303,16 +300,17 @@ const currentAvatarPreview = computed(() => {
                                 />
                             </div>
                             
+                            <!-- Large Floating Camera Button -->
                             <button
                                 type="button"
                                 @click="fileInput?.click()"
-                                class="absolute bottom-1 right-1 bg-indigo-600 rounded-full p-3 text-white shadow-lg hover:bg-indigo-700 hover:scale-110 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all duration-200"
+                                class="absolute -bottom-4 -right-4 bg-slate-900 rounded-[1.5rem] p-4 text-white shadow-2xl hover:bg-slate-800 hover:scale-110 active:scale-95 transition-all duration-300 z-20 border-4 border-white"
                             >
-                                <CameraIcon class="w-5 h-5" />
+                                <CameraIcon class="w-6 h-6" />
                             </button>
                         </div>
 
-                        <div class="mt-8 text-center w-full max-w-sm">
+                        <div class="mt-12 text-center w-full max-w-sm relative z-10">
                             <input
                                 ref="fileInput"
                                 type="file"
@@ -321,40 +319,40 @@ const currentAvatarPreview = computed(() => {
                                 class="hidden"
                             />
                             
-                            <div class="flex justify-center flex-wrap gap-3">
+                            <div class="flex justify-center gap-4">
                                 <button 
                                     type="button" 
                                     @click="fileInput?.click()"
-                                    class="inline-flex items-center px-5 py-2.5 bg-white border border-gray-300 rounded-xl font-semibold text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-all"
+                                    class="inline-flex items-center px-8 py-4 bg-white border border-slate-200 rounded-2xl font-black text-xs uppercase tracking-widest text-slate-700 shadow-sm hover:bg-slate-50 hover:border-slate-300 transition-all active:scale-95"
                                 >
-                                    <PhotoIcon class="w-5 h-5 mr-2 text-gray-400" />
-                                    Choose Photo
+                                    <PhotoIcon class="w-4 h-4 mr-2.5 text-slate-400" />
+                                    Upload Photo
                                 </button>
                                 
                                 <button 
                                     type="button"
                                     @click="removeAvatar"
                                     v-if="form.avatar || user.avatar_url || user.google_avatar"
-                                    class="inline-flex items-center px-5 py-2.5 bg-white border border-rose-300 rounded-xl font-semibold text-rose-700 shadow-sm hover:bg-rose-50 focus:outline-none focus:ring-2 focus:ring-rose-500 focus:ring-offset-2 transition-all"
+                                    class="inline-flex items-center px-8 py-4 bg-rose-50 border border-rose-100 rounded-2xl font-black text-xs uppercase tracking-widest text-rose-600 shadow-sm hover:bg-rose-100 transition-all active:scale-95"
                                 >
                                     Remove
                                 </button>
                             </div>
                             
-                            <div class="flex items-center justify-center space-x-2 mt-6 bg-white py-3 px-4 rounded-xl border border-gray-200 shadow-sm" v-if="user.google_avatar">
+                            <div class="mt-8 flex items-center justify-center gap-3 bg-white/60 backdrop-blur-sm py-4 px-6 rounded-2xl border border-slate-100 shadow-sm" v-if="user.google_avatar">
                                 <input
                                     id="hide_google_avatar"
                                     type="checkbox"
                                     v-model="form.hide_google_avatar"
-                                    class="h-5 w-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-600 transition duration-150 ease-in-out"
+                                    class="h-5 w-5 rounded-lg border-slate-200 text-slate-900 focus:ring-slate-900 transition-all cursor-pointer"
                                 />
-                                <label for="hide_google_avatar" class="text-sm font-medium text-gray-700 cursor-pointer">
-                                    Hide Google avatar
+                                <label for="hide_google_avatar" class="text-[10px] font-black uppercase tracking-widest text-slate-500 cursor-pointer hover:text-slate-900 transition-colors">
+                                    Hide Google Avatar
                                 </label>
                             </div>
 
-                            <p class="mt-4 text-xs font-medium text-gray-400">
-                                Recommended: 256x256px. Formats: JPG, PNG, GIF. Max 2MB.
+                            <p class="mt-6 text-[10px] font-black text-slate-300 uppercase tracking-widest">
+                                Recommended: 256x256px • JPG, PNG, GIF • Max 2MB
                             </p>
                             <InputError :message="form.errors.avatar" class="mt-2 text-center" />
                         </div>
@@ -362,48 +360,48 @@ const currentAvatarPreview = computed(() => {
                 </div>
 
                 <!-- Profile Information Tab -->
-                <div v-if="activeTab === 'profile'" class="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                <div v-if="activeTab === 'profile'" class="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
                     <div>
-                        <h3 class="text-lg font-bold text-gray-900">Personal Data</h3>
-                        <p class="text-sm text-gray-500 mt-1">Review and update your personal information.</p>
+                        <h3 class="text-xl font-black text-slate-900 tracking-tight">Profile Information</h3>
+                        <p class="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-widest">Update your account's profile information and email address.</p>
                     </div>
                     
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-8">
                         <!-- First Name -->
-                        <div>
-                            <InputLabel for="first_name" value="First Name" />
-                            <TextInput
+                        <div class="space-y-2">
+                            <label class="px-2 text-[10px] font-black text-slate-500 uppercase tracking-widest">First Name *</label>
+                            <input
                                 id="first_name"
                                 type="text"
-                                class="mt-2 block w-full rounded-xl border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 transition duration-150"
+                                class="block w-full rounded-2xl border-none bg-slate-50 px-5 py-4 text-sm font-bold text-slate-700 focus:bg-white focus:ring-2 focus:ring-slate-900/5 transition-all shadow-inner"
                                 v-model="form.first_name"
                                 autocomplete="given-name"
-                                placeholder="E.g. Jane"
+                                placeholder="e.g. Jane"
                             />
                             <InputError class="mt-2" :message="form.errors.first_name" />
                         </div>
 
                         <!-- Last Name -->
-                        <div>
-                            <InputLabel for="last_name" value="Last Name" />
-                            <TextInput
+                        <div class="space-y-2">
+                            <label class="px-2 text-[10px] font-black text-slate-500 uppercase tracking-widest">Last Name *</label>
+                            <input
                                 id="last_name"
                                 type="text"
-                                class="mt-2 block w-full rounded-xl border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 transition duration-150"
+                                class="block w-full rounded-2xl border-none bg-slate-50 px-5 py-4 text-sm font-bold text-slate-700 focus:bg-white focus:ring-2 focus:ring-slate-900/5 transition-all shadow-inner"
                                 v-model="form.last_name"
                                 autocomplete="family-name"
-                                placeholder="E.g. Doe"
+                                placeholder="e.g. Doe"
                             />
                             <InputError class="mt-2" :message="form.errors.last_name" />
                         </div>
 
                         <!-- Middle Name -->
-                        <div>
-                            <InputLabel for="middle_name" value="Middle Name" />
-                            <TextInput
+                        <div class="space-y-2">
+                            <label class="px-2 text-[10px] font-black text-slate-500 uppercase tracking-widest">Middle Name</label>
+                            <input
                                 id="middle_name"
                                 type="text"
-                                class="mt-2 block w-full rounded-xl border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 transition duration-150"
+                                class="block w-full rounded-2xl border-none bg-slate-50 px-5 py-4 text-sm font-bold text-slate-700 focus:bg-white focus:ring-2 focus:ring-slate-900/5 transition-all shadow-inner"
                                 v-model="form.middle_name"
                                 autocomplete="additional-name"
                                 placeholder="Optional"
@@ -412,57 +410,62 @@ const currentAvatarPreview = computed(() => {
                         </div>
 
                         <!-- Display Name -->
-                        <div>
-                            <InputLabel for="display_name" value="Display Name" />
-                            <TextInput
+                        <div class="space-y-2">
+                            <label class="px-2 text-[10px] font-black text-slate-500 uppercase tracking-widest">Display Name</label>
+                            <input
                                 id="display_name"
                                 type="text"
-                                class="mt-2 block w-full rounded-xl border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 transition duration-150"
+                                class="block w-full rounded-2xl border-none bg-slate-50 px-5 py-4 text-sm font-bold text-slate-700 focus:bg-white focus:ring-2 focus:ring-slate-900/5 transition-all shadow-inner"
                                 v-model="form.display_name"
                                 autocomplete="nickname"
-                                placeholder="How others see you"
+                                placeholder="How your name will appear to others"
                                 @blur="generateDisplayName"
                             />
-                            <p class="mt-1.5 text-xs text-gray-500">Auto-generated if left empty.</p>
+                            <p class="px-2 mt-1 text-[10px] font-bold text-slate-400 italic">Automatically generated if left empty.</p>
                             <InputError class="mt-2" :message="form.errors.display_name" />
                         </div>
 
                         <!-- Email -->
-                        <div class="md:col-span-2">
-                            <InputLabel for="email" value="Email Address" />
-                            <div class="mt-2 relative rounded-xl shadow-sm">
-                                <TextInput
+                        <div class="md:col-span-2 space-y-2">
+                            <label class="px-2 text-[10px] font-black text-slate-500 uppercase tracking-widest">Email</label>
+                            <div class="relative group">
+                                <input
                                     id="email"
                                     type="email"
-                                    class="block w-full rounded-xl border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 pr-10 transition duration-150"
+                                    class="block w-full rounded-2xl border-none bg-slate-50 px-5 py-4 pr-14 text-sm font-bold text-slate-700 focus:bg-white focus:ring-2 focus:ring-slate-900/5 transition-all shadow-inner"
                                     v-model="form.email"
                                     autocomplete="username"
                                     placeholder="you@example.com"
                                 />
-                                <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                                    <CheckCircleIcon v-if="user.email_verified" class="h-5 w-5 text-emerald-500" />
-                                    <ExclamationCircleIcon v-else class="h-5 w-5 text-amber-500" />
+                                <div class="absolute inset-y-0 right-0 pr-5 flex items-center pointer-events-none">
+                                    <CheckCircleIcon v-if="user.email_verified" class="h-6 w-6 text-emerald-500" />
+                                    <ExclamationCircleIcon v-else class="h-6 w-6 text-amber-500" />
                                 </div>
                             </div>
                             
-                            <div v-if="mustVerifyEmail && !user.email_verified" class="mt-3 bg-amber-50 rounded-lg p-3 border border-amber-100 flex items-start">
-                                <ExclamationCircleIcon class="h-5 w-5 text-amber-500 mt-0.5 mr-2 flex-shrink-0" />
-                                <div>
-                                    <p class="text-sm font-medium text-amber-800">Email unverified</p>
+                            <div v-if="mustVerifyEmail && !user.email_verified" class="mt-4 bg-amber-50/50 rounded-2xl p-5 border border-amber-100 flex items-start">
+                                <div class="bg-amber-500 rounded-xl p-1.5 mr-4 mt-0.5">
+                                    <ExclamationCircleIcon class="h-5 w-5 text-white" />
+                                </div>
+                                <div class="flex-1">
+                                    <p class="text-xs font-black text-amber-800 uppercase tracking-widest">Email Verification Required</p>
+                                    <p class="text-xs font-bold text-amber-700 mt-1 italic">Your email address is unverified.</p>
                                     <Link
                                         :href="route('verification.send')"
                                         method="post"
                                         as="button"
-                                        class="mt-1 text-sm text-indigo-600 hover:text-indigo-800 font-semibold transition-colors"
+                                        class="mt-4 text-[10px] font-black uppercase tracking-widest text-white bg-amber-600 px-6 py-2.5 rounded-xl hover:bg-amber-700 transition-all active:scale-95 shadow-lg shadow-amber-200"
                                     >
-                                        Click here to resend verification email
+                                        Resend Verification Email
                                     </Link>
                                 </div>
                             </div>
 
-                            <div v-show="status === 'verification-link-sent'" class="mt-3 bg-emerald-50 rounded-lg p-3 border border-emerald-100 flex items-start">
-                                <CheckCircleIcon class="h-5 w-5 text-emerald-500 mt-0.5 mr-2 flex-shrink-0" />
-                                <p class="text-sm font-medium text-emerald-800">
+                            <div v-show="status === 'verification-link-sent'" class="mt-4 bg-emerald-50/50 rounded-2xl p-5 border border-emerald-100 flex items-start animate-in fade-in slide-in-from-top-2">
+                                <div class="bg-emerald-500 rounded-xl p-1.5 mr-4 mt-0.5">
+                                    <CheckCircleIcon class="h-5 w-5 text-white" />
+                                </div>
+                                <p class="text-xs font-black text-emerald-800 uppercase tracking-widest mt-1.5">
                                     A new verification link has been sent to your email address.
                                 </p>
                             </div>
@@ -470,12 +473,12 @@ const currentAvatarPreview = computed(() => {
                         </div>
 
                         <!-- Phone -->
-                        <div>
-                            <InputLabel for="phone" value="Phone Number" />
-                            <TextInput
+                        <div class="space-y-2">
+                            <label class="px-2 text-[10px] font-black text-slate-500 uppercase tracking-widest">Phone Number</label>
+                            <input
                                 id="phone"
                                 type="tel"
-                                class="mt-2 block w-full rounded-xl border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 transition duration-150"
+                                class="block w-full rounded-2xl border-none bg-slate-50 px-5 py-4 text-sm font-bold text-slate-700 focus:bg-white focus:ring-2 focus:ring-slate-900/5 transition-all shadow-inner"
                                 v-model="form.phone"
                                 autocomplete="tel"
                                 placeholder="+63 XXX XXX XXXX"
@@ -484,44 +487,48 @@ const currentAvatarPreview = computed(() => {
                         </div>
 
                         <!-- Timezone -->
-                        <div>
-                            <InputLabel for="timezone" value="Timezone" />
-                            <select
-                                id="timezone"
-                                class="mt-2 block w-full rounded-xl border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 transition duration-150"
-                                v-model="form.timezone"
-                            >
-                                <option v-for="tz in timezones" :key="tz.value" :value="tz.value">
-                                    {{ tz.label }}
-                                </option>
-                            </select>
+                        <div class="space-y-2">
+                            <label class="px-2 text-[10px] font-black text-slate-500 uppercase tracking-widest">Timezone</label>
+                            <div class="relative">
+                                <select
+                                    id="timezone"
+                                    class="block w-full rounded-2xl border-none bg-slate-50 px-5 py-4 text-sm font-bold text-slate-700 focus:bg-white focus:ring-2 focus:ring-slate-900/5 transition-all shadow-inner appearance-none cursor-pointer"
+                                    v-model="form.timezone"
+                                >
+                                    <option v-for="tz in timezones" :key="tz.value" :value="tz.value">
+                                        {{ tz.label }}
+                                    </option>
+                                </select>
+                                <svg class="absolute right-5 top-4.5 h-4 w-4 text-slate-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7" /></svg>
+                            </div>
                             <InputError class="mt-2" :message="form.errors.timezone" />
                         </div>
                     </div>
                 </div>
 
                 <!-- Shared Form Actions for Avatar & Profile -->
-                <div class="mt-10 pt-6 border-t border-gray-100 flex items-center justify-between">
-                    <div class="flex items-center space-x-4">
+                <div class="mt-12 pt-8 border-t border-slate-50 flex items-center justify-between">
+                    <div class="flex items-center gap-6">
                         <button 
                             type="submit"
                             :disabled="form.processing || !hasChanges"
-                            class="inline-flex items-center px-6 py-3 bg-indigo-600 border border-transparent rounded-xl font-bold text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                            class="inline-flex items-center px-10 py-5 bg-slate-900 border border-transparent rounded-2xl font-black text-[11px] uppercase tracking-[0.15em] text-white shadow-2xl shadow-slate-200 hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:ring-offset-2 disabled:opacity-30 disabled:cursor-not-allowed transition-all active:scale-95"
                         >
-                            {{ form.processing ? 'Saving Changes...' : 'Save Changes' }}
+                            <svg v-if="form.processing" class="animate-spin -ml-1 mr-3 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                            {{ form.processing ? 'Saving...' : 'Save' }}
                         </button>
 
                         <Transition
-                            enter-active-class="transition duration-300 ease-out"
-                            enter-from-class="opacity-0 scale-95"
-                            enter-to-class="opacity-100 scale-100"
-                            leave-active-class="transition duration-200 ease-in"
-                            leave-from-class="opacity-100 scale-100"
-                            leave-to-class="opacity-0 scale-95"
+                            enter-active-class="transition duration-500 ease-out"
+                            enter-from-class="opacity-0 translate-x-4"
+                            enter-to-class="opacity-100 translate-x-0"
+                            leave-active-class="transition duration-300 ease-in"
+                            leave-from-class="opacity-100 translate-x-0"
+                            leave-to-class="opacity-0 translate-x-4"
                         >
-                            <span v-if="form.recentlySuccessful" class="flex items-center text-sm font-medium text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-lg">
-                                <CheckCircleIcon class="w-4 h-4 mr-1.5" />
-                                Saved successfully
+                            <span v-if="form.recentlySuccessful" class="flex items-center text-[10px] font-black uppercase tracking-[0.15em] text-emerald-600 bg-emerald-50 px-4 py-2 rounded-xl border border-emerald-100">
+                                <CheckCircleIcon class="w-4 h-4 mr-2" />
+                                Saved
                             </span>
                         </Transition>
                     </div>
@@ -530,119 +537,125 @@ const currentAvatarPreview = computed(() => {
                         type="button"
                         @click="resetForm"
                         v-if="hasChanges"
-                        class="text-sm font-semibold text-gray-500 hover:text-gray-700 transition-colors"
+                        class="text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-rose-600 transition-colors border-b-2 border-transparent hover:border-rose-100 pb-1"
                     >
-                        Discard changes
+                        Reset Form
                     </button>
                 </div>
 
                 <!-- Changes Summary -->
-                <div v-if="hasChanges" class="mt-4 flex items-center text-sm bg-indigo-50/50 text-indigo-700 p-3 rounded-xl border border-indigo-100/50">
-                    <LightBulbIcon class="w-5 h-5 mr-2 text-indigo-500 flex-shrink-0" />
-                    <span>
-                        <span class="font-semibold">Unsaved changes:</span>
-                        <span v-if="hasAvatarChanges"> Profile picture,</span>
-                        <span v-for="(value, field) in modifiedFields" :key="field">
-                            {{ field.replace('_', ' ') }},
-                        </span>
-                    </span>
+                <div v-if="hasChanges" class="mt-8 flex items-center gap-4 bg-slate-900 text-white p-6 rounded-[2rem] border border-slate-800 shadow-2xl animate-in fade-in slide-in-from-bottom-2">
+                    <div class="bg-white/10 rounded-xl p-2">
+                        <LightBulbIcon class="w-5 h-5 text-indigo-300" />
+                    </div>
+                    <div class="flex-1">
+                        <p class="text-[9px] font-black text-white/40 uppercase tracking-[0.2em] mb-1">Unsaved Changes</p>
+                        <div class="flex flex-wrap gap-2">
+                            <span v-if="hasAvatarChanges" class="text-[10px] font-bold px-2 py-0.5 bg-indigo-500/20 rounded-md border border-indigo-500/30">Profile Picture</span>
+                            <span v-for="(value, field) in modifiedFields" :key="field" class="text-[10px] font-bold px-2 py-0.5 bg-white/5 rounded-md border border-white/10 uppercase tracking-widest">
+                                {{ field.replace('_', ' ') }}
+                            </span>
+                        </div>
+                    </div>
                 </div>
             </form>
 
             <!-- Password Tab -->
-            <div v-else-if="activeTab === 'password'" class="animate-in fade-in slide-in-from-bottom-2 duration-300">
-                <form @submit.prevent="submitPassword" class="space-y-8">
-                    <div>
-                        <h3 class="text-lg font-bold text-gray-900">
-                            {{ hasPassword ? 'Update Password' : 'Set Account Password' }}
-                        </h3>
-                        
-                        <p v-if="!hasPassword" class="text-sm text-gray-500 mt-1">
-                            You currently use Google to sign in. Setting a password allows you to sign in with email/password as well.
-                        </p>
-                        <p v-else class="text-sm text-gray-500 mt-1">
-                            Ensure your password is long and unique to keep your account secure.
-                        </p>
+            <div v-else-if="activeTab === 'password'" class="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <form @submit.prevent="submitPassword" class="space-y-12">
+                    <div class="flex flex-col md:flex-row md:items-center justify-between gap-6 mr-1">
+                        <div>
+                            <h3 class="text-xl font-black text-slate-900 tracking-tight">
+                                {{ hasPassword ? 'Update Password' : 'Set Password' }}
+                            </h3>
+                            <p class="text-xs font-bold text-slate-400 mt-1 uppercase tracking-widest">
+                                {{ hasPassword ? 'Ensure your account is using a long, random password to stay secure.' : 'Ensure your account is using a long, random password to stay secure.' }}
+                            </p>
+                        </div>
                     </div>
 
-                    <div class="max-w-xl space-y-6">
+                    <div class="max-w-2xl bg-slate-50/50 p-12 rounded-[2.5rem] border border-slate-100 space-y-8">
                         <!-- Current Password -->
-                        <div v-if="hasPassword">
-                            <InputLabel for="current_password" value="Current Password" />
-                            <TextInput
+                        <div v-if="hasPassword" class="space-y-2">
+                            <label class="px-2 text-[10px] font-black text-slate-500 uppercase tracking-widest">Current Password</label>
+                            <input
                                 id="current_password"
                                 type="password"
-                                class="mt-2 block w-full rounded-xl border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 transition duration-150"
+                                class="block w-full rounded-2xl border-none bg-white shadow-inner px-5 py-4 text-sm font-bold text-slate-700 focus:ring-2 focus:ring-slate-900/5 transition-all"
                                 v-model="passwordForm.current_password"
                                 autocomplete="current-password"
-                                placeholder="Enter current password"
+                                placeholder="Verify current password"
                             />
                             <InputError :message="passwordForm.errors.current_password" class="mt-2" />
                         </div>
 
-                        <!-- New Password -->
-                        <div>
-                            <InputLabel for="new_password" :value="hasPassword ? 'New Password' : 'Password'" />
-                            <TextInput
-                                id="new_password"
-                                type="password"
-                                class="mt-2 block w-full rounded-xl border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 transition duration-150"
-                                v-model="passwordForm.new_password"
-                                autocomplete="new-password"
-                                placeholder="Create new password"
-                            />
-                            <InputError :message="passwordForm.errors.new_password" class="mt-2" />
-                        </div>
-
-                        <!-- Confirm Password -->
-                        <div>
-                            <InputLabel for="new_password_confirmation" :value="hasPassword ? 'Confirm New Password' : 'Confirm Password'" />
-                            <TextInput
-                                id="new_password_confirmation"
-                                type="password"
-                                class="mt-2 block w-full rounded-xl border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 transition duration-150"
-                                v-model="passwordForm.new_password_confirmation"
-                                autocomplete="new-password"
-                                placeholder="Confirm new password"
-                            />
-                            <InputError :message="passwordForm.errors.new_password_confirmation" class="mt-2" />
-                        </div>
-
-                        <!-- Security Notice -->
-                        <div class="bg-gray-50 rounded-xl p-5 border border-gray-100 flex items-start">
-                            <KeyIcon class="w-5 h-5 text-gray-400 mt-0.5 mr-3 flex-shrink-0" />
-                            <div>
-                                <h4 class="text-sm font-semibold text-gray-900">Password Requirements</h4>
-                                <ul class="mt-2 text-sm text-gray-600 list-disc list-inside space-y-1">
-                                    <li>At least 8 characters long</li>
-                                    <li>Contains uppercase and lowercase letters</li>
-                                    <li>Contains numbers and special symbols</li>
-                                </ul>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                            <!-- New Password -->
+                            <div class="space-y-2">
+                                <label class="px-2 text-[10px] font-black text-slate-500 uppercase tracking-widest">New Password</label>
+                                <input
+                                    id="new_password"
+                                    type="password"
+                                    class="block w-full rounded-2xl border-none bg-white shadow-inner px-5 py-4 text-sm font-bold text-slate-700 focus:ring-2 focus:ring-slate-900/5 transition-all"
+                                    v-model="passwordForm.new_password"
+                                    autocomplete="new-password"
+                                    placeholder="Create strong password"
+                                />
+                                <InputError :message="passwordForm.errors.new_password" class="mt-2" />
                             </div>
+
+                            <!-- Confirm Password -->
+                            <div class="space-y-2">
+                                <label class="px-2 text-[10px] font-black text-slate-500 uppercase tracking-widest">Confirm Password</label>
+                                <input
+                                    id="new_password_confirmation"
+                                    type="password"
+                                    class="block w-full rounded-2xl border-none bg-white shadow-inner px-5 py-4 text-sm font-bold text-slate-700 focus:ring-2 focus:ring-slate-900/5 transition-all"
+                                    v-model="passwordForm.new_password_confirmation"
+                                    autocomplete="new-password"
+                                    placeholder="Re-type new password"
+                                />
+                                <InputError :message="passwordForm.errors.new_password_confirmation" class="mt-2" />
+                            </div>
+                        </div>
+
+                        <!-- Security Requirements -->
+                        <div class="bg-slate-900 rounded-3xl p-8 border border-slate-800 shadow-2xl relative overflow-hidden group">
+                             <div class="absolute -right-10 -top-10 w-32 h-32 bg-indigo-500/10 rounded-full blur-2xl group-hover:bg-indigo-500/20 transition-all duration-700"></div>
+                             <div class="flex items-start gap-5 relative z-10">
+                                <div class="bg-white/10 rounded-2xl p-3 shadow-lg">
+                                    <ShieldCheckIcon class="w-6 h-6 text-indigo-300" />
+                                </div>
+                                 <div class="flex-1 pt-1">
+                                    <h4 class="text-xs font-black text-white uppercase tracking-widest">Password Requirements</h4>
+                                    <p class="text-[10px] font-bold text-slate-400 mt-2 leading-relaxed">Ensure your password is at least 8 characters long and includes a mix of letters, numbers, and symbols for better security.</p>
+                                </div>
+                             </div>
                         </div>
                     </div>
 
-                    <div class="mt-10 pt-6 border-t border-gray-100 flex items-center justify-between">
-                        <div class="flex items-center space-x-4">
+                    <div class="mt-12 pt-8 border-t border-slate-50 flex items-center justify-between">
+                        <div class="flex items-center gap-6">
                             <button 
                                 type="submit"
                                 :disabled="passwordForm.processing"
-                                class="inline-flex items-center px-6 py-3 bg-indigo-600 border border-transparent rounded-xl font-bold text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50 transition-all"
+                                class="inline-flex items-center px-10 py-5 bg-slate-900 border border-transparent rounded-2xl font-black text-[11px] uppercase tracking-[0.15em] text-white shadow-2xl shadow-slate-200 hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:ring-offset-2 disabled:opacity-30 disabled:cursor-not-allowed transition-all active:scale-95"
                             >
-                                {{ passwordForm.processing ? 'Processing...' : (hasPassword ? 'Update Password' : 'Set Password') }}
+                                <svg v-if="passwordForm.processing" class="animate-spin -ml-1 mr-3 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                {{ passwordForm.processing ? 'Saving...' : 'Save' }}
                             </button>
 
                             <Transition
-                                enter-active-class="transition duration-300 ease-out"
-                                enter-from-class="opacity-0 scale-95"
-                                enter-to-class="opacity-100 scale-100"
-                                leave-active-class="transition duration-200 ease-in"
-                                leave-from-class="opacity-100 scale-100"
-                                leave-to-class="opacity-0 scale-95"
+                                enter-active-class="transition duration-500 ease-out"
+                                enter-from-class="opacity-0 translate-x-4"
+                                enter-to-class="opacity-100 translate-x-0"
+                                leave-active-class="transition duration-300 ease-in"
+                                leave-from-class="opacity-100 translate-x-0"
+                                leave-to-class="opacity-0 translate-x-4"
                             >
-                                <span v-if="passwordForm.recentlySuccessful" class="flex items-center text-sm font-medium text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-lg">
-                                    <CheckCircleIcon class="w-4 h-4 mr-1.5" />
-                                    Password saved
+                                <span v-if="passwordForm.recentlySuccessful" class="flex items-center text-[10px] font-black uppercase tracking-[0.15em] text-emerald-600 bg-emerald-50 px-4 py-2 rounded-xl border border-emerald-100">
+                                    <CheckCircleIcon class="w-4 h-4 mr-2" />
+                                    Saved
                                 </span>
                             </Transition>
                         </div>
@@ -651,14 +664,13 @@ const currentAvatarPreview = computed(() => {
                             type="button"
                             @click="passwordForm.reset(); passwordForm.clearErrors()"
                             v-if="passwordForm.isDirty"
-                            class="text-sm font-semibold text-gray-500 hover:text-gray-700 transition-colors"
+                            class="text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-rose-600 transition-colors border-b-2 border-transparent hover:border-rose-100 pb-1"
                         >
-                            Clear form
+                            Reset Form
                         </button>
                     </div>  
                 </form>
             </div>
-
         </div>
     </div>
 </template>

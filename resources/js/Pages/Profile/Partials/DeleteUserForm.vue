@@ -42,68 +42,59 @@ const closeModal = () => {
 <template>
     <section>
         <!-- Header Section -->
-        <header class="flex items-start gap-4">
-            <div class="mt-1 flex-shrink-0 w-12 h-12 rounded-full bg-rose-50 border border-rose-100 flex items-center justify-center">
-                <ExclamationTriangleIcon class="w-6 h-6 text-rose-600" />
+        <header class="flex items-start gap-6">
+            <div class="mt-1 flex-shrink-0 w-14 h-14 rounded-2xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center shadow-inner">
+                <ExclamationTriangleIcon class="w-8 h-8 text-rose-600 animate-pulse" />
             </div>
             <div>
-                <h2 class="text-xl font-bold text-gray-900">
+                <h2 class="text-xl font-black text-rose-600 tracking-tight uppercase">
                     Danger Zone
                 </h2>
-                <p class="mt-2 text-sm text-gray-500 max-w-xl leading-relaxed">
-                    Once your account is deleted, all of its resources and data will
-                    be permanently deleted. This action <strong>cannot</strong> be undone. Before deleting your account, please
-                    download any data or information that you wish to retain.
+                <p class="mt-2 text-sm text-slate-500 max-w-xl leading-relaxed font-bold italic">
+                    Once your account is deleted, all resources and data will
+                    be permanently removed from our infrastructure. This action <strong>cannot</strong> be rolled back.
                 </p>
             </div>
         </header>
 
         <!-- Action Button -->
-        <div class="mt-8 pt-6 border-t border-gray-100 flex justify-end">
+        <div class="mt-10 pt-8 border-t border-rose-100 flex justify-end">
             <button 
                 @click="confirmUserDeletion"
-                class="inline-flex items-center px-6 py-3 bg-white border border-rose-200 rounded-xl font-bold text-rose-600 shadow-sm hover:bg-rose-50 focus:outline-none focus:ring-2 focus:ring-rose-500 focus:ring-offset-2 transition-all"
+                class="inline-flex items-center px-8 py-4 bg-white border border-rose-200 rounded-2xl font-black text-[10px] uppercase tracking-widest text-rose-600 shadow-sm hover:bg-rose-100 focus:outline-none focus:ring-2 focus:ring-rose-500 focus:ring-offset-2 transition-all active:scale-95"
             >
-                <ExclamationTriangleIcon class="w-5 h-5 mr-2" />
+                <ExclamationTriangleIcon class="w-4 h-4 mr-2.5" />
                 Delete Account
             </button>
         </div>
 
         <!-- Confirmation Modal -->
         <Modal :show="confirmingUserDeletion" @close="closeModal" maxWidth="md">
-            <div class="p-8">
+            <div class="p-10 bg-white">
                 <!-- Modal Header -->
-                <div class="flex items-center gap-4 mb-6">
-                    <div class="w-12 h-12 rounded-full bg-rose-100 flex items-center justify-center flex-shrink-0">
-                        <ExclamationTriangleIcon class="w-6 h-6 text-rose-600" />
+                <div class="flex flex-col items-center text-center mb-8">
+                    <div class="w-20 h-20 rounded-3xl bg-rose-50 flex items-center justify-center mb-6 shadow-inner ring-1 ring-rose-100">
+                        <ExclamationTriangleIcon class="w-10 h-10 text-rose-600" />
                     </div>
-                    <h2 class="text-xl font-bold text-gray-900">
-                        Are you absolutely sure?
+                    <h2 class="text-2xl font-black text-slate-900 tracking-tight">
+                        Delete Account
                     </h2>
+                    <p class="mt-4 text-sm text-slate-500 leading-relaxed font-bold italic">
+                        Once your account is deleted, all of its resources and data will be permanently deleted. Please enter your password to confirm you would like to permanently delete your account.
+                    </p>
                 </div>
 
-                <p class="text-sm text-gray-600 leading-relaxed">
-                    This action will permanently delete your account, 
-                    messages, settings, and all associated data.
-                    <br><br>
-                    Please enter your password to confirm deletion.
-                </p>
-
                 <!-- Password Input -->
-                <div class="mt-6">
-                    <InputLabel
-                        for="password"
-                        value="Password"
-                        class="sr-only"
-                    />
+                <div class="mt-8">
+                    <label class="px-2 text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-2 block">Password</label>
 
-                    <TextInput
+                    <input
                         id="password"
                         ref="passwordInput"
                         v-model="form.password"
                         type="password"
-                        class="mt-2 block w-full rounded-xl border-gray-300 shadow-sm focus:border-rose-500 focus:ring-rose-500 transition duration-150"
-                        placeholder="Enter your password"
+                        class="block w-full rounded-2xl border-none bg-slate-50 shadow-inner px-5 py-4 text-sm font-bold text-slate-700 focus:bg-white focus:ring-2 focus:ring-rose-500/10 transition-all"
+                        placeholder="••••••••••••"
                         @keyup.enter="deleteUser"
                     />
 
@@ -111,23 +102,24 @@ const closeModal = () => {
                 </div>
 
                 <!-- Modal Actions -->
-                <div class="mt-8 flex justify-end gap-3">
-                    <button 
-                        @click="closeModal"
-                        class="inline-flex items-center px-5 py-2.5 bg-white border border-gray-300 rounded-xl font-semibold text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-all"
-                    >
-                        Cancel
-                    </button>
-
+                <div class="mt-10 flex flex-col gap-3">
                     <button
                         :class="[
-                            form.processing ? 'opacity-50 cursor-not-allowed' : '',
-                            'inline-flex items-center px-5 py-2.5 bg-rose-600 border border-transparent rounded-xl font-bold text-white shadow-sm hover:bg-rose-700 focus:outline-none focus:ring-2 focus:ring-rose-500 focus:ring-offset-2 transition-all'
+                            form.processing ? 'opacity-30 cursor-not-allowed' : '',
+                            'w-full inline-flex items-center justify-center px-8 py-5 bg-rose-600 border border-transparent rounded-2xl font-black text-[11px] uppercase tracking-[0.15em] text-white shadow-xl shadow-rose-200 hover:bg-rose-700 focus:outline-none focus:ring-2 focus:ring-rose-500 focus:ring-offset-2 transition-all active:scale-95'
                         ]"
                         :disabled="form.processing"
                         @click="deleteUser"
                     >
-                        {{ form.processing ? 'Deleting...' : 'Delete Account' }}
+                        <svg v-if="form.processing" class="animate-spin -ml-1 mr-3 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                        {{ form.processing ? 'DELETING...' : 'DELETE ACCOUNT' }}
+                    </button>
+
+                    <button 
+                        @click="closeModal"
+                        class="w-full inline-flex items-center justify-center px-8 py-4 bg-slate-50 border border-slate-100 rounded-2xl font-black text-[10px] uppercase tracking-widest text-slate-400 hover:text-slate-900 transition-all active:scale-95"
+                    >
+                        CANCEL
                     </button>
                 </div>
             </div>

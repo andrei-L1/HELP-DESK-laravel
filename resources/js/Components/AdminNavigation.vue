@@ -218,7 +218,7 @@ const showTooltip = ref(null);
                     </div>
                     <div class="flex flex-col">
                         <span class="text-sm font-black tracking-tight text-slate-900 uppercase">Help Desk</span>
-                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest -mt-1">Admin Panel</span>
+                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest -mt-1">Administrator</span>
                     </div>
                 </Link>
             </div>
@@ -440,13 +440,13 @@ const showTooltip = ref(null);
                                         <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                                         </svg>
-                                        Profile Settings
+                                        Profile
                                     </DropdownLink>
                                     <DropdownLink :href="route('user.dashboard')" class="rounded-lg flex items-center gap-3 py-2.5 font-bold text-slate-700">
                                         <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
                                         </svg>
-                                        Switch to User View
+                                        User Dashboard
                                     </DropdownLink>
                                     <div class="my-1.5 h-px bg-slate-100/80"></div>
                                     <DropdownLink :href="route('logout')" method="post" as="button" class="rounded-lg flex items-center gap-3 py-2.5 font-bold text-rose-600 hover:bg-rose-50">
@@ -460,6 +460,36 @@ const showTooltip = ref(null);
                         </Dropdown>
                     </div>
                 </div>
+
+                <!-- Impersonation banner -->
+                <transition
+                    enter-active-class="transition-all duration-300 ease-out"
+                    enter-from-class="opacity-0 -translate-y-full"
+                    enter-to-class="opacity-100 translate-y-0"
+                    leave-active-class="transition-all duration-200 ease-in"
+                    leave-from-class="opacity-100 translate-y-0"
+                    leave-to-class="opacity-0 -translate-y-full"
+                >
+                    <div
+                        v-if="isImpersonating"
+                        class="bg-rose-600 text-white text-xs font-black uppercase tracking-widest px-8 py-2.5 flex items-center justify-between shadow-lg"
+                    >
+                        <div class="flex items-center gap-3">
+                            <svg class="h-5 w-5 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                            </svg>
+                            <span>You are impersonating <span class="font-black underline decoration-white/30 decoration-2 underline-offset-4">{{ user?.first_name }} {{ user?.last_name }}</span> <span v-if="impersonation?.admin" class="ml-2 opacity-60">({{ impersonation.admin.name }})</span></span>
+                        </div>
+                        <Link
+                            :href="route('admin.users.stop-impersonate')"
+                            method="post"
+                            as="button"
+                            class="bg-white text-rose-600 px-4 py-1.5 rounded-lg text-xs font-black shadow-sm hover:bg-slate-50 transition-all active:scale-95"
+                        >
+                            Stop Impersonating
+                        </Link>
+                    </div>
+                </transition>
             </header>
 
             <!-- Optional Breadcrumb -->
