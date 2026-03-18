@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, onUnmounted, watch } from 'vue';
+import { ref, onMounted, onUnmounted, watch, nextTick } from 'vue';
 import AgentNavigation from '@/Components/AgentNavigation.vue';
 import { Head, Link, useForm, router, usePage } from '@inertiajs/vue3';
 
@@ -23,18 +23,30 @@ const page = usePage();
 // Local reactive copy of messages for real-time updates
 const localMessages = ref([...(props.ticket.messages || [])]);
 
+const scrollContainer = ref(null);
+
+const scrollToBottom = async () => {
+    await nextTick();
+    if (scrollContainer.value) {
+        scrollContainer.value.scrollTop = scrollContainer.value.scrollHeight;
+    }
+};
+
 // Sync when Inertia reloads props
 watch(() => props.ticket.messages, (newVal) => {
     localMessages.value = [...(newVal || [])];
+    scrollToBottom();
 }, { deep: true });
 
 onMounted(() => {
+    scrollToBottom();
     if (window.Echo) {
         // Listen to public ticket channel
         window.Echo.private(`ticket.${props.ticket.id}`)
             .listen('.TicketMessageSent', (e) => {
                 if (!localMessages.value.find(m => m.id === e.messageData.id)) {
                     localMessages.value.push(e.messageData);
+                    scrollToBottom();
                 }
             });
 
@@ -43,6 +55,7 @@ onMounted(() => {
             .listen('.TicketMessageSent', (e) => {
                 if (!localMessages.value.find(m => m.id === e.messageData.id)) {
                     localMessages.value.push(e.messageData);
+                    scrollToBottom();
                 }
             });
     }
@@ -233,10 +246,13 @@ const showActivity = ref(false);
                                 </h3>
                             </div>
 
-                            <!-- Messages list -->
-                            <div class="divide-y divide-gray-50">
+                            <!-- Conversations -->
+                            <div 
+                                ref="scrollContainer"
+                                class="divide-y divide-gray-50 max-h-[500px] overflow-y-auto scroll-smooth"
+                            >
                                 <div v-if="localMessages.length === 0" class="py-10 text-center text-sm text-gray-400">
-                                    No replies yet. Start the conversation below.
+                                    No replies yet.
                                 </div>
                                 <div
                                     v-for="reply in localMessages"

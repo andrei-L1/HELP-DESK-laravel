@@ -1,5 +1,5 @@
 <script setup>
-import { ref, watch, onMounted, onUnmounted } from 'vue';
+import { ref, watch, onMounted, onUnmounted, nextTick } from 'vue';
 import ManagerNavigation from '@/Components/ManagerNavigation.vue';
 import { Head, Link, useForm, usePage } from '@inertiajs/vue3';
 
@@ -19,11 +19,22 @@ const page = usePage();
 // Local reactivity for messages
 const localMessages = ref([...props.messages]);
 
+const scrollContainer = ref(null);
+
+const scrollToBottom = async () => {
+    await nextTick();
+    if (scrollContainer.value) {
+        scrollContainer.value.scrollTop = scrollContainer.value.scrollHeight;
+    }
+};
+
 watch(() => props.messages, (newVal) => {
     localMessages.value = [...newVal];
+    scrollToBottom();
 }, { deep: true });
 
 onMounted(() => {
+    scrollToBottom();
     if (window.Echo) {
         // Listen to public ticket channel
         window.Echo.private(`ticket.${props.ticket.id}`)
@@ -44,6 +55,7 @@ onMounted(() => {
                         ...e.messageData,
                         is_mine: e.messageData.user_id === page.props.auth.user.id
                     });
+                    scrollToBottom();
                 }
             });
     }
@@ -232,7 +244,10 @@ const showActivity = ref(false);
                                     </span>
                                 </h3>
                             </div>
-                            <div class="divide-y divide-gray-50">
+                            <div 
+                                ref="scrollContainer"
+                                class="divide-y divide-gray-50 max-h-[500px] overflow-y-auto scroll-smooth"
+                            >
                                 <div v-if="localMessages.length === 0" class="py-10 text-center text-sm text-gray-400">
                                     No replies yet. Start the conversation below.
                                 </div>

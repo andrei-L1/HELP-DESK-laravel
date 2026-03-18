@@ -1,5 +1,5 @@
 <script setup>
-import { ref, watch, onMounted, onUnmounted } from 'vue';
+import { ref, watch, onMounted, onUnmounted, nextTick } from 'vue';
 import { Head, Link, useForm, usePage } from '@inertiajs/vue3';
 import UserNavigation from '@/Components/UserNavigation.vue';
 
@@ -15,12 +15,23 @@ const page = usePage();
 // Local reactive copy of messages to allow real-time updates
 const localMessages = ref([...props.messages]);
 
+const scrollContainer = ref(null);
+
+const scrollToBottom = async () => {
+    await nextTick();
+    if (scrollContainer.value) {
+        scrollContainer.value.scrollTop = scrollContainer.value.scrollHeight;
+    }
+};
+
 // Sync localMessages when Inertia updates props (e.g. after a manual reload or navigation)
 watch(() => props.messages, (newVal) => {
     localMessages.value = [...newVal];
+    scrollToBottom();
 }, { deep: true });
 
 onMounted(() => {
+    scrollToBottom();
     if (window.Echo) {
         window.Echo.private(`ticket.${props.ticket.id}`)
             .listen('.TicketMessageSent', (e) => {
@@ -31,6 +42,7 @@ onMounted(() => {
                         ...e.messageData,
                         is_mine: e.messageData.user_id === page.props.auth.user.id
                     });
+                    scrollToBottom();
                 }
             });
     }
@@ -190,7 +202,10 @@ const showActivity = ref(false);
                             </div>
 
                             <!-- Messages list -->
-                            <div class="divide-y divide-gray-50 text-wrap break-words">
+                            <div 
+                                ref="scrollContainer"
+                                class="divide-y divide-gray-50 text-wrap break-words max-h-[500px] overflow-y-auto scroll-smooth"
+                            >
                                 <div v-if="localMessages.length === 0" class="py-10 text-center text-sm text-gray-400">
                                     No replies yet.
                                 </div>
