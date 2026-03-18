@@ -26,28 +26,32 @@ Route::middleware('role:admin')
         // Fix #1 (Critical): Admin ticket routes now guarded by permission middleware,
         // consistent with Manager and User routes.
 
-        // View & navigate
-        Route::middleware(['permission:view_ticket'])->group(function () {
-            Route::get('/tickets', [AdminTicketController::class, 'index'])
-                ->name('tickets.index');
-            Route::get('/all', [AdminTicketController::class, 'all'])
-                ->name('tickets.all');
-            Route::get('/open', [AdminTicketController::class, 'open'])
-                ->name('tickets.open');
-            Route::get('/assigned', [AdminTicketController::class, 'assigned'])
-                ->name('tickets.assigned');
-            Route::get('/tickets/{ticket}', [AdminTicketController::class, 'show'])
-                ->name('tickets.show');
-            Route::get('/tickets/{ticket}/attachments/{attachment}', [AdminTicketController::class, 'downloadAttachment'])
-                ->name('tickets.attachments.download');
-        });
-
         // Create new ticket
         Route::middleware(['permission:create_ticket'])->group(function () {
             Route::get('/tickets/create', [AdminTicketController::class, 'create'])
                 ->name('tickets.create');
             Route::post('/tickets', [AdminTicketController::class, 'store'])
                 ->name('tickets.store');
+        });
+
+        // View & navigate
+        Route::middleware(['permission:view_ticket'])->group(function () {
+            Route::get('/tickets', [AdminTicketController::class, 'index'])
+                ->name('tickets.index');
+            Route::get('/all', [AdminTicketController::class, 'all'])
+                ->name('tickets.all');
+            Route::get('/assigned', [AdminTicketController::class, 'assigned'])
+                ->name('tickets.assigned');
+            Route::get('/tickets/{ticket}', [AdminTicketController::class, 'show'])
+                ->name('tickets.show');
+            Route::get('/tickets/{ticket}/attachments/{attachment}', [AdminTicketController::class, 'downloadAttachment'])
+                ->name('tickets.attachments.download');
+
+            // Bulk operations
+            Route::delete('/tickets-bulk/destroy', [AdminTicketController::class, 'bulkDestroy'])
+                ->name('tickets.bulk-destroy');
+            Route::post('/tickets-bulk/update', [AdminTicketController::class, 'bulkUpdate'])
+                ->name('tickets.bulk-update');
         });
 
         // Mutate existing ticket

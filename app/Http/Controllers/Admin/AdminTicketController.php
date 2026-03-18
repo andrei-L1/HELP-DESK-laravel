@@ -31,10 +31,6 @@ class AdminTicketController extends Controller
         return $this->getTickets($request, null, 'index', 'Admin/Tickets/Index'); 
     }
 
-    public function open(Request $request)
-    {
-        return $this->getTickets($request, 'Open', 'open', 'Admin/Tickets/Open');
-    }
     public function assigned(Request $request)
     {
         $assignedTo = Auth::id();
@@ -492,8 +488,27 @@ class AdminTicketController extends Controller
      */
     protected function getTickets(Request $request, ?string $statusFilter, string $view, string $component, ?int $assignedTo = null)
     {
-        $query = Ticket::with(['status', 'priority', 'creator', 'assignee'])
-            ->orderByDesc('created_at');
+        $query = Ticket::with(['status', 'priority', 'creator', 'assignee']);
+
+        // Handle Sorting
+        $sort = $request->input('sort', 'latest');
+        switch ($sort) {
+            case 'oldest':
+                $query->orderBy('created_at', 'asc');
+                break;
+            case 'updated':
+                $query->orderByDesc('updated_at');
+                break;
+            case 'priority_desc':
+                $query->join('ticket_priorities', 'tickets.priority_id', '=', 'ticket_priorities.id')
+                    ->orderBy('ticket_priorities.sort_order', 'asc')
+                    ->select('tickets.*');
+                break;
+            case 'latest':
+            default:
+                $query->orderByDesc('created_at');
+                break;
+        }
 
         // Apply status filter from URL/query
         if ($request->filled('status')) {
@@ -545,7 +560,7 @@ class AdminTicketController extends Controller
             ];
         });
 
-        // Optimize stats query (group by so we do exactly 2 fast queries rather than 6 separate join queries)
+        // Optimize stats query
         $statusCounts = Ticket::select('status_id', DB::raw('count(*) as count'))->groupBy('status_id')->pluck('count', 'status_id');
         $priorityCounts = Ticket::select('priority_id', DB::raw('count(*) as count'))->groupBy('priority_id')->pluck('count', 'priority_id');
 
@@ -563,14 +578,14 @@ class AdminTicketController extends Controller
         ];
 
         // Retrieve dropdown filter maps
-        $statuses = DB::table('ticket_statuses')->where('is_active', true)->orderBy('sort_order')->orderBy('name')->pluck('name');
-        $priorities = DB::table('ticket_priorities')->orderBy('sort_order')->orderBy('name')->pluck('name');
+        $statuses = DB::table('ticket_statuses')->where('is_active', true)->orderBy('sort_order')->orderBy('name')->get(['id', 'name']);
+        $priorities = DB::table('ticket_priorities')->orderBy('sort_order')->orderBy('name')->get(['id', 'name']);
         $categories = DB::table('ticket_categories')->where('is_active', true)->orderBy('sort_order')->get(['id', 'name', 'title']);
         $departments = DB::table('departments')->whereNull('deleted_at')->where('is_active', true)->orderBy('name')->get(['id', 'name', 'short_code']);
 
         return Inertia::render($component, [
             'tickets'     => $tickets,
-            'filters'     => $request->only(['search', 'status', 'priority', 'department']),
+            'filters'     => $request->only(['search', 'status', 'priority', 'department', 'sort']),
             'statuses'    => $statuses,
             'priorities'  => $priorities,
             'categories'  => $categories,
@@ -623,5 +638,40 @@ class AdminTicketController extends Controller
             'new_value' => $newValue,
             'details'   => $details,
         ]);
+    }
+
+    /**
+     * Bulk remove tickets.
+     */
+    public function bulkDestroy(Request $request)
+    {
+        $ids = $request->input('ids', []);
+        
+        if (empty($ids)) {
+            return redirect()->back()->with('error', 'No tickets selected.');
+        }
+
+        Ticket::whereIn('id', $ids)->delete();
+
+        return redirect()->back()->with('success', count($ids) . ' tickets deleted successfully.');
+    }
+
+    /**
+     * Bulk update tickets status.
+     */
+    public function bulkUpdate(Request $request)
+    {
+        $ids = $request->input('ids', []);
+        $statusId = $request->input('status_id');
+
+        if (empty($ids)) {
+            return redirect()->back()->with('error', 'No tickets selected.');
+        }
+
+        if ($statusId) {
+            Ticket::whereIn('id', $ids)->update(['status_id' => $statusId]);
+        }
+
+        return redirect()->back()->with('success', count($ids) . ' tickets updated successfully.');
     }
 }

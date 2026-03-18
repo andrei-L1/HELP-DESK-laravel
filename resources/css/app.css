@@ -33,6 +33,7 @@
 .stagger-1 { animation: fadeInUp 0.2s ease-out forwards; }
 .stagger-2 { animation: fadeInUp 0.2s ease-out 0.03s forwards; opacity: 0; }
 .stagger-3 { animation: fadeInUp 0.2s ease-out 0.06s forwards; opacity: 0; }
+.stagger-3-5 { animation: fadeInUp 0.2s ease-out 0.08s forwards; opacity: 0; }
 .stagger-4 { animation: fadeInUp 0.2s ease-out 0.09s forwards; opacity: 0; }
 .stagger-5 { animation: fadeInUp 0.2s ease-out 0.12s forwards; opacity: 0; }
 
