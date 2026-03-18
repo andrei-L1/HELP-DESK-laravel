@@ -1,32 +1,7 @@
 <script setup>
-import { ref, watch } from 'vue';
+import { ref, watch, computed } from 'vue';
 import AdminNavigation from '@/Components/AdminNavigation.vue';
 import { Head, Link, router, useForm } from '@inertiajs/vue3';
-
-// Create role modal
-const showCreateModal = ref(false);
-const createForm = useForm({
-    name: '',
-    description: '',
-    permissions: [],
-});
-
-// Edit role modal
-const showEditModal = ref(false);
-const editForm = useForm({
-    id: null,
-    name: '',
-    description: '',
-    permissions: [],
-});
-
-// Delete confirmation modal
-const showDeleteModal = ref(false);
-const roleToDelete = ref(null);
-
-// View role details modal
-const showViewModal = ref(false);
-const selectedRole = ref(null);
 
 const props = defineProps({
     roles: {
@@ -52,15 +27,39 @@ const props = defineProps({
     },
 });
 
+// Modal state
+const showCreateModal = ref(false);
+const showEditModal = ref(false);
+const showViewModal = ref(false);
+const showDeleteModal = ref(false);
+const roleToDelete = ref(null);
+const selectedRole = ref(null);
+const modalInitialized = ref(false);
+
+const createForm = useForm({
+    name: '',
+    description: '',
+    permissions: [],
+});
+
+const editForm = useForm({
+    id: null,
+    name: '',
+    description: '',
+    permissions: [],
+});
+
 // Modal management
 const openCreateModal = () => {
     showCreateModal.value = true;
     createForm.reset();
+    setTimeout(() => modalInitialized.value = true, 100);
 };
 
 const closeCreateModal = () => {
     showCreateModal.value = false;
     createForm.reset();
+    modalInitialized.value = false;
 };
 
 const openEditModal = (role) => {
@@ -69,11 +68,13 @@ const openEditModal = (role) => {
     editForm.description = role.description || '';
     editForm.permissions = role.permissions || [];
     showEditModal.value = true;
+    setTimeout(() => modalInitialized.value = true, 100);
 };
 
 const closeEditModal = () => {
     showEditModal.value = false;
     editForm.reset();
+    modalInitialized.value = false;
 };
 
 const openViewModal = (role) => {
@@ -121,6 +122,8 @@ const confirmDelete = () => {
 };
 
 // Filtering
+const searchInput = ref(props.filters.search || '');
+
 const applyFilter = (key, value) => {
     router.get(
         route('admin.users.roles'),
@@ -137,6 +140,7 @@ const applyFilter = (key, value) => {
 };
 
 const resetFilters = () => {
+    searchInput.value = '';
     router.get(
         route('admin.users.roles'),
         {},
@@ -147,15 +151,19 @@ const resetFilters = () => {
     );
 };
 
+// Helpers
 const formatDate = (date) => {
     if (!date) return 'Never';
-    return new Date(date).toLocaleDateString();
+    return new Date(date).toLocaleDateString(undefined, {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+    });
 };
 
-// Get user count display
 const getUserCountText = (role) => {
-    if (!role.users_count) return 'No users';
-    return role.users_count + (role.users_count === 1 ? ' user' : ' users');
+    if (!role.users_count && role.users_count !== 0) return 'Analyzing...';
+    return role.users_count + (role.users_count === 1 ? ' User' : ' Users');
 };
 
 const defaultPermissionsByRole = {
@@ -168,7 +176,6 @@ const defaultPermissionsByRole = {
 
 const getDefaultPermissionIds = (roleName) => {
     if (!roleName) return [];
-
     const lowerName = roleName.trim().toLowerCase();
     const permissionNames = defaultPermissionsByRole[lowerName] || defaultPermissionsByRole.default;
 
@@ -180,7 +187,6 @@ const getDefaultPermissionIds = (roleName) => {
         .map(name => props.permissions.find(p => p.name === name)?.id)
         .filter(Boolean);
 };
-
 
 const resetToDefaultPermissions = () => {
     let form;
@@ -196,581 +202,393 @@ const resetToDefaultPermissions = () => {
         return;
     }
 
-    if (!roleName?.trim()) {
-        alert('Please enter a role name first to apply default permissions.');
-        return;
-    }
-
+    if (!roleName?.trim()) return;
     form.permissions = getDefaultPermissionIds(roleName);
 };
 
+// Visual Helpers
+const getRoleIconColor = (name) => {
+    const n = name.toLowerCase();
+    if (n.includes('admin')) return 'bg-rose-500 shadow-rose-200';
+    if (n.includes('agent')) return 'bg-blue-500 shadow-blue-200';
+    if (n.includes('manager')) return 'bg-amber-500 shadow-amber-200';
+    return 'bg-slate-900 shadow-slate-200';
+};
 </script>
 
 <template>
-    <Head title="Roles" />
+    <Head title="Access Control Roles" />
 
     <AdminNavigation>
-        <!-- Create Role Modal -->
-        <Teleport to="body">
-            <div
-                v-if="showCreateModal"
-                class="fixed inset-0 z-50 overflow-y-auto"
-                aria-labelledby="Create role"
-                role="dialog"
-                aria-modal="true"
-            >
-                <div class="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
-                    <div
-                        class="fixed inset-0 bg-gray-500/75 transition-opacity"
-                        aria-hidden="true"
-                        @click="closeCreateModal"
-                    />
-                    <div
-                        class="relative transform overflow-hidden rounded-lg bg-white text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg"
-                    >
-                        <form @submit.prevent="submitCreate" class="p-6 space-y-4">
-                            <h3 class="text-lg font-semibold text-gray-900">Create Role</h3>
-                            
-                            <div>
-                                <label for="create-name" class="block text-sm font-medium text-gray-700">
-                                    Role name <span class="text-red-500">*</span>
-                                </label>
-                                <input
-                                    id="create-name"
-                                    v-model="createForm.name"
-                                    type="text"
-                                    required
-                                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm"
-                                    placeholder="e.g., Admin, Agent, Customer"
-                                />
-                                <p v-if="createForm.errors.name" class="mt-1 text-sm text-red-600">
-                                    {{ createForm.errors.name }}
-                                </p>
-                            </div>
-                            
-                            <div>
-                                <label for="create-description" class="block text-sm font-medium text-gray-700">
-                                    Description
-                                </label>
-                                <textarea
-                                    id="create-description"
-                                    v-model="createForm.description"
-                                    rows="3"
-                                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm"
-                                    placeholder="Describe the role's purpose and permissions"
-                                ></textarea>
-                                <p v-if="createForm.errors.description" class="mt-1 text-sm text-red-600">
-                                    {{ createForm.errors.description }}
-                                </p>
-                            </div>
-
-                            <!-- Permissions Checkboxes -->
-                            <div class="border-t border-gray-200 pt-4 mt-4">
-                                <div class="flex items-center justify-between mb-2">
-                                    <h4 class="text-sm font-medium text-gray-900">Permissions</h4>
-                                    <button
-                                        type="button"
-                                        @click="resetToDefaultPermissions"
-                                        class="text-xs text-slate-600 hover:text-slate-800 underline hover:no-underline"
-                                    >
-                                        Reset to default
-                                    </button>
-                                </div>
-                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-48 overflow-y-auto pr-2">
-                                    <div v-for="permission in permissions" :key="permission.id" class="flex items-start">
-                                        <div class="flex h-5 items-center">
-                                            <input
-                                                :id="'create-perm-' + permission.id"
-                                                :value="permission.id"
-                                                v-model="createForm.permissions"
-                                                type="checkbox"
-                                                class="h-4 w-4 rounded border-gray-300 text-slate-600 focus:ring-slate-500"
-                                            />
-                                        </div>
-                                        <div class="ml-3 text-sm">
-                                            <label :for="'create-perm-' + permission.id" class="font-medium text-gray-700">
-                                                {{ permission.title || permission.name }}
-                                            </label>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <div class="flex gap-3 justify-end pt-2">
-                                <button
-                                    type="button"
-                                    class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50"
-                                    @click="closeCreateModal"
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    type="submit"
-                                    class="inline-flex justify-center rounded-md bg-slate-700 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-slate-800 disabled:opacity-50"
-                                    :disabled="createForm.processing"
-                                >
-                                    {{ createForm.processing ? 'Creating…' : 'Create Role' }}
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Edit Role Modal -->
-            <div
-                v-if="showEditModal"
-                class="fixed inset-0 z-50 overflow-y-auto"
-                aria-labelledby="Edit role"
-                role="dialog"
-                aria-modal="true"
-            >
-                <div class="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
-                    <div
-                        class="fixed inset-0 bg-gray-500/75 transition-opacity"
-                        aria-hidden="true"
-                        @click="closeEditModal"
-                    />
-                    <div
-                        class="relative transform overflow-hidden rounded-lg bg-white text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg"
-                    >
-                        <form @submit.prevent="submitEdit" class="p-6 space-y-4">
-                            <h3 class="text-lg font-semibold text-gray-900">Edit Role</h3>
-                            
-                            <div>
-                                <label for="edit-name" class="block text-sm font-medium text-gray-700">
-                                    Role name <span class="text-red-500">*</span>
-                                </label>
-                                <input
-                                    id="edit-name"
-                                    v-model="editForm.name"
-                                    type="text"
-                                    required
-                                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm"
-                                />
-                                <p v-if="editForm.errors.name" class="mt-1 text-sm text-red-600">
-                                    {{ editForm.errors.name }}
-                                </p>
-                            </div>
-                            
-                            <div>
-                                <label for="edit-description" class="block text-sm font-medium text-gray-700">
-                                    Description
-                                </label>
-                                <textarea
-                                    id="edit-description"
-                                    v-model="editForm.description"
-                                    rows="3"
-                                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm"
-                                ></textarea>
-                                <p v-if="editForm.errors.description" class="mt-1 text-sm text-red-600">
-                                    {{ editForm.errors.description }}
-                                </p>
-                            </div>
-
-                            <!-- Permissions Checkboxes -->
-                            <div class="border-t border-gray-200 pt-4 mt-4">
-                                <div class="flex items-center justify-between mb-2">
-                                    <h4 class="text-sm font-medium text-gray-900">Permissions</h4>
-                                    <button
-                                        type="button"
-                                        @click="resetToDefaultPermissions"
-                                        class="text-xs text-slate-600 hover:text-slate-800 underline hover:no-underline"
-                                    >
-                                        Reset to default
-                                    </button>
-                                </div>
-                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-48 overflow-y-auto pr-2">
-                                    <div v-for="permission in permissions" :key="permission.id" class="flex items-start">
-                                        <div class="flex h-5 items-center">
-                                            <input
-                                                :id="'edit-perm-' + permission.id"
-                                                :value="permission.id"
-                                                v-model="editForm.permissions"
-                                                type="checkbox"
-                                                class="h-4 w-4 rounded border-gray-300 text-slate-600 focus:ring-slate-500"
-                                            />
-                                        </div>
-                                        <div class="ml-3 text-sm">
-                                            <label :for="'edit-perm-' + permission.id" class="font-medium text-gray-700">
-                                                {{ permission.title || permission.name }}
-                                            </label>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <div class="flex gap-3 justify-end pt-2">
-                                <button
-                                    type="button"
-                                    class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50"
-                                    @click="closeEditModal"
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    type="submit"
-                                    class="inline-flex justify-center rounded-md bg-slate-700 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-slate-800 disabled:opacity-50"
-                                    :disabled="editForm.processing"
-                                >
-                                    {{ editForm.processing ? 'Saving…' : 'Save Changes' }}
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            </div>
-
-            <!-- View Role Modal -->
-            <div
-                v-if="showViewModal && selectedRole"
-                class="fixed inset-0 z-50 overflow-y-auto"
-                aria-labelledby="View role"
-                role="dialog"
-                aria-modal="true"
-            >
-                <div class="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
-                    <div
-                        class="fixed inset-0 bg-gray-500/75 transition-opacity"
-                        aria-hidden="true"
-                        @click="closeViewModal"
-                    />
-                    <div
-                        class="relative transform overflow-hidden rounded-lg bg-white text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg"
-                    >
-                        <div class="p-6">
-                            <h3 class="text-lg font-semibold text-gray-900 mb-4">Role Details</h3>
-                            
-                            <dl class="space-y-3">
-                                <div class="border-b border-gray-200 pb-2">
-                                    <dt class="text-sm font-medium text-gray-500">Name</dt>
-                                    <dd class="mt-1 text-sm text-gray-900">{{ selectedRole.name }}</dd>
-                                </div>
-                                
-                                <div class="border-b border-gray-200 pb-2">
-                                    <dt class="text-sm font-medium text-gray-500">Description</dt>
-                                    <dd class="mt-1 text-sm text-gray-900">
-                                        {{ selectedRole.description || 'No description provided' }}
-                                    </dd>
-                                </div>
-                                
-                                <div class="border-b border-gray-200 pb-2">
-                                    <dt class="text-sm font-medium text-gray-500">Users</dt>
-                                    <dd class="mt-1 text-sm text-gray-900">
-                                        <span class="inline-flex rounded-full bg-indigo-100 px-2 py-1 text-xs font-semibold text-indigo-800">
-                                            {{ getUserCountText(selectedRole) }}
-                                        </span>
-                                    </dd>
-                                </div>
-
-                                <div class="border-b border-gray-200 pb-2">
-                                    <dt class="text-sm font-medium text-gray-500">Permissions</dt>
-                                    <dd class="mt-1 flex flex-wrap gap-2 text-sm text-gray-900">
-                                        <span v-for="permId in selectedRole.permissions" :key="'sp-'+permId" class="inline-flex rounded-full bg-blue-100 px-2 py-1 text-xs font-semibold text-blue-800">
-                                            {{ permissions.find(p => p.id === permId)?.title || permId }}
-                                        </span>
-                                        <span v-if="!selectedRole.permissions || selectedRole.permissions.length === 0" class="text-gray-500 italic">No permissions assigned</span>
-                                    </dd>
-                                </div>
-                                
-                                <div class="border-b border-gray-200 pb-2">
-                                    <dt class="text-sm font-medium text-gray-500">Created</dt>
-                                    <dd class="mt-1 text-sm text-gray-500">
-                                        {{ formatDate(selectedRole.created_at) }}
-                                    </dd>
-                                </div>
-                                
-                                <div class="pb-2">
-                                    <dt class="text-sm font-medium text-gray-500">Last updated</dt>
-                                    <dd class="mt-1 text-sm text-gray-500">
-                                        {{ formatDate(selectedRole.updated_at) }}
-                                    </dd>
-                                </div>
-                            </dl>
-                            
-                            <div class="flex justify-end pt-4">
-                                <button
-                                    type="button"
-                                    class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50"
-                                    @click="closeViewModal"
-                                >
-                                    Close
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Delete Confirmation Modal -->
-            <div
-                v-if="showDeleteModal && roleToDelete"
-                class="fixed inset-0 z-50 overflow-y-auto"
-                aria-labelledby="Delete role"
-                role="dialog"
-                aria-modal="true"
-            >
-                <div class="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
-                    <div
-                        class="fixed inset-0 bg-gray-500/75 transition-opacity"
-                        aria-hidden="true"
-                        @click="closeDeleteModal"
-                    />
-                    <div
-                        class="relative transform overflow-hidden rounded-lg bg-white text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg"
-                    >
-                        <div class="p-6">
-                            <div class="flex items-center justify-center text-red-600 mb-4">
-                                <svg class="h-12 w-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                                </svg>
-                            </div>
-                            
-                            <h3 class="text-lg font-semibold text-gray-900 text-center mb-2">Delete Role</h3>
-                            
-                            <p class="text-sm text-gray-500 text-center mb-4">
-                                Are you sure you want to delete the role <span class="font-semibold text-gray-700">"{{ roleToDelete.name }}"</span>?
-                                <br>
-                                <span class="text-red-600 font-medium">This action cannot be undone.</span>
-                            </p>
-
-                            <div v-if="roleToDelete.users_count > 0" class="mb-4 rounded-md bg-yellow-50 p-3">
-                                <div class="flex">
-                                    <div class="flex-shrink-0">
-                                        <svg class="h-5 w-5 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                                        </svg>
-                                    </div>
-                                    <div class="ml-3">
-                                        <p class="text-sm text-yellow-700">
-                                            This role has {{ getUserCountText(roleToDelete) }} assigned. 
-                                            Deleting it will affect those users.
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <div class="flex gap-3 justify-center">
-                                <button
-                                    type="button"
-                                    class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50"
-                                    @click="closeDeleteModal"
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    type="button"
-                                    class="rounded-md bg-red-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-red-700"
-                                    @click="confirmDelete"
-                                >
-                                    Delete Role
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </Teleport>
-
         <template #header-title>
-            <h1 class="text-xl font-semibold text-gray-900">Roles</h1>
+            <div class="flex items-center gap-2">
+                <span class="text-xl font-bold text-slate-900 tracking-tight">Security Roles</span>
+            </div>
         </template>
 
-        <div class="p-6 space-y-6">
-            <!-- Stats Cards -->
-            <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                <div class="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
-                    <p class="text-sm font-medium text-gray-500">Total Roles</p>
-                    <p class="mt-1 text-2xl font-semibold text-gray-900">{{ stats.total_roles || roles.total || 0 }}</p>
-                </div>
-                <div class="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
-                    <p class="text-sm font-medium text-gray-500">Total Users</p>
-                    <p class="mt-1 text-2xl font-semibold text-gray-900">{{ stats.total_users || 0 }}</p>
-                </div>
-                <div class="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
-                    <p class="text-sm font-medium text-gray-500">Avg Users per Role</p>
-                    <p class="mt-1 text-2xl font-semibold text-gray-900">
-                        {{ stats.total_roles ? Math.round((stats.total_users || 0) / stats.total_roles) : 0 }}
-                    </p>
-                </div>
+        <template #breadcrumbs>
+            <div class="flex items-center gap-2 text-[11px] font-bold text-slate-500">
+                <span class="hover:text-slate-700 cursor-pointer">Admin</span>
+                <svg class="h-2 w-2 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7" /></svg>
+                <span class="hover:text-slate-700 cursor-pointer">Security</span>
+                <svg class="h-2 w-2 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7" /></svg>
+                <span class="text-slate-900">Access Roles</span>
             </div>
+        </template>
 
-            <!-- Filters and Actions -->
-            <div class="flex flex-col gap-4 rounded-lg border border-gray-200 bg-white p-4 shadow-sm md:flex-row md:items-end md:justify-between">
-                <div class="flex flex-1 flex-col gap-3 md:flex-row">
-                    <!-- Search -->
-                    <div class="flex-1">
-                        <label class="block text-sm font-medium text-gray-700" for="search">
-                            Search Roles
-                        </label>
-                        <div class="mt-1 relative">
-                            <input
-                                id="search"
-                                type="text"
-                                class="block w-full rounded-md border-gray-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 pr-10"
-                                :value="filters.search || ''"
-                                placeholder="Search by name or description"
-                                @keyup.enter="applyFilter('search', $event.target.value)"
-                            />
-                            <button
-                                type="button"
-                                class="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600"
-                                @click="applyFilter('search', $event.target.previousElementSibling.value)"
-                            >
-                                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                          d="M21 21l-4.35-4.35M11 18a7 7 0 100-14 7 7 0 000 14z" />
-                                </svg>
-                            </button>
-                        </div>
-                    </div>
+        <div class="max-w-[1400px] mx-auto space-y-10 pb-20 pt-4">
+            <!-- Header Section -->
+            <div class="flex flex-col md:flex-row md:items-end justify-between gap-6 px-4 stagger-1">
+                <div class="space-y-1">
+                    <h2 class="text-3xl font-black text-slate-900 tracking-tight">Access Control</h2>
+                    <p class="text-slate-500 font-medium italic">Define granular system permissions and administrative tiers.</p>
                 </div>
-
-                <div class="flex gap-3">
+                <div class="flex items-center gap-3">
                     <button
-                        type="button"
-                        class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50"
-                        @click="resetFilters"
-                    >
-                        Reset
-                    </button>
-                    <button
-                        type="button"
-                        class="inline-flex items-center rounded-md bg-slate-700 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-slate-800"
                         @click="openCreateModal"
+                        class="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-slate-900 text-white text-sm font-bold shadow-lg shadow-slate-200 hover:bg-slate-800 transition-all active:scale-95"
                     >
-                        <svg class="-ml-0.5 mr-1.5 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                  d="M12 4v16m8-8H4" />
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4" />
                         </svg>
                         New Role
                     </button>
                 </div>
             </div>
 
-            <!-- Roles Table -->
-            <div class="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
-                <table class="min-w-full divide-y divide-gray-200">
-                    <thead class="bg-gray-50">
-                    <tr>
-                        <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                            Role Name
-                        </th>
-                        <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                            Description
-                        </th>
-                        <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                            Users
-                        </th>
-                        <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                            Created
-                        </th>
-                        <th class="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">
-                            Actions
-                        </th>
-                    </tr>
-                    </thead>
-                    <tbody class="divide-y divide-gray-200 bg-white">
-                    <tr
-                        v-for="role in roles.data"
-                        :key="role.id"
-                        class="cursor-pointer hover:bg-gray-50 transition-colors"
-                        @click="openViewModal(role)"
-                    >
-                        <td class="whitespace-nowrap px-6 py-4">
-                            <div class="flex items-center">
-                                <div class="h-8 w-8 flex-shrink-0 rounded-full bg-slate-100 flex items-center justify-center">
-                                    <span class="text-sm font-medium text-slate-600">
-                                        {{ role.name.charAt(0).toUpperCase() }}
-                                    </span>
-                                </div>
-                                <div class="ml-3">
-                                    <p class="text-sm font-medium text-gray-900">{{ role.name }}</p>
-                                </div>
-                            </div>
-                        </td>
-                        <td class="px-6 py-4 text-sm text-gray-500 max-w-xs truncate">
-                            {{ role.description || '—' }}
-                        </td>
-                        <td class="whitespace-nowrap px-6 py-4 text-sm">
-                            <span class="inline-flex rounded-full bg-indigo-100 px-2 py-1 text-xs font-semibold text-indigo-800">
-                                {{ getUserCountText(role) }}
-                            </span>
-                        </td>
-                        <td class="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
-                            {{ formatDate(role.created_at) }}
-                        </td>
-                        <td class="whitespace-nowrap px-6 py-4 text-sm text-right">
-                            <div class="flex justify-end gap-2" @click.stop>
-                                <button
-                                    @click="openEditModal(role)"
-                                    class="text-slate-600 hover:text-slate-900"
-                                    title="Edit role"
-                                >
-                                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                    </svg>
-                                </button>
-                                <button
-                                    @click="openDeleteModal(role)"
-                                    class="text-red-600 hover:text-red-800"
-                                    title="Delete role"
-                                >
-                                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                    </svg>
-                                </button>
-                            </div>
-                        </td>
-                    </tr>
+            <!-- Stats Overview -->
+            <div class="grid gap-8 md:grid-cols-3 px-1 stagger-2">
+                <div v-for="stat in [
+                    { label: 'System Tiers', value: stats.total_roles || roles.total || 0, color: 'slate' },
+                    { label: 'Assigned Users', value: stats.total_users || 0, color: 'emerald' },
+                    { label: 'Avg Density', value: stats.total_roles ? Math.round((stats.total_users || 0) / stats.total_roles) : 0, color: 'amber' }
+                ]" :key="stat.label" class="group relative py-2">
+                    <div class="flex flex-col">
+                        <p class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2">{{ stat.label }}</p>
+                        <p class="text-3xl font-bold text-slate-900 tracking-tighter">{{ stat.value }}</p>
+                        <div class="mt-4 h-1 w-8 rounded-full bg-slate-100 overflow-hidden">
+                            <div :class="{
+                                'bg-slate-900': stat.color === 'slate',
+                                'bg-emerald-500': stat.color === 'emerald',
+                                'bg-amber-500': stat.color === 'amber'
+                            }" class="h-full w-full opacity-50 group-hover:opacity-100 transition-opacity"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
-                    <tr v-if="roles.data.length === 0">
-                        <td colspan="5" class="px-6 py-8 text-center text-sm text-gray-500">
-                            No roles found.
-                            <button
-                                @click="openCreateModal"
-                                class="ml-1 text-slate-600 hover:text-slate-800 font-medium underline"
+            <!-- Enhanced Search Bar -->
+            <div class="bg-white rounded-2xl border border-slate-300/40 shadow-sm shadow-slate-200/60 stagger-3 overflow-hidden">
+                <div class="p-6 flex flex-col md:flex-row md:items-center gap-6">
+                    <div class="flex-1 relative group">
+                        <svg class="absolute left-4 top-3 h-5 w-5 text-slate-400 group-focus-within:text-slate-900 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M21 21l-4.35-4.35M11 18a7 7 0 100-14 7 7 0 000 14z" />
+                        </svg>
+                        <input
+                            type="text"
+                            v-model="searchInput"
+                            @keyup.enter="applyFilter('search', searchInput)"
+                            class="block w-full rounded-xl border-none bg-slate-100/50 px-4 py-3.5 pl-12 text-sm placeholder:text-slate-500 focus:bg-white focus:ring-2 focus:ring-slate-900/5 transition-all font-bold text-slate-700"
+                            placeholder="Find a role by name or description..."
+                        />
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <button
+                            v-if="filters.search"
+                            @click="resetFilters"
+                            class="p-3.5 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-all border border-transparent hover:border-rose-100"
+                            title="Clear search"
+                        >
+                            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12" /></svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Role Cards Grid -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 stagger-4">
+                <div
+                    v-for="(role, index) in roles.data"
+                    :key="role.id"
+                    class="group relative bg-white rounded-2xl border border-slate-300/40 shadow-sm shadow-slate-200/60 p-6 transition-all hover:shadow-md hover:-translate-y-1 cursor-pointer"
+                    :class="`stagger-${Math.min(index + 5, 5)}`"
+                    @click="openViewModal(role)"
+                >
+                    <div class="flex items-start justify-between mb-6">
+                        <div class="flex items-center gap-4">
+                            <div class="h-12 w-12 rounded-xl flex items-center justify-center text-white text-lg font-black shadow-lg" :class="getRoleIconColor(role.name)">
+                                {{ role.name.charAt(0).toUpperCase() }}
+                            </div>
+                            <div>
+                                <h4 class="text-base font-bold text-slate-900 tracking-tight">{{ role.name }}</h4>
+                                <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">{{ getUserCountText(role) }}</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity" @click.stop>
+                             <button
+                                @click="openEditModal(role)"
+                                class="p-2 rounded-lg text-slate-400 hover:text-slate-900 hover:bg-slate-100 transition-all"
                             >
-                                Create your first role
+                                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
                             </button>
-                        </td>
-                    </tr>
-                    </tbody>
-                </table>
+                             <button
+                                @click="openDeleteModal(role)"
+                                class="p-2 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-all"
+                            >
+                                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                            </button>
+                        </div>
+                    </div>
+
+                    <p class="text-xs font-medium text-slate-500 leading-relaxed mb-6 line-clamp-2 min-h-[2.5rem]">
+                        {{ role.description || 'No specialized description provided for this access tier.' }}
+                    </p>
+
+                    <div class="flex items-center justify-between pt-6 border-t border-slate-50">
+                        <div class="flex -space-x-1.5 overflow-hidden">
+                            <!-- Subtle indicators for permission count -->
+                            <div class="text-[10px] font-black text-slate-400 uppercase tracking-tight">
+                                {{ role.permissions?.length || 0 }} System Privileges
+                            </div>
+                        </div>
+                        <span class="text-[10px] font-bold text-slate-300">{{ formatDate(role.created_at) }}</span>
+                    </div>
+                </div>
+
+                <!-- Empty State -->
+                <div v-if="roles.data.length === 0" class="col-span-full py-32 flex flex-col items-center text-center px-4 stagger-5">
+                    <div class="relative mb-8">
+                        <div class="absolute inset-0 bg-slate-100 rounded-full blur-3xl opacity-50 scale-150"></div>
+                        <div class="relative flex h-24 w-24 items-center justify-center rounded-3xl bg-white shadow-xl shadow-slate-200 border border-slate-100">
+                             <svg class="h-10 w-10 text-slate-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                            </svg>
+                        </div>
+                    </div>
+                    <h4 class="text-xl font-black text-slate-900 tracking-tight mb-2">No security tiers found</h4>
+                    <p class="text-slate-500 max-w-xs font-medium italic">Defined system roles will appear here for management.</p>
+                    <button @click="resetFilters" class="mt-8 text-sm font-bold text-slate-900 border-b-2 border-slate-900 pb-0.5 hover:text-slate-600 hover:border-slate-600 transition-all">Reset full directory</button>
+                </div>
             </div>
 
             <!-- Pagination -->
             <div
-                v-if="roles.links && roles.links.length > 1"
-                class="flex items-center justify-between border-t border-gray-200 bg-white px-4 py-3 text-sm text-gray-700 shadow-sm sm:px-6"
+                v-if="roles.links && roles.links.length > 3"
+                class="flex flex-col sm:flex-row items-center justify-between px-4 py-8 stagger-5"
             >
-                <div class="hidden sm:block">
-                    <p>
-                        Showing
-                        <span class="font-medium">{{ roles.from || 0 }}</span>
-                        to
-                        <span class="font-medium">{{ roles.to || 0 }}</span>
-                        of
-                        <span class="font-medium">{{ roles.total || 0 }}</span>
-                        results
+                <div class="mb-4 sm:mb-0">
+                    <p class="text-[11px] font-black text-slate-500 uppercase tracking-widest">
+                        Showing <span class="text-slate-900">{{ roles.from || 0 }}</span> - <span class="text-slate-900">{{ roles.to || 0 }}</span> of <span class="text-slate-900">{{ roles.total || 0 }}</span> entries
                     </p>
                 </div>
-                <div class="flex flex-1 justify-between sm:justify-end gap-1">
+                <div class="flex items-center gap-1.5 p-1.5 bg-white rounded-xl border border-slate-300/40 shadow-sm shadow-slate-200/40">
                     <Link
                         v-for="link in roles.links"
                         :key="link.label"
                         :href="link.url || '#'"
                         v-html="link.label"
-                        class="inline-flex items-center rounded-md px-3 py-1 text-sm font-medium"
+                        class="h-10 min-w-[40px] px-3 flex items-center justify-center rounded-lg text-xs font-black transition-all"
                         :class="[
                             link.active
-                                ? 'bg-slate-700 text-white'
-                                : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-300',
-                            !link.url ? 'cursor-default opacity-50' : '',
+                                ? 'bg-slate-900 text-white shadow-lg shadow-slate-200'
+                                : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50',
+                            !link.url ? 'opacity-30 cursor-not-allowed' : '',
                         ]"
                     />
                 </div>
             </div>
         </div>
+
+        <!-- Modals -->
+        <Teleport to="body">
+            <!-- Create/Edit Modal -->
+            <Transition
+                enter-active-class="transition duration-300 ease-out"
+                enter-from-class="opacity-0 scale-95"
+                enter-to-class="opacity-100 scale-100"
+                leave-active-class="transition duration-200 ease-in"
+                leave-from-class="opacity-100 scale-100"
+                leave-to-class="opacity-0 scale-95"
+            >
+                <div v-if="showCreateModal || showEditModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
+                    <div class="bg-white rounded-3xl shadow-2xl shadow-slate-900/20 w-full max-w-2xl overflow-hidden border border-slate-100">
+                        <div class="px-8 py-6 border-b border-slate-50 flex items-center justify-between">
+                            <div>
+                                <h3 class="text-xl font-black text-slate-900 tracking-tight">
+                                    {{ showCreateModal ? 'Architect New Role' : 'Modify Access Tier' }}
+                                </h3>
+                                <p class="text-xs font-bold text-slate-400 mt-0.5">Map system privileges and administrative scope.</p>
+                            </div>
+                            <button @click="showCreateModal ? closeCreateModal() : closeEditModal()" class="p-2 rounded-xl hover:bg-slate-50 text-slate-400 transition-colors">
+                                <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12" /></svg>
+                            </button>
+                        </div>
+
+                        <form @submit.prevent="showCreateModal ? submitCreate() : submitEdit()" class="p-8 space-y-8 max-h-[75vh] overflow-y-auto custom-scrollbar">
+                            <div class="space-y-6">
+                                <div class="space-y-1.5">
+                                    <label class="px-2 text-[10px] font-black text-slate-500 uppercase tracking-widest">Role Identifier *</label>
+                                    <input 
+                                        v-model="(showCreateModal ? createForm : editForm).name" 
+                                        type="text" 
+                                        required 
+                                        class="block w-full rounded-xl border-none bg-slate-50 px-4 py-3.5 text-sm font-bold text-slate-700 focus:bg-white focus:ring-2 focus:ring-slate-900/5 transition-all" 
+                                        placeholder="e.g. Security Specialist" 
+                                    />
+                                    <p v-if="(showCreateModal ? createForm : editForm).errors.name" class="px-2 text-[10px] font-bold text-rose-500 italic">{{ (showCreateModal ? createForm : editForm).errors.name }}</p>
+                                </div>
+
+                                <div class="space-y-1.5">
+                                    <label class="px-2 text-[10px] font-black text-slate-500 uppercase tracking-widest">Scope Description</label>
+                                    <textarea 
+                                        v-model="(showCreateModal ? createForm : editForm).description" 
+                                        rows="2" 
+                                        class="block w-full rounded-xl border-none bg-slate-50 px-4 py-3.5 text-sm font-bold text-slate-700 focus:bg-white focus:ring-2 focus:ring-slate-900/5 transition-all resize-none" 
+                                        placeholder="What can this tier perform in the system?"
+                                    ></textarea>
+                                </div>
+                            </div>
+
+                            <!-- Permissions Palette -->
+                            <div class="space-y-4">
+                                <div class="flex items-center justify-between px-2">
+                                    <label class="text-[10px] font-black text-slate-500 uppercase tracking-widest leading-none">Privilege Palette</label>
+                                    <button 
+                                        type="button" 
+                                        @click="resetToDefaultPermissions"
+                                        class="text-[10px] font-bold text-slate-900 border-b border-slate-900/20 hover:border-slate-900 transition-all pb-0.5"
+                                    >
+                                        Auto-map defaults
+                                    </button>
+                                </div>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-3 p-4 bg-slate-50/50 rounded-2xl border border-slate-100 max-h-60 overflow-y-auto custom-scrollbar">
+                                    <label v-for="permission in permissions" :key="permission.id" class="relative group flex items-center p-3 rounded-xl bg-white border border-slate-100 shadow-sm transition-all hover:bg-slate-50 cursor-pointer">
+                                        <input 
+                                            v-model="(showCreateModal ? createForm : editForm).permissions" 
+                                            :value="permission.id"
+                                            type="checkbox" 
+                                            class="h-5 w-5 rounded-lg border-slate-200 text-slate-900 focus:ring-slate-900/20 transition-all transition-all" 
+                                        />
+                                        <div class="ml-3">
+                                            <p class="text-xs font-bold text-slate-700 group-hover:text-slate-900">{{ permission.title || permission.name }}</p>
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div class="flex items-center gap-4 pt-4 border-t border-slate-50">
+                                <button type="button" @click="showCreateModal ? closeCreateModal() : closeEditModal()" class="flex-1 px-6 py-4 rounded-2xl bg-slate-50 text-slate-600 text-sm font-bold hover:bg-slate-100 transition-all">Discard</button>
+                                <button 
+                                    type="submit" 
+                                    :disabled="(showCreateModal ? createForm : editForm).processing" 
+                                    class="flex-[2] px-6 py-4 rounded-2xl bg-slate-900 text-white text-sm font-bold shadow-xl shadow-slate-200 hover:bg-slate-800 transition-all disabled:opacity-50"
+                                >
+                                    {{ (showCreateModal ? createForm : editForm).processing ? 'Processing...' : (showCreateModal ? 'Commit New Access Tier' : 'Save Modifications') }}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </Transition>
+
+            <!-- View Role Details (Glass) -->
+            <Transition
+                enter-active-class="transition duration-300 ease-out"
+                enter-from-class="opacity-0 translate-y-4"
+                enter-to-class="opacity-100 translate-y-0"
+                leave-active-class="transition duration-200 ease-in"
+                leave-from-class="opacity-100 translate-y-0"
+                leave-to-class="opacity-0 translate-y-4"
+            >
+                <div v-if="showViewModal && selectedRole" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm" @click="closeViewModal">
+                    <div class="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden border border-slate-100" @click.stop>
+                        <div class="p-8">
+                            <div class="flex items-center gap-4 mb-8">
+                                <div class="h-14 w-14 rounded-2xl flex items-center justify-center text-white text-xl font-black shadow-lg" :class="getRoleIconColor(selectedRole.name)">
+                                    {{ selectedRole.name.charAt(0).toUpperCase() }}
+                                </div>
+                                <div class="flex-1">
+                                    <h3 class="text-xl font-black text-slate-900 tracking-tight">{{ selectedRole.name }}</h3>
+                                    <p class="text-[10px] font-black font-black text-slate-400 uppercase tracking-widest">{{ getUserCountText(selectedRole) }} Currently Assigned</p>
+                                </div>
+                                <button @click="closeViewModal" class="p-2 rounded-xl border border-slate-100 text-slate-400 hover:text-slate-900 transition-colors">
+                                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12" /></svg>
+                                </button>
+                            </div>
+
+                            <div class="space-y-6">
+                                <section>
+                                    <h5 class="text-[10px] font-black text-slate-300 uppercase tracking-[0.2em] mb-2">Scope Summary</h5>
+                                    <p class="text-sm font-medium text-slate-600 leading-relaxed italic">
+                                        {{ selectedRole.description || 'This role provides base system access without specialized descriptive overrides.' }}
+                                    </p>
+                                </section>
+
+                                <section>
+                                    <h5 class="text-[10px] font-black text-slate-300 uppercase tracking-[0.2em] mb-3">Privilege Manifest</h5>
+                                    <div class="flex flex-wrap gap-2">
+                                        <span v-for="permId in selectedRole.permissions" :key="'vp-'+permId" class="px-2.5 py-1.5 rounded-lg bg-slate-100 text-[10px] font-bold text-slate-700 border border-slate-200/50">
+                                            {{ permissions.find(p => p.id === permId)?.title || permId }}
+                                        </span>
+                                        <span v-if="!selectedRole.permissions?.length" class="text-xs font-bold text-slate-400 italic">No privileges mapped to this tier.</span>
+                                    </div>
+                                </section>
+
+                                <div class="grid grid-cols-2 gap-4 pt-6 mt-6 border-t border-slate-50">
+                                    <div>
+                                        <h5 class="text-[10px] font-black text-slate-300 uppercase tracking-[0.2em] mb-1">Created</h5>
+                                        <p class="text-xs font-bold text-slate-500">{{ formatDate(selectedRole.created_at) }}</p>
+                                    </div>
+                                    <div>
+                                        <h5 class="text-[10px] font-black text-slate-300 uppercase tracking-[0.2em] mb-1">Last Manifest Sync</h5>
+                                        <p class="text-xs font-bold text-slate-500">{{ formatDate(selectedRole.updated_at) }}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="px-8 py-4 bg-slate-50 flex justify-end">
+                            <button @click="closeViewModal" class="px-5 py-2 rounded-xl text-xs font-bold text-slate-900 border border-slate-200 bg-white shadow-sm hover:bg-slate-50 transition-all active:scale-95">Dismiss Analysis</button>
+                        </div>
+                    </div>
+                </div>
+            </Transition>
+
+            <!-- Delete Confirmation (Elevated) -->
+            <Transition
+                enter-active-class="transition duration-200 ease-out"
+                enter-from-class="opacity-0 scale-95"
+                enter-to-class="opacity-100 scale-100"
+                leave-active-class="transition duration-150 ease-in"
+                leave-from-class="opacity-100 scale-100"
+                leave-to-class="opacity-0 scale-95"
+            >
+                <div v-if="showDeleteModal && roleToDelete" class="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md">
+                    <div class="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden border border-rose-100 shadow-rose-200/20">
+                        <div class="p-8 text-center">
+                            <div class="h-20 w-20 rounded-3xl bg-rose-50 flex items-center justify-center text-rose-500 mx-auto mb-6">
+                                <svg class="h-10 w-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                            </div>
+                            <h3 class="text-xl font-black text-slate-900 tracking-tight mb-2">Decomission Role?</h3>
+                            <p class="text-sm font-medium text-slate-500 mb-6">
+                                You are about to remove <span class="text-slate-900 font-black">"{{ roleToDelete.name }}"</span>. 
+                                <br><span class="text-rose-600 font-bold">This will impact {{ getUserCountText(roleToDelete) }}.</span>
+                            </p>
+
+                            <div class="flex items-center gap-3">
+                                <button @click="closeDeleteModal" class="flex-1 px-6 py-3.5 rounded-2xl bg-slate-50 text-slate-600 font-bold text-sm hover:bg-slate-100 transition-all">Cancel</button>
+                                <button @click="confirmDelete" class="flex-1 px-6 py-3.5 rounded-2xl bg-rose-600 text-white font-bold text-sm shadow-xl shadow-rose-200 hover:bg-rose-700 transition-all active:scale-95">Decomission</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </Transition>
+        </Teleport>
     </AdminNavigation>
 </template>
+
+<style scoped>
+.custom-scrollbar::-webkit-scrollbar { width: 6px; }
+.custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+.custom-scrollbar::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
+.custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #cbd5e1; }
+</style>
