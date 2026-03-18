@@ -20,6 +20,13 @@ const page = usePage();
 const localMessages = ref([...props.messages]);
 
 const scrollContainer = ref(null);
+const typingUser = ref(null);
+const internalTypingUser = ref(null);
+let typingTimeout = null;
+let internalTypingTimeout = null;
+let whisperThrottle = null;
+let publicEchoChannel = null;
+let internalEchoChannel = null;
 
 const scrollToBottom = async () => {
     await nextTick();
@@ -37,19 +44,10 @@ onMounted(() => {
     scrollToBottom();
     if (window.Echo) {
         // Listen to public ticket channel
-        window.Echo.private(`ticket.${props.ticket.id}`)
-            .listen('.TicketMessageSent', (e) => {
-                if (!localMessages.value.find(m => m.id === e.messageData.id)) {
-                    localMessages.value.push({
-                        ...e.messageData,
-                        is_mine: e.messageData.user_id === page.props.auth.user.id
-                    });
-                }
-            });
-
-        // Listen to internal ticket channel
-        window.Echo.private(`ticket.${props.ticket.id}.internal`)
-            .listen('.TicketMessageSent', (e) => {
+        publicEchoChannel = window.Echo.private(`ticket.${props.ticket.id}`);
+        console.log('[Echo] Subscribed to private channel: ticket.' + props.ticket.id);
+        
+        publicEchoChannel.listen('.TicketMessageSent', (e) => {
                 if (!localMessages.value.find(m => m.id === e.messageData.id)) {
                     localMessages.value.push({
                         ...e.messageData,
@@ -57,9 +55,53 @@ onMounted(() => {
                     });
                     scrollToBottom();
                 }
+            })
+            .listenForWhisper('typing', (e) => {
+                console.log('[Echo] Received typing whisper (public) from:', e.name);
+                typingUser.value = e.name;
+                if (typingTimeout) clearTimeout(typingTimeout);
+                typingTimeout = setTimeout(() => {
+                    typingUser.value = null;
+                }, 3000);
             });
+
+        // Listen to internal ticket channel
+        internalEchoChannel = window.Echo.private(`ticket.${props.ticket.id}.internal`);
+        console.log('[Echo] Subscribed to private channel: ticket.' + props.ticket.id + '.internal');
+        
+        internalEchoChannel.listen('.TicketMessageSent', (e) => {
+                if (!localMessages.value.find(m => m.id === e.messageData.id)) {
+                    localMessages.value.push({
+                        ...e.messageData,
+                        is_mine: e.messageData.user_id === page.props.auth.user.id
+                    });
+                    scrollToBottom();
+                }
+            })
+            .listenForWhisper('typing', (e) => {
+                console.log('[Echo] Received typing whisper (internal) from:', e.name);
+                internalTypingUser.value = e.name;
+                if (internalTypingTimeout) clearTimeout(internalTypingTimeout);
+                internalTypingTimeout = setTimeout(() => {
+                    internalTypingUser.value = null;
+                }, 3000);
+            });
+        
+        console.log('[Echo] Connection state:', window.Echo.connector.pusher.connection.state);
     }
 });
+
+const handleTyping = () => {
+    const targetChannel = messageForm.is_internal ? internalEchoChannel : publicEchoChannel;
+    if (!targetChannel) return;
+    // Throttle whispers to at most once per second to avoid Pusher rate limits
+    if (whisperThrottle) return;
+    whisperThrottle = setTimeout(() => { whisperThrottle = null; }, 1000);
+    console.log('[Echo] Sending typing whisper as:', page.props.auth.user.first_name);
+    targetChannel.whisper('typing', {
+        name: page.props.auth.user.first_name
+    });
+};
 
 onUnmounted(() => {
     if (window.Echo) {
@@ -278,10 +320,17 @@ const showActivity = ref(false);
                             <!-- Reply Box -->
                             <div class="px-6 py-4 border-t border-gray-100 bg-gray-50">
                                 <form @submit.prevent="submitMessage" class="space-y-3">
-                                    <label for="message-body" class="block text-sm font-medium text-gray-700">Add reply or internal note</label>
+                                    <div class="flex items-center justify-between">
+                                        <label for="message-body" class="block text-sm font-medium text-gray-700">Add reply or internal note</label>
+                                        <div v-if="typingUser || internalTypingUser" class="text-xs animate-pulse font-medium">
+                                            <span v-if="internalTypingUser" class="text-amber-600">Staff: {{ internalTypingUser }} is typing a note...</span>
+                                            <span v-else-if="typingUser" class="text-slate-600">{{ typingUser }} is typing...</span>
+                                        </div>
+                                    </div>
                                     <textarea
                                         id="message-body"
                                         v-model="messageForm.body"
+                                        @input="handleTyping"
                                         rows="4"
                                         required
                                         placeholder="Type your response here…"

@@ -16,6 +16,10 @@ const page = usePage();
 const localMessages = ref([...props.messages]);
 
 const scrollContainer = ref(null);
+const typingUser = ref(null);
+let typingTimeout = null;
+let whisperThrottle = null;
+let echoChannel = null;
 
 const scrollToBottom = async () => {
     await nextTick();
@@ -33,8 +37,10 @@ watch(() => props.messages, (newVal) => {
 onMounted(() => {
     scrollToBottom();
     if (window.Echo) {
-        window.Echo.private(`ticket.${props.ticket.id}`)
-            .listen('.TicketMessageSent', (e) => {
+        echoChannel = window.Echo.private(`ticket.${props.ticket.id}`);
+        console.log('[Echo] Subscribed to private channel: ticket.' + props.ticket.id);
+        
+        echoChannel.listen('.TicketMessageSent', (e) => {
                 // Check if message is already in the list (e.g. added by optimistic UI or Inertia reload)
                 if (!localMessages.value.find(m => m.id === e.messageData.id)) {
                     // Decide if "is_mine" based on current user
@@ -44,9 +50,30 @@ onMounted(() => {
                     });
                     scrollToBottom();
                 }
+            })
+            .listenForWhisper('typing', (e) => {
+                console.log('[Echo] Received typing whisper from:', e.name);
+                typingUser.value = e.name;
+                if (typingTimeout) clearTimeout(typingTimeout);
+                typingTimeout = setTimeout(() => {
+                    typingUser.value = null;
+                }, 3000);
             });
+        
+        console.log('[Echo] Channel state:', window.Echo.connector.pusher.connection.state);
     }
 });
+
+const handleTyping = () => {
+    if (!echoChannel) return;
+    // Throttle whispers to at most once per second to avoid Pusher rate limits
+    if (whisperThrottle) return;
+    whisperThrottle = setTimeout(() => { whisperThrottle = null; }, 1000);
+    console.log('[Echo] Sending typing whisper as:', page.props.auth.user.first_name);
+    echoChannel.whisper('typing', {
+        name: page.props.auth.user.first_name
+    });
+};
 
 onUnmounted(() => {
     if (window.Echo) {
@@ -243,9 +270,15 @@ const showActivity = ref(false);
                                 </template>
                                 <template v-else>
                                     <form @submit.prevent="submitReply" class="space-y-3">
-                                        <label class="block text-sm font-medium text-gray-700">Add a Reply</label>
+                                        <div class="flex items-center justify-between">
+                                            <label class="block text-sm font-medium text-gray-700">Add a Reply</label>
+                                            <div v-if="typingUser" class="text-xs text-blue-600 animate-pulse font-medium">
+                                                {{ typingUser }} is typing...
+                                            </div>
+                                        </div>
                                         <textarea
                                             v-model="replyForm.body"
+                                            @input="handleTyping"
                                             rows="4"
                                             required
                                             placeholder="Type your message here…"
