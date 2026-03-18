@@ -217,7 +217,7 @@ const getRoleIconColor = (name) => {
 </script>
 
 <template>
-    <Head title="Access Control Roles" />
+    <Head title="User Roles" />
 
     <AdminNavigation>
         <template #header-title>
@@ -230,9 +230,9 @@ const getRoleIconColor = (name) => {
             <div class="flex items-center gap-2 text-[11px] font-bold text-slate-500">
                 <span class="hover:text-slate-700 cursor-pointer">Admin</span>
                 <svg class="h-2 w-2 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7" /></svg>
-                <span class="hover:text-slate-700 cursor-pointer">Security</span>
+                <span class="hover:text-slate-700 cursor-pointer uppercase">Security</span>
                 <svg class="h-2 w-2 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7" /></svg>
-                <span class="text-slate-900">Access Roles</span>
+                <span class="text-slate-900 uppercase">Roles</span>
             </div>
         </template>
 
@@ -240,8 +240,8 @@ const getRoleIconColor = (name) => {
             <!-- Header Section -->
             <div class="flex flex-col md:flex-row md:items-end justify-between gap-6 px-4 stagger-1">
                 <div class="space-y-1">
-                    <h2 class="text-3xl font-black text-slate-900 tracking-tight">Access Control</h2>
-                    <p class="text-slate-500 font-medium italic">Define granular system permissions and administrative tiers.</p>
+                    <h2 class="text-3xl font-black text-slate-900 tracking-tight">Role Management</h2>
+                    <p class="text-slate-500 font-medium italic">Define access levels and system permissions for your team.</p>
                 </div>
                 <div class="flex items-center gap-3">
                     <button
@@ -259,7 +259,7 @@ const getRoleIconColor = (name) => {
             <!-- Stats Overview -->
             <div class="grid gap-8 md:grid-cols-3 px-1 stagger-2">
                 <div v-for="stat in [
-                    { label: 'System Tiers', value: stats.total_roles || roles.total || 0, color: 'slate' },
+                    { label: 'Total Roles', value: stats.total_roles || roles.total || 0, color: 'slate' },
                     { label: 'Assigned Users', value: stats.total_users || 0, color: 'emerald' },
                     { label: 'Avg Density', value: stats.total_roles ? Math.round((stats.total_users || 0) / stats.total_roles) : 0, color: 'amber' }
                 ]" :key="stat.label" class="group relative py-2">
@@ -281,14 +281,14 @@ const getRoleIconColor = (name) => {
             <div class="bg-white rounded-2xl border border-slate-300/40 shadow-sm shadow-slate-200/60 stagger-3 overflow-hidden">
                 <div class="p-6 flex flex-col md:flex-row md:items-center gap-6">
                     <div class="flex-1 relative group">
-                        <svg class="absolute left-4 top-3 h-5 w-5 text-slate-400 group-focus-within:text-slate-900 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg class="absolute left-4 top-3.5 h-5 w-5 text-slate-400 group-focus-within:text-slate-900 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M21 21l-4.35-4.35M11 18a7 7 0 100-14 7 7 0 000 14z" />
                         </svg>
                         <input
                             type="text"
                             v-model="searchInput"
                             @keyup.enter="applyFilter('search', searchInput)"
-                            class="block w-full rounded-xl border-none bg-slate-100/50 px-4 py-3.5 pl-12 text-sm placeholder:text-slate-500 focus:bg-white focus:ring-2 focus:ring-slate-900/5 transition-all font-bold text-slate-700"
+                            class="block w-full rounded-xl border-none bg-slate-100/50 px-4 py-4 pl-12 text-sm placeholder:text-slate-500 focus:bg-white focus:ring-2 focus:ring-slate-900/5 transition-all font-bold text-slate-700"
                             placeholder="Find a role by name or description..."
                         />
                     </div>
@@ -296,7 +296,7 @@ const getRoleIconColor = (name) => {
                         <button
                             v-if="filters.search"
                             @click="resetFilters"
-                            class="p-3.5 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-all border border-transparent hover:border-rose-100"
+                            class="p-4 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-all border border-transparent hover:border-rose-100"
                             title="Clear search"
                         >
                             <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12" /></svg>
@@ -306,52 +306,73 @@ const getRoleIconColor = (name) => {
             </div>
 
             <!-- Role Cards Grid -->
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 stagger-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 stagger-4 px-4 lg:px-0">
                 <div
                     v-for="(role, index) in roles.data"
                     :key="role.id"
-                    class="group relative bg-white rounded-2xl border border-slate-300/40 shadow-sm shadow-slate-200/60 p-6 transition-all hover:shadow-md hover:-translate-y-1 cursor-pointer"
-                    :class="`stagger-${Math.min(index + 5, 5)}`"
+                    class="group relative bg-white rounded-3xl border border-slate-300/40 shadow-sm shadow-slate-200/60 p-8 transition-all hover:shadow-xl hover:-translate-y-1.5 cursor-pointer overflow-hidden"
                     @click="openViewModal(role)"
                 >
-                    <div class="flex items-start justify-between mb-6">
-                        <div class="flex items-center gap-4">
-                            <div class="h-12 w-12 rounded-xl flex items-center justify-center text-white text-lg font-black shadow-lg" :class="getRoleIconColor(role.name)">
-                                {{ role.name.charAt(0).toUpperCase() }}
-                            </div>
-                            <div>
-                                <h4 class="text-base font-bold text-slate-900 tracking-tight">{{ role.name }}</h4>
-                                <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">{{ getUserCountText(role) }}</p>
-                            </div>
-                        </div>
-                        <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity" @click.stop>
-                             <button
-                                @click="openEditModal(role)"
-                                class="p-2 rounded-lg text-slate-400 hover:text-slate-900 hover:bg-slate-100 transition-all"
-                            >
-                                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
-                            </button>
-                             <button
-                                @click="openDeleteModal(role)"
-                                class="p-2 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-all"
-                            >
-                                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                            </button>
-                        </div>
-                    </div>
+                    <!-- Background Accent -->
+                    <div class="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-slate-50 border border-slate-100/50 -z-0 opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
 
-                    <p class="text-xs font-medium text-slate-500 leading-relaxed mb-6 line-clamp-2 min-h-[2.5rem]">
-                        {{ role.description || 'No specialized description provided for this access tier.' }}
-                    </p>
-
-                    <div class="flex items-center justify-between pt-6 border-t border-slate-50">
-                        <div class="flex -space-x-1.5 overflow-hidden">
-                            <!-- Subtle indicators for permission count -->
-                            <div class="text-[10px] font-black text-slate-400 uppercase tracking-tight">
-                                {{ role.permissions?.length || 0 }} System Privileges
+                    <div class="relative z-10">
+                        <div class="flex items-start justify-between mb-8">
+                            <div class="flex items-center gap-5">
+                                <div class="h-14 w-14 rounded-2xl flex items-center justify-center text-white text-xl font-black shadow-lg" :class="getRoleIconColor(role.name)">
+                                    {{ role.name.charAt(0).toUpperCase() }}
+                                </div>
+                                <div class="min-w-0">
+                                    <h4 class="text-lg font-black text-slate-900 tracking-tight truncate border-b-2 border-transparent group-hover:border-slate-900 transition-all inline-block">{{ role.name }}</h4>
+                                    <div class="flex items-center gap-2 mt-1">
+                                        <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest">{{ getUserCountText(role) }}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all translate-x-2 group-hover:translate-x-0" @click.stop>
+                                 <button
+                                    @click="openEditModal(role)"
+                                    class="p-2.5 rounded-xl text-slate-400 hover:text-slate-900 hover:bg-slate-100 transition-all"
+                                >
+                                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                                </button>
+                                 <button
+                                    @click="openDeleteModal(role)"
+                                    class="p-2.5 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-all"
+                                >
+                                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                </button>
                             </div>
                         </div>
-                        <span class="text-[10px] font-bold text-slate-300">{{ formatDate(role.created_at) }}</span>
+
+                        <p class="text-xs font-semibold text-slate-500 leading-relaxed mb-8 line-clamp-2 italic min-h-[3rem]">
+                            {{ role.description || 'No specialized description provided for this access tier.' }}
+                        </p>
+
+                        <div class="space-y-4">
+                            <div class="flex items-center justify-between px-2">
+                                <div class="flex flex-col">
+                                    <span class="text-[9px] font-black text-slate-300 uppercase tracking-widest">Privileges</span>
+                                    <span class="text-[11px] font-black text-slate-900">{{ role.permissions?.length || 0 }} System Permissions</span>
+                                </div>
+                                <div class="flex flex-col items-end">
+                                    <span class="text-[9px] font-black text-slate-300 uppercase tracking-widest text-right">Created</span>
+                                    <span class="text-[11px] font-bold text-slate-400">{{ formatDate(role.created_at) }}</span>
+                                </div>
+                            </div>
+
+                            <!-- Progress Indicator (subtle) -->
+                            <div class="h-1.5 w-full bg-slate-50 rounded-full overflow-hidden">
+                                <div class="h-full rounded-full bg-slate-900 transition-all duration-1000 group-hover:w-full opacity-10" :style="{ width: '10%' }"></div>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center justify-between pt-6 mt-6 border-t border-slate-50/80">
+                            <span class="text-[9px] font-black uppercase tracking-widest text-slate-400 group-hover:text-slate-900 transition-colors flex items-center gap-1.5">
+                                View Details
+                                <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M17 8l4 4m0 0l-4 4m4-4H3" /></svg>
+                            </span>
+                        </div>
                     </div>
                 </div>
 
@@ -359,15 +380,11 @@ const getRoleIconColor = (name) => {
                 <div v-if="roles.data.length === 0" class="col-span-full py-32 flex flex-col items-center text-center px-4 stagger-5">
                     <div class="relative mb-8">
                         <div class="absolute inset-0 bg-slate-100 rounded-full blur-3xl opacity-50 scale-150"></div>
-                        <div class="relative flex h-24 w-24 items-center justify-center rounded-3xl bg-white shadow-xl shadow-slate-200 border border-slate-100">
-                             <svg class="h-10 w-10 text-slate-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                            </svg>
-                        </div>
+                        <div class="relative flex h-24 w-24 items-center justify-center rounded-3xl bg-white shadow-xl shadow-slate-200 border border-slate-100 italic font-black text-slate-200 text-3xl">Ø</div>
                     </div>
-                    <h4 class="text-xl font-black text-slate-900 tracking-tight mb-2">No security tiers found</h4>
+                    <h4 class="text-xl font-black text-slate-900 tracking-tight mb-2">No roles found</h4>
                     <p class="text-slate-500 max-w-xs font-medium italic">Defined system roles will appear here for management.</p>
-                    <button @click="resetFilters" class="mt-8 text-sm font-bold text-slate-900 border-b-2 border-slate-900 pb-0.5 hover:text-slate-600 hover:border-slate-600 transition-all">Reset full directory</button>
+                    <button @click="resetFilters" class="mt-8 text-sm font-bold text-slate-900 border-b-2 border-slate-900 pb-0.5 hover:text-slate-600 hover:border-slate-600 transition-all">Clear Filters</button>
                 </div>
             </div>
 
@@ -378,7 +395,7 @@ const getRoleIconColor = (name) => {
             >
                 <div class="mb-4 sm:mb-0">
                     <p class="text-[11px] font-black text-slate-500 uppercase tracking-widest">
-                        Showing <span class="text-slate-900">{{ roles.from || 0 }}</span> - <span class="text-slate-900">{{ roles.to || 0 }}</span> of <span class="text-slate-900">{{ roles.total || 0 }}</span> entries
+                        Showing <span class="text-slate-900">{{ roles.from || 0 }}</span> - <span class="text-slate-900">{{ roles.to || 0 }}</span> of <span class="text-slate-900">{{ roles.total || 0 }}</span> Entries
                     </p>
                 </div>
                 <div class="flex items-center gap-1.5 p-1.5 bg-white rounded-xl border border-slate-300/40 shadow-sm shadow-slate-200/40">
@@ -411,40 +428,40 @@ const getRoleIconColor = (name) => {
                 leave-to-class="opacity-0 scale-95"
             >
                 <div v-if="showCreateModal || showEditModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
-                    <div class="bg-white rounded-3xl shadow-2xl shadow-slate-900/20 w-full max-w-2xl overflow-hidden border border-slate-100">
-                        <div class="px-8 py-6 border-b border-slate-50 flex items-center justify-between">
+                    <div class="bg-white rounded-[2.5rem] shadow-2xl shadow-slate-900/20 w-full max-w-2xl overflow-hidden border border-slate-100">
+                        <div class="px-10 py-8 border-b border-slate-50 flex items-center justify-between">
                             <div>
                                 <h3 class="text-xl font-black text-slate-900 tracking-tight">
-                                    {{ showCreateModal ? 'Architect New Role' : 'Modify Access Tier' }}
+                                    {{ showCreateModal ? 'Create Role' : 'Edit Role' }}
                                 </h3>
-                                <p class="text-xs font-bold text-slate-400 mt-0.5">Map system privileges and administrative scope.</p>
+                                <p class="text-xs font-bold text-slate-400 mt-0.5">Define role name, description and permissions.</p>
                             </div>
-                            <button @click="showCreateModal ? closeCreateModal() : closeEditModal()" class="p-2 rounded-xl hover:bg-slate-50 text-slate-400 transition-colors">
+                            <button @click="showCreateModal ? closeCreateModal() : closeEditModal()" class="p-2.5 rounded-2xl hover:bg-slate-50 text-slate-400 transition-colors border border-slate-100">
                                 <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12" /></svg>
                             </button>
                         </div>
 
-                        <form @submit.prevent="showCreateModal ? submitCreate() : submitEdit()" class="p-8 space-y-8 max-h-[75vh] overflow-y-auto custom-scrollbar">
+                        <form @submit.prevent="showCreateModal ? submitCreate() : submitEdit()" class="p-10 space-y-8 max-h-[75vh] overflow-y-auto custom-scrollbar">
                             <div class="space-y-6">
                                 <div class="space-y-1.5">
-                                    <label class="px-2 text-[10px] font-black text-slate-500 uppercase tracking-widest">Role Identifier *</label>
+                                    <label class="px-2 text-[10px] font-black text-slate-500 uppercase tracking-widest">Role Name *</label>
                                     <input 
                                         v-model="(showCreateModal ? createForm : editForm).name" 
                                         type="text" 
                                         required 
-                                        class="block w-full rounded-xl border-none bg-slate-50 px-4 py-3.5 text-sm font-bold text-slate-700 focus:bg-white focus:ring-2 focus:ring-slate-900/5 transition-all" 
-                                        placeholder="e.g. Security Specialist" 
+                                        class="block w-full rounded-2xl border-none bg-slate-50 px-5 py-4 text-sm font-bold text-slate-700 focus:bg-white focus:ring-2 focus:ring-slate-900/5 transition-all shadow-inner" 
+                                        placeholder="e.g. Support Agent" 
                                     />
                                     <p v-if="(showCreateModal ? createForm : editForm).errors.name" class="px-2 text-[10px] font-bold text-rose-500 italic">{{ (showCreateModal ? createForm : editForm).errors.name }}</p>
                                 </div>
 
                                 <div class="space-y-1.5">
-                                    <label class="px-2 text-[10px] font-black text-slate-500 uppercase tracking-widest">Scope Description</label>
+                                    <label class="px-2 text-[10px] font-black text-slate-500 uppercase tracking-widest">Description</label>
                                     <textarea 
                                         v-model="(showCreateModal ? createForm : editForm).description" 
                                         rows="2" 
-                                        class="block w-full rounded-xl border-none bg-slate-50 px-4 py-3.5 text-sm font-bold text-slate-700 focus:bg-white focus:ring-2 focus:ring-slate-900/5 transition-all resize-none" 
-                                        placeholder="What can this tier perform in the system?"
+                                        class="block w-full rounded-2xl border-none bg-slate-50 px-5 py-4 text-sm font-bold text-slate-700 focus:bg-white focus:ring-2 focus:ring-slate-900/5 transition-all resize-none shadow-inner" 
+                                        placeholder="What can this role do in the system?"
                                     ></textarea>
                                 </div>
                             </div>
@@ -452,38 +469,38 @@ const getRoleIconColor = (name) => {
                             <!-- Permissions Palette -->
                             <div class="space-y-4">
                                 <div class="flex items-center justify-between px-2">
-                                    <label class="text-[10px] font-black text-slate-500 uppercase tracking-widest leading-none">Privilege Palette</label>
+                                    <label class="text-[10px] font-black text-slate-500 uppercase tracking-widest leading-none">Permissions</label>
                                     <button 
                                         type="button" 
                                         @click="resetToDefaultPermissions"
                                         class="text-[10px] font-bold text-slate-900 border-b border-slate-900/20 hover:border-slate-900 transition-all pb-0.5"
                                     >
-                                        Auto-map defaults
+                                        Use default permissions
                                     </button>
                                 </div>
                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-3 p-4 bg-slate-50/50 rounded-2xl border border-slate-100 max-h-60 overflow-y-auto custom-scrollbar">
-                                    <label v-for="permission in permissions" :key="permission.id" class="relative group flex items-center p-3 rounded-xl bg-white border border-slate-100 shadow-sm transition-all hover:bg-slate-50 cursor-pointer">
+                                    <label v-for="permission in permissions" :key="permission.id" class="relative group flex items-center p-4 rounded-2xl bg-white border border-slate-100 shadow-sm transition-all hover:shadow-md hover:border-slate-300/50 cursor-pointer">
                                         <input 
                                             v-model="(showCreateModal ? createForm : editForm).permissions" 
                                             :value="permission.id"
                                             type="checkbox" 
-                                            class="h-5 w-5 rounded-lg border-slate-200 text-slate-900 focus:ring-slate-900/20 transition-all transition-all" 
+                                            class="h-6 w-6 rounded-lg border-slate-200 text-slate-900 focus:ring-slate-900/20 transition-all" 
                                         />
-                                        <div class="ml-3">
-                                            <p class="text-xs font-bold text-slate-700 group-hover:text-slate-900">{{ permission.title || permission.name }}</p>
+                                        <div class="ml-4">
+                                            <p class="text-xs font-black text-slate-800 tracking-tight group-hover:text-slate-900 transition-colors">{{ permission.title || permission.name }}</p>
                                         </div>
                                     </label>
                                 </div>
                             </div>
 
                             <div class="flex items-center gap-4 pt-4 border-t border-slate-50">
-                                <button type="button" @click="showCreateModal ? closeCreateModal() : closeEditModal()" class="flex-1 px-6 py-4 rounded-2xl bg-slate-50 text-slate-600 text-sm font-bold hover:bg-slate-100 transition-all">Discard</button>
+                                <button type="button" @click="showCreateModal ? closeCreateModal() : closeEditModal()" class="flex-1 px-8 py-4 rounded-2xl bg-slate-100 text-slate-600 text-xs font-black uppercase tracking-widest hover:bg-slate-200 transition-all">Cancel</button>
                                 <button 
                                     type="submit" 
                                     :disabled="(showCreateModal ? createForm : editForm).processing" 
-                                    class="flex-[2] px-6 py-4 rounded-2xl bg-slate-900 text-white text-sm font-bold shadow-xl shadow-slate-200 hover:bg-slate-800 transition-all disabled:opacity-50"
+                                    class="flex-[2] px-8 py-4 rounded-2xl bg-slate-900 text-white text-xs font-black uppercase tracking-widest shadow-xl shadow-slate-200 hover:bg-slate-800 transition-all disabled:opacity-50"
                                 >
-                                    {{ (showCreateModal ? createForm : editForm).processing ? 'Processing...' : (showCreateModal ? 'Commit New Access Tier' : 'Save Modifications') }}
+                                    {{ (showCreateModal ? createForm : editForm).processing ? 'Processing...' : (showCreateModal ? 'Create Role' : 'Save Changes') }}
                                 </button>
                             </div>
                         </form>
@@ -491,69 +508,69 @@ const getRoleIconColor = (name) => {
                 </div>
             </Transition>
 
-            <!-- View Role Details (Glass) -->
+            <!-- View Role Details -->
             <Transition
                 enter-active-class="transition duration-300 ease-out"
-                enter-from-class="opacity-0 translate-y-4"
-                enter-to-class="opacity-100 translate-y-0"
+                enter-from-class="opacity-0 translate-y-4 shadow-none"
+                enter-to-class="opacity-100 translate-y-0 shadow-2xl"
                 leave-active-class="transition duration-200 ease-in"
-                leave-from-class="opacity-100 translate-y-0"
-                leave-to-class="opacity-0 translate-y-4"
+                leave-from-class="opacity-100 translate-y-0 shadow-2xl"
+                leave-to-class="opacity-0 translate-y-4 shadow-none"
             >
                 <div v-if="showViewModal && selectedRole" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm" @click="closeViewModal">
-                    <div class="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden border border-slate-100" @click.stop>
-                        <div class="p-8">
-                            <div class="flex items-center gap-4 mb-8">
-                                <div class="h-14 w-14 rounded-2xl flex items-center justify-center text-white text-xl font-black shadow-lg" :class="getRoleIconColor(selectedRole.name)">
+                    <div class="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-lg overflow-hidden border border-slate-100" @click.stop>
+                        <div class="p-10">
+                            <div class="flex items-center gap-6 mb-8">
+                                <div class="h-16 w-16 rounded-2xl flex items-center justify-center text-white text-2xl font-black shadow-lg" :class="getRoleIconColor(selectedRole.name)">
                                     {{ selectedRole.name.charAt(0).toUpperCase() }}
                                 </div>
                                 <div class="flex-1">
-                                    <h3 class="text-xl font-black text-slate-900 tracking-tight">{{ selectedRole.name }}</h3>
-                                    <p class="text-[10px] font-black font-black text-slate-400 uppercase tracking-widest">{{ getUserCountText(selectedRole) }} Currently Assigned</p>
+                                    <h3 class="text-2xl font-black text-slate-900 tracking-tight">{{ selectedRole.name }}</h3>
+                                    <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">{{ getUserCountText(selectedRole) }} Assigned</p>
                                 </div>
-                                <button @click="closeViewModal" class="p-2 rounded-xl border border-slate-100 text-slate-400 hover:text-slate-900 transition-colors">
-                                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12" /></svg>
+                                <button @click="closeViewModal" class="p-3 rounded-2xl border border-slate-100 text-slate-400 hover:text-slate-900 transition-colors">
+                                    <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12" /></svg>
                                 </button>
                             </div>
 
-                            <div class="space-y-6">
+                            <div class="space-y-8">
                                 <section>
-                                    <h5 class="text-[10px] font-black text-slate-300 uppercase tracking-[0.2em] mb-2">Scope Summary</h5>
-                                    <p class="text-sm font-medium text-slate-600 leading-relaxed italic">
-                                        {{ selectedRole.description || 'This role provides base system access without specialized descriptive overrides.' }}
+                                    <h5 class="text-[10px] font-black text-slate-300 uppercase tracking-[0.2em] mb-2">Description</h5>
+                                    <p class="text-sm font-semibold text-slate-600 leading-relaxed italic">
+                                        {{ selectedRole.description || 'No specialized description provided for this role.' }}
                                     </p>
                                 </section>
 
                                 <section>
-                                    <h5 class="text-[10px] font-black text-slate-300 uppercase tracking-[0.2em] mb-3">Privilege Manifest</h5>
-                                    <div class="flex flex-wrap gap-2">
-                                        <span v-for="permId in selectedRole.permissions" :key="'vp-'+permId" class="px-2.5 py-1.5 rounded-lg bg-slate-100 text-[10px] font-bold text-slate-700 border border-slate-200/50">
+                                    <h5 class="text-[10px] font-black text-slate-300 uppercase tracking-[0.2em] mb-4">Permissions</h5>
+                                    <div class="flex flex-wrap gap-2 max-h-48 overflow-y-auto custom-scrollbar p-1">
+                                        <span v-for="permId in selectedRole.permissions" :key="'vp-'+permId" class="px-3 py-1.5 rounded-xl bg-slate-50 text-[10px] font-black uppercase tracking-tight text-slate-600 border border-slate-100">
                                             {{ permissions.find(p => p.id === permId)?.title || permId }}
                                         </span>
-                                        <span v-if="!selectedRole.permissions?.length" class="text-xs font-bold text-slate-400 italic">No privileges mapped to this tier.</span>
+                                        <span v-if="!selectedRole.permissions?.length" class="text-xs font-bold text-slate-400 italic">No permissions assigned.</span>
                                     </div>
                                 </section>
 
-                                <div class="grid grid-cols-2 gap-4 pt-6 mt-6 border-t border-slate-50">
+                                <div class="grid grid-cols-2 gap-8 pt-8 mt-8 border-t border-slate-50">
                                     <div>
                                         <h5 class="text-[10px] font-black text-slate-300 uppercase tracking-[0.2em] mb-1">Created</h5>
                                         <p class="text-xs font-bold text-slate-500">{{ formatDate(selectedRole.created_at) }}</p>
                                     </div>
                                     <div>
-                                        <h5 class="text-[10px] font-black text-slate-300 uppercase tracking-[0.2em] mb-1">Last Manifest Sync</h5>
+                                        <h5 class="text-[10px] font-black text-slate-300 uppercase tracking-[0.2em] mb-1">Last Updated</h5>
                                         <p class="text-xs font-bold text-slate-500">{{ formatDate(selectedRole.updated_at) }}</p>
                                     </div>
                                 </div>
                             </div>
                         </div>
-                        <div class="px-8 py-4 bg-slate-50 flex justify-end">
-                            <button @click="closeViewModal" class="px-5 py-2 rounded-xl text-xs font-bold text-slate-900 border border-slate-200 bg-white shadow-sm hover:bg-slate-50 transition-all active:scale-95">Dismiss Analysis</button>
+                        <div class="px-10 py-6 bg-slate-50/50 flex justify-end">
+                            <button @click="closeViewModal" class="px-8 py-3 rounded-2xl text-xs font-black uppercase tracking-widest text-slate-900 border border-slate-200 bg-white shadow-sm hover:bg-slate-50 transition-all active:scale-95">Close</button>
                         </div>
                     </div>
                 </div>
             </Transition>
 
-            <!-- Delete Confirmation (Elevated) -->
+            <!-- Delete Confirmation -->
             <Transition
                 enter-active-class="transition duration-200 ease-out"
                 enter-from-class="opacity-0 scale-95"
@@ -563,20 +580,20 @@ const getRoleIconColor = (name) => {
                 leave-to-class="opacity-0 scale-95"
             >
                 <div v-if="showDeleteModal && roleToDelete" class="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md">
-                    <div class="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden border border-rose-100 shadow-rose-200/20">
-                        <div class="p-8 text-center">
-                            <div class="h-20 w-20 rounded-3xl bg-rose-50 flex items-center justify-center text-rose-500 mx-auto mb-6">
-                                <svg class="h-10 w-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                    <div class="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-md overflow-hidden border border-rose-100 shadow-rose-200/20">
+                        <div class="p-10 text-center">
+                            <div class="h-24 w-24 rounded-[2rem] bg-rose-50 flex items-center justify-center text-rose-500 mx-auto mb-8 shadow-inner">
+                                <svg class="h-12 w-12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
                             </div>
-                            <h3 class="text-xl font-black text-slate-900 tracking-tight mb-2">Decomission Role?</h3>
-                            <p class="text-sm font-medium text-slate-500 mb-6">
-                                You are about to remove <span class="text-slate-900 font-black">"{{ roleToDelete.name }}"</span>. 
+                            <h3 class="text-2xl font-black text-slate-900 tracking-tight mb-2">Delete Role?</h3>
+                            <p class="text-sm font-medium text-slate-500 mb-8 leading-relaxed">
+                                Are you sure you want to delete <span class="text-slate-900 font-black">"{{ roleToDelete.name }}"</span>? 
                                 <br><span class="text-rose-600 font-bold">This will impact {{ getUserCountText(roleToDelete) }}.</span>
                             </p>
 
-                            <div class="flex items-center gap-3">
-                                <button @click="closeDeleteModal" class="flex-1 px-6 py-3.5 rounded-2xl bg-slate-50 text-slate-600 font-bold text-sm hover:bg-slate-100 transition-all">Cancel</button>
-                                <button @click="confirmDelete" class="flex-1 px-6 py-3.5 rounded-2xl bg-rose-600 text-white font-bold text-sm shadow-xl shadow-rose-200 hover:bg-rose-700 transition-all active:scale-95">Decomission</button>
+                            <div class="flex flex-col gap-3">
+                                <button @click="confirmDelete" class="w-full px-8 py-4 rounded-2xl bg-rose-600 text-white font-black text-xs uppercase tracking-widest shadow-xl shadow-rose-200 hover:bg-rose-700 transition-all active:scale-95">Delete Role</button>
+                                <button @click="closeDeleteModal" class="w-full px-8 py-4 rounded-2xl bg-slate-100 text-slate-600 font-black text-xs uppercase tracking-widest hover:bg-slate-200 transition-all">Cancel</button>
                             </div>
                         </div>
                     </div>
@@ -591,4 +608,15 @@ const getRoleIconColor = (name) => {
 .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
 .custom-scrollbar::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
 .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #cbd5e1; }
+
+.stagger-1 { animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+.stagger-2 { animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.1s forwards; opacity: 0; }
+.stagger-3 { animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.2s forwards; opacity: 0; }
+.stagger-4 { animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.3s forwards; opacity: 0; }
+.stagger-5 { animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.4s forwards; opacity: 0; }
+
+@keyframes slideUp {
+    from { transform: translateY(20px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
 </style>
