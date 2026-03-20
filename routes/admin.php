@@ -169,6 +169,7 @@ Route::middleware('role:admin')
             Route::get('/sla', [SettingsController::class, 'sla'])->name('sla');
             Route::post('/sla', [SettingsController::class, 'storeSla'])->name('sla.store');
             Route::put('/sla/{id}', [SettingsController::class, 'updateSla'])->name('sla.update');
+            Route::post('/sla/business-hours', [SettingsController::class, 'updateBusinessHours'])->name('sla.business-hours.update');
             Route::delete('/sla/{id}', [SettingsController::class, 'destroySla'])->name('sla.destroy');
         });
     });

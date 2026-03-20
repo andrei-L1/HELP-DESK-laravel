@@ -24,12 +24,11 @@ class Setting extends Model
             return $default;
         }
 
-        // Cast based on type
         return match($setting->type) {
             'boolean' => filter_var($setting->value, FILTER_VALIDATE_BOOLEAN),
             'integer' => (int) $setting->value,
-            'json' => json_decode($setting->value, true),
-            default => $setting->value,
+            'json'    => is_array($setting->value) ? $setting->value : json_decode((string)$setting->value, true),
+            default   => $setting->value,
         };
     }
 
@@ -81,8 +80,8 @@ class Setting extends Model
         return match($setting->type) {
             'boolean' => filter_var($setting->value, FILTER_VALIDATE_BOOLEAN),
             'integer' => (int) $setting->value,
-            'json' => json_decode($setting->value, true),
-            default => $setting->value,
+            'json'    => is_array($setting->value) ? $setting->value : json_decode((string)$setting->value, true),
+            default   => $setting->value,
         };
     }
 }

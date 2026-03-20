@@ -282,6 +282,11 @@ class SettingsController extends Controller
             'priorities' => $priorities,
             'departments' => $departments,
             'filters' => $request->only(['search', 'priority', 'department']),
+            'business_hours' => [
+                'start' => Setting::get('business_hours_start', '09:00'),
+                'end' => Setting::get('business_hours_end', '18:00'),
+                'days' => Setting::get('business_days', [1, 2, 3, 4, 5]), // 1=Mon, 7=Sun
+            ],
         ]);
     }
 
@@ -325,6 +330,25 @@ class SettingsController extends Controller
 
         return redirect()->route('admin.settings.sla')
             ->with('success', 'SLA policy created successfully.');
+    }
+
+    /**
+     * Update global business hours.
+     */
+    public function updateBusinessHours(Request $request)
+    {
+        $validated = $request->validate([
+            'start' => 'required|string|regex:/^\d{2}:\d{2}$/',
+            'end' => 'required|string|regex:/^\d{2}:\d{2}$/',
+            'days' => 'required|array',
+            'days.*' => 'integer|min:1|max:7',
+        ]);
+
+        Setting::set('business_hours_start', $validated['start'], 'string', 'sla');
+        Setting::set('business_hours_end', $validated['end'], 'string', 'sla');
+        Setting::set('business_days', $validated['days'], 'json', 'sla');
+
+        return redirect()->back()->with('success', 'Global business hours updated successfully.');
     }
 
     public function updateSla(Request $request, $id)

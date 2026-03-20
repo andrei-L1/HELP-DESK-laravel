@@ -27,6 +27,14 @@ const props = defineProps({
             department: '',
         }),
     },
+    business_hours: {
+        type: Object,
+        default: () => ({
+            start: '09:00',
+            end: '18:00',
+            days: [1, 2, 3, 4, 5],
+        }),
+    },
 });
 
 // Create/Edit modal
@@ -49,6 +57,12 @@ const form = useForm({
     is_active: true,
     business_hours_only: true,
     calendar_id: null,
+});
+
+const businessHoursForm = useForm({
+    start: props.business_hours.start,
+    end: props.business_hours.end,
+    days: props.business_hours.days,
 });
 
 // Delete modal
@@ -148,6 +162,15 @@ const confirmDelete = () => {
             },
         });
     }
+};
+
+const submitBusinessHours = () => {
+    businessHoursForm.post(route('admin.settings.sla.business-hours.update'), {
+        preserveScroll: true,
+        onSuccess: () => {
+            triggerSuccess('Global business hours updated successfully');
+        },
+    });
 };
 
 // Filter functions
@@ -308,7 +331,66 @@ watch(() => props.filters.search, (val) => {
                         New Policy
                     </button>
                 </div>
-            </div>            <!-- SLA Cards Grid -->
+            </div>
+
+            <!-- Global Business Hours Configuration -->
+            <div class="px-2 stagger-2">
+                <div class="bg-white rounded-3xl border border-slate-300/40 shadow-sm p-8 transition-all hover:shadow-lg">
+                    <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-8">
+                        <div class="flex items-center gap-6">
+                            <div class="h-14 w-14 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 shadow-sm">
+                                <svg class="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                            </div>
+                            <div>
+                                <h3 class="text-lg font-black text-slate-900 tracking-tight">Global Operating Hours</h3>
+                                <p class="text-[11px] font-semibold text-slate-500 italic font-serif">Configure when the SLA clock should be active.</p>
+                            </div>
+                        </div>
+
+                        <form @submit.prevent="submitBusinessHours" class="flex flex-col sm:flex-row items-end gap-6">
+                            <div class="flex items-center gap-4">
+                                <div class="relative group">
+                                    <label class="absolute -top-2 px-1 left-3 bg-white text-[8px] font-black uppercase text-slate-400 group-focus-within:text-slate-900 transition-colors">Start Time</label>
+                                    <input 
+                                        type="time" 
+                                        v-model="businessHoursForm.start"
+                                        class="bg-slate-50 border-slate-200 rounded-xl px-4 py-2 text-xs font-bold text-slate-900 focus:bg-white focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 transition-all shadow-sm"
+                                    />
+                                </div>
+                                <div class="relative group">
+                                    <label class="absolute -top-2 px-1 left-3 bg-white text-[8px] font-black uppercase text-slate-400 group-focus-within:text-slate-900 transition-colors">End Time</label>
+                                    <input 
+                                        type="time" 
+                                        v-model="businessHoursForm.end"
+                                        class="bg-slate-50 border-slate-200 rounded-xl px-4 py-2 text-xs font-bold text-slate-900 focus:bg-white focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 transition-all shadow-sm"
+                                    />
+                                </div>
+                            </div>
+
+                            <div class="flex flex-wrap items-center gap-2 p-1.5 bg-slate-50 rounded-xl border border-slate-100">
+                                <label 
+                                    v-for="(day, index) in ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su']" 
+                                    :key="index"
+                                    class="relative flex items-center justify-center h-8 w-8 rounded-lg cursor-pointer transition-all border"
+                                    :class="businessHoursForm.days.includes(index + 1) ? 'bg-slate-900 border-slate-900 text-white shadow-sm' : 'bg-white border-slate-200 text-slate-400 hover:text-slate-900 hover:border-slate-300'"
+                                >
+                                    <input type="checkbox" :value="index + 1" v-model="businessHoursForm.days" class="sr-only" />
+                                    <span class="text-[10px] font-black uppercase tracking-tighter">{{ day }}</span>
+                                </label>
+                            </div>
+
+                            <button 
+                                type="submit"
+                                :disabled="businessHoursForm.processing"
+                                class="bg-indigo-600 text-white px-6 py-2 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-900 transition-all shadow-lg shadow-indigo-100 disabled:opacity-50"
+                            >
+                                {{ businessHoursForm.processing ? 'Saving...' : 'Update Hours' }}
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            <!-- SLA Cards Grid -->
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 stagger-3 px-2">
                 <div
                     v-for="policy in policies.data"

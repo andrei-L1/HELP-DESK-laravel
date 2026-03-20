@@ -37,30 +37,28 @@ class TicketObserver
         
         if ($sla) {
             $ticket->sla_policy_id = $sla->id;
-            // Only update due_at if it wasn't manually set (or if dirty)
-            $ticket->due_at = now()->addMinutes((int) $sla->resolution_time);
+            
+            // USE THE SMART SLA SERVICE
+            $slaService = resolve(\App\Services\SlaService::class);
+            $ticket->due_at = $slaService->calculateDeadline(now(), $sla);
         }
     }
 
-    private function findSlaPolicy(int $priorityId, ?int $departmentId): ?object
+    private function findSlaPolicy(int $priorityId, ?int $departmentId): ?\App\Models\SlaPolicy
     {
         // 1. Try Department-specific first
         if ($departmentId) {
-            $policy = \Illuminate\Support\Facades\DB::table('sla_policies')
-                ->where('priority_id', $priorityId)
+            $policy = \App\Models\SlaPolicy::where('priority_id', $priorityId)
                 ->where('department_id', $departmentId)
                 ->where('is_active', true)
-                ->whereNull('deleted_at')
                 ->first();
             if ($policy) return $policy;
         }
 
         // 2. Global fallback
-        return \Illuminate\Support\Facades\DB::table('sla_policies')
-            ->where('priority_id', $priorityId)
+        return \App\Models\SlaPolicy::where('priority_id', $priorityId)
             ->whereNull('department_id')
             ->where('is_active', true)
-            ->whereNull('deleted_at')
             ->first();
     }
     /**
