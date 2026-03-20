@@ -384,17 +384,12 @@ watch(() => props.filters.search, (val) => {
                         <div class="space-y-4">
                             <div class="flex items-center justify-between px-1">
                                 <div class="flex flex-col">
-                                    <span class="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1.5">Priority Scope</span>
-                                    <div class="flex flex-wrap gap-1">
-                                        <span v-for="priority in policy.priorities" :key="priority.id" class="text-[9px] font-black text-slate-900 bg-slate-100 px-2 py-0.5 rounded-md uppercase">
-                                            {{ priority.name }}
-                                        </span>
-                                        <span v-if="!policy.priorities?.length" class="text-[9px] font-bold text-slate-400 italic">None</span>
-                                    </div>
+                                    <span class="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1.5">Target Priority</span>
+                                    <span class="text-xs font-black text-slate-900 uppercase tracking-tight">{{ getPriorityName(policy.priority_id) }}</span>
                                 </div>
                                 <div class="flex flex-col items-end">
-                                    <span class="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1.5">Departments</span>
-                                    <span class="text-xs font-black text-slate-900">{{ policy.departments?.length || 0 }} assigned</span>
+                                    <span class="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1.5">Applies To</span>
+                                    <span class="text-xs font-black text-indigo-600 truncate max-w-[120px]">{{ getDepartmentName(policy.department_id) }}</span>
                                 </div>
                             </div>
 
@@ -569,22 +564,43 @@ watch(() => props.filters.search, (val) => {
                                     </div>
 
                                     <!-- Switches -->
-                                    <div class="p-6 bg-slate-50 rounded-3xl grid grid-cols-2 gap-4">
-                                        <label class="flex items-center gap-3 cursor-pointer group">
-                                            <div class="relative h-6 w-11 rounded-full bg-slate-200 transition-colors group-hover:bg-slate-300" :class="form.business_hours_only ? 'bg-slate-900' : ''">
-                                                <input v-model="form.business_hours_only" type="checkbox" class="sr-only" />
-                                                <div class="absolute top-1 left-1 h-4 w-4 rounded-full bg-white transition-transform" :class="form.business_hours_only ? 'translate-x-5' : ''" />
+                                    <div class="p-8 bg-slate-50/50 rounded-3xl border border-slate-100 space-y-8">
+                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                            <div class="relative group">
+                                                <label class="absolute -top-2.5 left-4 bg-slate-50 px-2 text-[10px] font-black uppercase tracking-widest text-slate-400 group-focus-within:text-slate-900 transition-colors">Escalate After (Min)</label>
+                                                <input v-model="form.escalate_after" type="number" class="w-full bg-white border-2 border-slate-100 rounded-2xl px-6 py-4 text-sm font-bold text-slate-900 focus:border-slate-900 focus:ring-0 transition-all placeholder:text-slate-200" placeholder="e.g. 120" />
                                             </div>
-                                            <span class="text-[10px] font-black uppercase tracking-widest text-slate-600">Business Hours</span>
-                                        </label>
+                                            <div class="relative group">
+                                                <label class="absolute -top-2.5 left-4 bg-slate-50 px-2 text-[10px] font-black uppercase tracking-widest text-slate-400 group-focus-within:text-slate-900 transition-colors">Notify Before (Min)</label>
+                                                <input v-model="form.notify_before" type="number" class="w-full bg-white border-2 border-slate-100 rounded-2xl px-6 py-4 text-sm font-bold text-slate-900 focus:border-slate-900 focus:ring-0 transition-all placeholder:text-slate-200" placeholder="e.g. 30" />
+                                            </div>
+                                        </div>
 
-                                        <label class="flex items-center gap-3 cursor-pointer group">
-                                            <div class="relative h-6 w-11 rounded-full bg-slate-200 transition-colors group-hover:bg-slate-300" :class="form.is_active ? 'bg-emerald-500' : ''">
-                                                <input v-model="form.is_active" type="checkbox" class="sr-only" />
-                                                <div class="absolute top-1 left-1 h-4 w-4 rounded-full bg-white transition-transform" :class="form.is_active ? 'translate-x-5' : ''" />
-                                            </div>
-                                            <span class="text-[10px] font-black uppercase tracking-widest text-slate-600">Active</span>
-                                        </label>
+                                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 pt-4 border-t border-slate-100">
+                                            <label class="flex items-center gap-3 cursor-pointer group">
+                                                <div class="relative h-6 w-11 rounded-full bg-slate-200 transition-colors group-hover:bg-slate-300 shadow-inner" :class="form.business_hours_only ? 'bg-slate-900' : ''">
+                                                    <input v-model="form.business_hours_only" type="checkbox" class="sr-only" />
+                                                    <div class="absolute top-1 left-1 h-4 w-4 rounded-full bg-white transition-transform shadow-md" :class="form.business_hours_only ? 'translate-x-5' : ''" />
+                                                </div>
+                                                <span class="text-[9px] font-black uppercase tracking-widest text-slate-500 group-hover:text-slate-900 transition-colors">Business Hours</span>
+                                            </label>
+
+                                            <label class="flex items-center gap-3 cursor-pointer group">
+                                                <div class="relative h-6 w-11 rounded-full bg-slate-200 transition-colors group-hover:bg-slate-300 shadow-inner" :class="form.notify_escalation ? 'bg-indigo-500' : ''">
+                                                    <input v-model="form.notify_escalation" type="checkbox" class="sr-only" />
+                                                    <div class="absolute top-1 left-1 h-4 w-4 rounded-full bg-white transition-transform shadow-md" :class="form.notify_escalation ? 'translate-x-5' : ''" />
+                                                </div>
+                                                <span class="text-[9px] font-black uppercase tracking-widest text-slate-500 group-hover:text-slate-900 transition-colors">Notify Breach</span>
+                                            </label>
+
+                                            <label class="flex items-center gap-3 cursor-pointer group">
+                                                <div class="relative h-6 w-11 rounded-full bg-slate-200 transition-colors group-hover:bg-slate-300 shadow-inner" :class="form.is_active ? 'bg-emerald-500' : ''">
+                                                    <input v-model="form.is_active" type="checkbox" class="sr-only" />
+                                                    <div class="absolute top-1 left-1 h-4 w-4 rounded-full bg-white transition-transform shadow-md" :class="form.is_active ? 'translate-x-5' : ''" />
+                                                </div>
+                                                <span class="text-[9px] font-black uppercase tracking-widest text-slate-500 group-hover:text-slate-900 transition-colors">Enabled</span>
+                                            </label>
+                                        </div>
                                     </div>
 
                                     <div class="flex items-center gap-4 pt-4 text-wrap">
