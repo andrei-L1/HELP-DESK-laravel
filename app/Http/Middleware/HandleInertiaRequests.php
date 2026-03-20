@@ -59,6 +59,8 @@ class HandleInertiaRequests extends Middleware
                         $request->user()->append(['has_password', 'is_oauth_only'])->toArray(), 
                         [
                             'role' => $request->user()->role?->name,
+                            'unread_notifications_count' => $request->user()->unreadNotifications()->count(),
+                            'latest_notifications' => $request->user()->notifications()->latest()->limit(10)->get(),
                             'permissions' => $request->user()->role
                                 ? $request->user()->role->permissions->pluck('name')->toArray()
                                 : [],

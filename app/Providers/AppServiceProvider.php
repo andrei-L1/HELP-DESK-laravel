@@ -28,5 +28,9 @@ class AppServiceProvider extends ServiceProvider
         Vite::prefetch(concurrency: 3);
         \Illuminate\Http\Resources\Json\JsonResource::withoutWrapping();
 
+        // Register Observers
+        \App\Models\Ticket::observe(\App\Observers\TicketObserver::class);
+        \App\Models\TicketMessage::observe(\App\Observers\TicketMessageObserver::class);
     }
+
 }

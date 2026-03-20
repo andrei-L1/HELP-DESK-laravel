@@ -38,6 +38,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::patch('/profile', 'update')->name('profile.update');
         Route::delete('/profile', 'destroy')->name('profile.destroy');
     });
+    
+    // Notifications
+    Route::controller(\App\Http\Controllers\NotificationController::class)->group(function () {
+        Route::get('/notifications', 'index')->name('notifications.index');
+        Route::patch('/notifications/{id}/mark-as-read', 'markAsRead')->name('notifications.markAsRead');
+        Route::patch('/notifications/mark-all-as-read', 'markAllAsRead')->name('notifications.markAllAsRead');
+    });
 
     // Include modular route files
     require __DIR__ . '/user.php';
