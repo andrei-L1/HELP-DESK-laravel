@@ -19,6 +19,7 @@ class DatabaseSeeder extends Seeder
             RoleSeeder::class,             // seed roles first
             PermissionSeeder::class,       // then seed permissions
             RolePermissionSeeder::class,   // then link roles & permissions
+            SettingSeeder::class,          // Initialize help desk configuration
             AdminUserSeeder::class,        // create admin user
             TicketStatusSeeder::class,
             TicketPrioritySeeder::class,

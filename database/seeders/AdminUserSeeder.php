@@ -14,14 +14,20 @@ class AdminUserSeeder extends Seeder
      */
     public function run(): void
     {
-        DB::table('users')->insert([
+        $adminRole = DB::table('roles')->where('name', 'admin')->first();
+        if (!$adminRole) {
+            $this->command->error('Admin role not found. Please run RoleSeeder first.');
+            return;
+        }
+
+        DB::table('users')->insertOrIgnore([
             'username'       => 'admin',
             'email'          => 'admin@example.com',
             'password'       => Hash::make('Admin@123'), // set a secure password
             'first_name'     => 'System',
             'last_name'      => 'Administrator',
             'display_name'   => 'Admin',
-            'role_id'        => 4, // admin role
+            'role_id'        => $adminRole->id,
             'phone'          => '09123456789',
             'timezone'       => 'Asia/Manila',
             'is_active'      => true,

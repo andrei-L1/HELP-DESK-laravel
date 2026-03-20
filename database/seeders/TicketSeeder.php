@@ -6,6 +6,8 @@ use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Carbon\Carbon;
+use App\Models\SlaPolicy;
+use App\Services\SlaService;
 
 class TicketSeeder extends Seeder
 {
@@ -118,10 +120,10 @@ class TicketSeeder extends Seeder
                 // Calculate due date based on SLA resolution time
                 $dueAt = null;
                 if ($slaPolicy && $slaPolicy->resolution_time) {
-                    $dueAt = $createdAt->copy()->addMinutes((int) $slaPolicy->resolution_time);
-                    
-                    // If business hours only, you'd need more complex calculation here
-                    // For now, we'll just use the simple addition
+                    // USE THE NEW SMART SLA SERVICE FOR SEEDING
+                    $slaService = resolve(SlaService::class);
+                    $policyModel = SlaPolicy::find($slaPolicy->id);
+                    $dueAt = $slaService->calculateDeadline($createdAt, $policyModel);
                 }
 
                 // Calculate response time for some tickets (30% chance of having first response)
@@ -180,9 +182,12 @@ class TicketSeeder extends Seeder
                 $globalKey = $priorityId . '-null';
                 $slaPolicy = $slaPolicies[$globalKey] ?? null;
                 
-                $dueAt = $slaPolicy && $slaPolicy->resolution_time 
-                    ? $createdAt->copy()->addMinutes((int) $slaPolicy->resolution_time)
-                    : null;
+                $dueAt = null;
+                if ($slaPolicy && $slaPolicy->resolution_time) {
+                    $slaService = resolve(SlaService::class);
+                    $policyModel = SlaPolicy::find($slaPolicy->id);
+                    $dueAt = $slaService->calculateDeadline($createdAt, $policyModel);
+                }
 
                 DB::table('tickets')->insert([
                     'ticket_number'      => 'TKT-GLB-' . date('Y') . '-' . str_pad($i, 4, '0', STR_PAD_LEFT),
