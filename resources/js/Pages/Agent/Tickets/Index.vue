@@ -1,7 +1,7 @@
 <script setup>
 import AgentNavigation from '@/Components/AgentNavigation.vue';
-import { Head, Link, router } from '@inertiajs/vue3';
-import { ref } from 'vue';
+import { Head, Link, router, usePage } from '@inertiajs/vue3';
+import { ref, onMounted, onUnmounted, watch } from 'vue';
 
 const props = defineProps({
     tickets: {
@@ -22,14 +22,90 @@ const props = defineProps({
     }
 });
 
+const page = usePage();
+
 // Filter state
 const searchInput = ref(props.filters.search || '');
-const statusFilter = ref(props.filters.status || props.currentStatus === 'All' ? '' : props.currentStatus);
+const statusFilter = ref(props.filters.status || (props.currentStatus && props.currentStatus !== 'All' ? props.currentStatus : ''));
 const priorityFilter = ref(props.filters.priority || '');
 
 // Statuses and Priorities options (hardcoded for quick filtering if not passed from backend)
 const availableStatuses = ['Open', 'Pending', 'Resolved', 'Closed'];
 const availablePriorities = ['Low', 'Medium', 'High', 'Urgent'];
+
+// Real-time synchronization
+const localTickets = ref([...(props.tickets.data || [])]);
+
+watch(() => props.tickets.data, (newVal) => {
+    localTickets.value = [...(newVal || [])];
+}, { deep: true });
+
+onMounted(() => {
+    if (window.Echo) {
+        window.Echo.private('staff.tickets')
+            .listen('.TicketCreated', (e) => {
+                console.log('[Echo] New ticket created:', e.ticket);
+                
+                // Only show if it belongs to this agent's view (assigned to them)
+                if (e.ticket.assigned_to_id !== page.props.auth.user.id) return;
+
+                // Check if it matches current status filter
+                if (statusFilter.value && e.ticket.status !== statusFilter.value) return;
+                
+                // Check if it matches current priority filter
+                if (priorityFilter.value && e.ticket.priority !== priorityFilter.value) return;
+
+                // Only prepend if we are on the first page
+                const isFirstPage = !props.tickets.prev_page_url;
+                if (isFirstPage && !localTickets.value.find(t => t.id === e.ticket.id)) {
+                    localTickets.value.unshift(e.ticket);
+                    if (localTickets.value.length > (props.tickets.per_page || 15)) {
+                        localTickets.value.pop();
+                    }
+                }
+            })
+            .listen('.TicketUpdated', (e) => {
+                console.log('[Echo] Ticket updated:', e.ticket);
+                const index = localTickets.value.findIndex(t => t.id === e.ticket.id);
+                
+                // If it's in our list, check if it still belongs there
+                if (index !== -1) {
+                    const stillMatches = (
+                        e.ticket.assigned_to_id === page.props.auth.user.id &&
+                        (!statusFilter.value || e.ticket.status === statusFilter.value) &&
+                        (!priorityFilter.value || e.ticket.priority === priorityFilter.value)
+                    );
+
+                    if (stillMatches) {
+                        localTickets.value[index] = { ...localTickets.value[index], ...e.ticket };
+                    } else {
+                        // No longer matches filters (e.g. status changed), remove it
+                        localTickets.value.splice(index, 1);
+                    }
+                } else {
+                    // Not in list, check if it SHOULD be now (e.g. assigned to me or status changed to match filter)
+                    const matchesNow = (
+                        e.ticket.assigned_to_id === page.props.auth.user.id &&
+                        (!statusFilter.value || e.ticket.status === statusFilter.value) &&
+                        (!priorityFilter.value || e.ticket.priority === priorityFilter.value)
+                    );
+
+                    if (matchesNow && !props.tickets.prev_page_url) {
+                        localTickets.value.unshift(e.ticket);
+                        if (localTickets.value.length > (props.tickets.per_page || 15)) {
+                            localTickets.value.pop();
+                        }
+                    }
+                }
+            });
+    }
+});
+
+onUnmounted(() => {
+    if (window.Echo) {
+        window.Echo.leave('staff.tickets');
+    }
+});
 
 // Apply filters
 const applyFilter = (key, value) => {
@@ -97,6 +173,16 @@ const getStatusClass = (status) => {
     return map[status?.name?.toLowerCase() || status?.toLowerCase()] || 'bg-gray-100 text-gray-800';
 };
 </script>
+
+<style>
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-in {
+    animation: fadeIn 0.5s ease-out forwards;
+}
+</style>
 
 <template>
     <Head title="My Tickets" />
@@ -204,9 +290,9 @@ const getStatusClass = (status) => {
                     </thead>
                     <tbody class="divide-y divide-gray-200 bg-white">
                         <tr
-                            v-for="ticket in tickets.data"
+                            v-for="ticket in localTickets"
                             :key="ticket.id"
-                            class="cursor-pointer hover:bg-gray-50 transition-colors"
+                            class="cursor-pointer hover:bg-gray-50 transition-colors animate-fade-in"
                             @click="viewTicket(ticket.id)"
                         >
                             <td class="whitespace-nowrap px-6 py-4 text-sm font-medium text-gray-900">
@@ -223,7 +309,7 @@ const getStatusClass = (status) => {
                                     class="inline-flex rounded-full px-2 py-1 text-xs font-semibold"
                                     :class="getStatusClass(ticket.status)"
                                 >
-                                    {{ ticket.status ? ticket.status.name : 'Open' }}
+                                    {{ ticket.status || 'Open' }}
                                 </span>
                             </td>
                             <td class="whitespace-nowrap px-6 py-4 text-sm">
@@ -231,7 +317,7 @@ const getStatusClass = (status) => {
                                     class="inline-flex rounded-full px-2 py-1 text-xs font-semibold"
                                     :class="getPriorityClass(ticket.priority)"
                                 >
-                                    {{ ticket.priority ? ticket.priority.name : 'Low' }}
+                                    {{ ticket.priority || 'Low' }}
                                 </span>
                             </td>
                             <td class="whitespace-nowrap px-6 py-4 text-sm text-gray-500">

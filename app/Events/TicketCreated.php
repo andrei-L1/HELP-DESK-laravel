@@ -3,14 +3,13 @@
 namespace App\Events;
 
 use App\Models\Ticket;
-use Illuminate\Broadcasting\Channel;
 use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
-class TicketUpdated implements ShouldBroadcastNow
+class TicketCreated implements ShouldBroadcastNow
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
@@ -22,7 +21,7 @@ class TicketUpdated implements ShouldBroadcastNow
     public function __construct(Ticket $ticket)
     {
         // Load relationships needed for the frontend display
-        $this->ticket = $ticket->load(['status', 'priority', 'assignee', 'department', 'category', 'creator']);
+        $this->ticket = $ticket->load(['status', 'priority', 'creator', 'department', 'assignee']);
     }
 
     /**
@@ -43,7 +42,6 @@ class TicketUpdated implements ShouldBroadcastNow
     public function broadcastOn(): array
     {
         $channels = [
-            new PrivateChannel('ticket.' . $this->ticket->id),
             new PrivateChannel('staff.tickets')
         ];
 
@@ -59,6 +57,6 @@ class TicketUpdated implements ShouldBroadcastNow
      */
     public function broadcastAs(): string
     {
-        return 'TicketUpdated';
+        return 'TicketCreated';
     }
 }

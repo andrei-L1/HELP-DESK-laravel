@@ -1,7 +1,7 @@
 <script setup>
 import AdminNavigation from '@/Components/AdminNavigation.vue';
 import { Head, Link, router } from '@inertiajs/vue3';
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import TrendCard from '@/Components/TrendCard.vue';
 
 const props = defineProps({
@@ -46,6 +46,75 @@ const props = defineProps({
             urgent: 0,
         }),
     },
+});
+
+// Real-time synchronization
+const localTickets = ref([...(props.tickets.data || [])]);
+const stats = ref({ ...props.stats });
+
+watch(() => props.tickets.data, (newVal) => {
+    localTickets.value = [...(newVal || [])];
+}, { deep: true });
+
+onMounted(() => {
+    if (window.Echo) {
+        window.Echo.private('staff.tickets')
+            .listen('.TicketCreated', (e) => {
+                console.log('[Echo] New ticket created:', e.ticket);
+                
+                // Match current filters
+                if (props.filters.status && e.ticket.status !== props.filters.status) return;
+                if (props.filters.priority && e.ticket.priority !== props.filters.priority) return;
+                if (props.filters.department && e.ticket.department_id != props.filters.department) return;
+
+                const isFirstPage = !props.tickets.prev_page_url;
+                if (isFirstPage && !localTickets.value.find(t => t.id === e.ticket.id)) {
+                    localTickets.value.unshift(e.ticket);
+                    if (localTickets.value.length > (props.tickets.per_page || 15)) {
+                        localTickets.value.pop();
+                    }
+                    // Update stats
+                    stats.value.total++;
+                    stats.value.open++;
+                }
+            })
+            .listen('.TicketUpdated', (e) => {
+                const index = localTickets.value.findIndex(t => t.id === e.ticket.id);
+                
+                // Determine if it matches current filters
+                const matchesFilters = (
+                    (!props.filters.status || e.ticket.status === props.filters.status) &&
+                    (!props.filters.priority || e.ticket.priority === props.filters.priority) &&
+                    (!props.filters.department || (e.ticket.department_id && e.ticket.department_id == props.filters.department))
+                );
+
+                if (index !== -1) {
+                    if (matchesFilters) {
+                        // Remove from current position and unshift to top (since list is sorted by updated_at)
+                        localTickets.value.splice(index, 1);
+                        localTickets.value.unshift(e.ticket);
+                    } else {
+                        // No longer matches filters, remove it
+                        localTickets.value.splice(index, 1);
+                    }
+                } else {
+                    // Not in list, check if it should be unshifted
+                    const isFirstPage = !props.tickets.prev_page_url;
+                    if (matchesFilters && isFirstPage) {
+                        localTickets.value.unshift(e.ticket);
+                        if (localTickets.value.length > (props.tickets.per_page || 15)) {
+                            localTickets.value.pop();
+                        }
+                    }
+                }
+            });
+    }
+});
+
+onUnmounted(() => {
+    if (window.Echo) {
+        window.Echo.leave('staff.tickets');
+    }
 });
 
 // Filter state
@@ -389,11 +458,11 @@ const maxPriorityCount = computed(() => {
                     </div>
                 </div>
 
-                <div v-if="tickets.data.length > 0" class="divide-y divide-slate-50">
+                <div v-if="localTickets.length > 0" class="divide-y divide-slate-50">
                     <div
-                        v-for="(ticket, index) in tickets.data"
+                        v-for="(ticket, index) in localTickets"
                         :key="ticket.id"
-                        class="flex flex-col lg:flex-row lg:items-center justify-between py-4 px-8 hover:bg-slate-50/50 transition-all cursor-pointer group relative"
+                        class="flex flex-col lg:flex-row lg:items-center justify-between py-4 px-8 hover:bg-slate-50/50 transition-all cursor-pointer group relative animate-fade-in"
                         :class="[selectedTickets.includes(ticket.id) ? 'bg-slate-50/80 text-slate-900 shadow-sm' : '', `stagger-${Math.min(index + 5, 5)}`]"
                         @click="viewTicket(ticket.id)"
                     >
@@ -555,6 +624,13 @@ const maxPriorityCount = computed(() => {
 </template>
 
 <style scoped>
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-in {
+    animation: fadeIn 0.5s ease-out forwards;
+}
 select {
     background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/csv' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%2394a3b8' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
     background-position: right 1rem center;

@@ -22,7 +22,7 @@ const props = defineProps({
 const page = usePage();
 
 // Local reactive copy of messages for real-time updates
-const localMessages = ref([...(props.ticket.messages || [])]);
+const localMessages = ref([...(props.messages || [])]);
 
 const scrollContainer = ref(null);
 const typingUser = ref(null);
@@ -44,7 +44,7 @@ const scrollToBottom = async () => {
 };
 
 // Sync when Inertia reloads props
-watch(() => props.ticket.messages, (newVal) => {
+watch(() => props.messages, (newVal) => {
     localMessages.value = [...(newVal || [])];
     scrollToBottom();
 }, { deep: true });
@@ -264,26 +264,26 @@ const showActivity = ref(false);
                     <h1 class="text-xl font-semibold text-gray-900">{{ ticket.ticket_number }}</h1>
                     <!-- Dynamic status badge -->
                     <span 
-                        v-if="ticket.status?.name"
-                        :class="getStatusStyles(ticket.status.name, ticket.status?.color).badge"
-                        :style="getStatusStyles(ticket.status.name, ticket.status?.color).style"
+                        v-if="ticket.status"
+                        :class="getStatusStyles(ticket.status, ticket.status_color).badge"
+                        :style="getStatusStyles(ticket.status, ticket.status_color).style"
                     >
-                        {{ ticket.status.name }}
+                        {{ ticket.status }}
                     </span>
                     <!-- Dynamic priority badge -->
                     <span 
-                        v-if="ticket.priority?.name"
-                        :class="getPriorityStyles(ticket.priority.name, ticket.priority?.color).badge"
-                        :style="getPriorityStyles(ticket.priority.name, ticket.priority?.color).style"
+                        v-if="ticket.priority"
+                        :class="getPriorityStyles(ticket.priority, ticket.priority_color).badge"
+                        :style="getPriorityStyles(ticket.priority, ticket.priority_color).style"
                     >
-                        {{ ticket.priority.name }}
+                        {{ ticket.priority }}
                     </span>
                 </div>
                 <div class="flex gap-2">
-                    <button @click="resolveTicket" v-if="ticket.status?.name !== 'Resolved' && ticket.status?.name !== 'Closed'" type="button" class="inline-flex items-center rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 transition-colors">
+                    <button @click="resolveTicket" v-if="ticket.status !== 'Resolved' && ticket.status !== 'Closed'" type="button" class="inline-flex items-center rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 transition-colors">
                         Mark as Resolved
                     </button>
-                    <button @click="reopenTicket" v-if="ticket.status?.name === 'Resolved' || ticket.status?.name === 'Closed'" type="button" class="inline-flex items-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 transition-colors">
+                    <button @click="reopenTicket" v-if="ticket.status === 'Resolved' || ticket.status === 'Closed'" type="button" class="inline-flex items-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 transition-colors">
                         Reopen Ticket
                     </button>
                 </div>
@@ -452,11 +452,11 @@ const showActivity = ref(false);
                                     <dt class="text-xs font-medium text-gray-500">Status</dt>
                                     <dd>
                                         <span 
-                                            v-if="ticket.status?.name"
-                                            :class="getStatusStyles(ticket.status.name, ticket.status?.color).badge"
-                                            :style="getStatusStyles(ticket.status.name, ticket.status?.color).style"
+                                            v-if="ticket.status"
+                                            :class="getStatusStyles(ticket.status, ticket.status_color).badge"
+                                            :style="getStatusStyles(ticket.status, ticket.status_color).style"
                                         >
-                                            {{ ticket.status.name }}
+                                            {{ ticket.status }}
                                         </span>
                                     </dd>
                                 </div>
@@ -464,11 +464,11 @@ const showActivity = ref(false);
                                     <dt class="text-xs font-medium text-gray-500">Priority</dt>
                                     <dd>
                                         <span 
-                                            v-if="ticket.priority?.name"
-                                            :class="getPriorityStyles(ticket.priority.name, ticket.priority?.color).badge"
-                                            :style="getPriorityStyles(ticket.priority.name, ticket.priority?.color).style"
+                                            v-if="ticket.priority"
+                                            :class="getPriorityStyles(ticket.priority, ticket.priority_color).badge"
+                                            :style="getPriorityStyles(ticket.priority, ticket.priority_color).style"
                                         >
-                                            {{ ticket.priority.name }}
+                                            {{ ticket.priority }}
                                         </span>
                                     </dd>
                                 </div>
@@ -486,7 +486,7 @@ const showActivity = ref(false);
                                     <SlaTimer 
                                         :due-at="ticket.due_at" 
                                         :is-breached="!!ticket.is_sla_breached"
-                                        :status="ticket.status?.name"
+                                        :status="ticket.status"
                                     />
                                     <div class="mt-2 text-[10px] text-gray-400 font-medium px-1 flex justify-between">
                                         <span>Deadline:</span>
@@ -534,7 +534,7 @@ const showActivity = ref(false);
                                 </a>
 
                                 <!-- Upload -->
-                                <template v-if="ticket.status?.name !== 'Closed' && ticket.status?.name !== 'Resolved'">
+                                <template v-if="ticket.status !== 'Closed' && ticket.status !== 'Resolved'">
                                     <form @submit.prevent="submitAttachment" class="mt-3 pt-3 border-t border-gray-100 space-y-2">
                                         <input
                                             id="attachment-file"

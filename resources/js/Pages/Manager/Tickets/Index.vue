@@ -1,7 +1,7 @@
 <script setup>
 import ManagerNavigation from '@/Components/ManagerNavigation.vue';
 import { Head, Link, router } from '@inertiajs/vue3';
-import { ref } from 'vue';
+import { ref, onMounted, onUnmounted, watch } from 'vue';
 
 const props = defineProps({
     tickets: {
@@ -44,6 +44,80 @@ const props = defineProps({
             urgent: 0,
         }),
     },
+});
+
+// Real-time synchronization
+const localTickets = ref([...(props.tickets.data || [])]);
+const stats = ref({ ...props.stats });
+const managedDepartmentIds = computed(() => (props.departments || []).map(d => d.id));
+
+watch(() => props.tickets.data, (newVal) => {
+    localTickets.value = [...(newVal || [])];
+}, { deep: true });
+
+onMounted(() => {
+    if (window.Echo) {
+        window.Echo.private('staff.tickets')
+            .listen('.TicketCreated', (e) => {
+                console.log('[Echo] New ticket created:', e.ticket);
+                
+                // Only show if it belongs to one of the manager's departments
+                if (!managedDepartmentIds.value.includes(e.ticket.department_id)) return;
+
+                // Match filters
+                if (props.filters.status && e.ticket.status !== props.filters.status) return;
+                if (props.filters.priority && e.ticket.priority !== props.filters.priority) return;
+                if (props.filters.department && e.ticket.department_id != props.filters.department) return;
+
+                const isFirstPage = !props.tickets.prev_page_url;
+                if (isFirstPage && !localTickets.value.find(t => t.id === e.ticket.id)) {
+                    localTickets.value.unshift(e.ticket);
+                    if (localTickets.value.length > (props.tickets.per_page || 15)) {
+                        localTickets.value.pop();
+                    }
+                    stats.value.total++;
+                    stats.value.open++;
+                }
+            })
+            .listen('.TicketUpdated', (e) => {
+                const index = localTickets.value.findIndex(t => t.id === e.ticket.id);
+                if (index !== -1) {
+                    // Check if it still belongs and matches filters
+                    const stillMatches = (
+                        managedDepartmentIds.value.includes(e.ticket.department_id) &&
+                        (!props.filters.status || e.ticket.status === props.filters.status) &&
+                        (!props.filters.priority || e.ticket.priority === props.filters.priority) &&
+                        (!props.filters.department || e.ticket.department_id == props.filters.department)
+                    );
+
+                    if (stillMatches) {
+                        localTickets.value[index] = { ...localTickets.value[index], ...e.ticket };
+                    } else {
+                        localTickets.value.splice(index, 1);
+                    }
+                } else {
+                    // Check if it belongs and matches NOW
+                    const matchesNow = (
+                        managedDepartmentIds.value.includes(e.ticket.department_id) &&
+                        (!props.filters.status || e.ticket.status === props.filters.status) &&
+                        (!props.filters.priority || e.ticket.priority === props.filters.priority) &&
+                        (!props.filters.department || e.ticket.department_id == props.filters.department)
+                    );
+                    if (matchesNow && !props.tickets.prev_page_url) {
+                        localTickets.value.unshift(e.ticket);
+                        if (localTickets.value.length > (props.tickets.per_page || 15)) {
+                            localTickets.value.pop();
+                        }
+                    }
+                }
+            });
+    }
+});
+
+onUnmounted(() => {
+    if (window.Echo) {
+        window.Echo.leave('staff.tickets');
+    }
 });
 
 // Filter state
@@ -248,9 +322,9 @@ const getStatusClass = (status) => {
                     </thead>
                     <tbody class="divide-y divide-gray-200 bg-white">
                         <tr
-                            v-for="ticket in tickets.data"
+                            v-for="ticket in localTickets"
                             :key="ticket.id"
-                            class="cursor-pointer hover:bg-gray-50 transition-colors"
+                            class="cursor-pointer hover:bg-gray-50 transition-colors animate-fade-in"
                             @click="viewTicket(ticket.id)"
                         >
                             <td class="whitespace-nowrap px-6 py-4 text-sm font-medium text-gray-900">
@@ -350,3 +424,13 @@ const getStatusClass = (status) => {
         </div>
     </ManagerNavigation>
 </template>
+
+<style scoped>
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-in {
+    animation: fadeIn 0.5s ease-out forwards;
+}
+</style>

@@ -1,6 +1,6 @@
 <script setup>
-import { ref, watch, computed } from 'vue';
-import { Head, Link, router } from '@inertiajs/vue3';
+import { ref, watch, computed, onMounted, onUnmounted } from 'vue';
+import { Head, Link, router, usePage } from '@inertiajs/vue3';
 import UserNavigation from '@/Components/UserNavigation.vue';
 
 const props = defineProps({
@@ -11,7 +11,41 @@ const props = defineProps({
     stats: { type: Object, default: () => ({}) },
 });
 
-// Helper function to convert hex to RGB
+const stats = ref({ ...props.stats });
+
+const page = usePage();
+const localTickets = ref([...(props.tickets.data || [])]);
+
+watch(() => props.tickets.data, (newVal) => {
+    localTickets.value = [...(newVal || [])];
+}, { deep: true });
+
+onMounted(() => {
+    if (window.Echo) {
+        window.Echo.private(`user.${page.props.auth.user.id}.tickets`)
+            .listen('.TicketCreated', (e) => {
+                const isFirstPage = !props.tickets.prev_page_url;
+                if (isFirstPage && !localTickets.value.find(t => t.id === e.ticket.id)) {
+                    localTickets.value.unshift(e.ticket);
+                    // Update stats
+                    stats.value.total++;
+                    stats.value.open++;
+                }
+            })
+            .listen('.TicketUpdated', (e) => {
+                const index = localTickets.value.findIndex(t => t.id === e.ticket.id);
+                if (index !== -1) {
+                    localTickets.value[index] = { ...localTickets.value[index], ...e.ticket };
+                }
+            });
+    }
+});
+
+onUnmounted(() => {
+    if (window.Echo) {
+        window.Echo.leave(`user.${page.props.auth.user.id}.tickets`);
+    }
+});
 const hexToRgb = (hex) => {
     const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
     return result ? {
@@ -257,7 +291,7 @@ const activeFilterCount = computed(() => {
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-gray-100 bg-white">
-                                <tr v-for="ticket in tickets.data" :key="ticket.id" class="hover:bg-gray-50/80 transition-colors group">
+                                <tr v-for="ticket in localTickets" :key="ticket.id" class="hover:bg-gray-50/80 transition-colors group animate-fade-in">
                                     <td class="py-4 pl-6 pr-3">
                                         <div class="flex items-start gap-3">
                                             <div class="flex-shrink-0 mt-1">
@@ -322,8 +356,8 @@ const activeFilterCount = computed(() => {
                     </div>
 
                     <!-- Card View for mobile/tablet -->
-                    <div v-if="tickets.data.length > 0" class="lg:hidden divide-y divide-gray-100">
-                        <div v-for="ticket in tickets.data" :key="ticket.id" class="p-4 hover:bg-gray-50 transition-colors">
+                    <div v-if="localTickets.length > 0" class="lg:hidden divide-y divide-gray-100">
+                        <div v-for="ticket in localTickets" :key="ticket.id" class="p-4 hover:bg-gray-50 transition-colors animate-fade-in">
                             <div class="flex items-start justify-between gap-3">
                                 <div class="flex-1 min-w-0">
                                     <div class="flex items-center gap-2 mb-2 flex-wrap">
@@ -448,10 +482,18 @@ const activeFilterCount = computed(() => {
 </template>
 
 <style scoped>
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-in {
+    animation: fadeIn 0.5s ease-out forwards;
+}
 /* Add any necessary styles */
 .line-clamp-1 {
     display: -webkit-box;
     -webkit-line-clamp: 1;
+    line-clamp: 1;
     -webkit-box-orient: vertical;
     overflow: hidden;
 }

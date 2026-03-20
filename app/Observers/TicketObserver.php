@@ -75,6 +75,9 @@ class TicketObserver
         if ($ticket->assignee && $ticket->assigned_to !== $ticket->created_by) {
             $ticket->assignee->notify(new TicketAssignedNotification($ticket));
         }
+
+        // 3. Broadcast to Staff and Creator for real-time list updates
+        broadcast(new \App\Events\TicketCreated($ticket));
     }
 
     /**
