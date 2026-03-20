@@ -12,11 +12,7 @@ class SettingsController extends Controller
 {
     public function notifications()
     {
-        $settings = Setting::get('user_' . Auth::id() . '_notification_settings', []);
-
-        return Inertia::render('Agent/Settings/Notifications', [
-            'settings' => $settings,
-        ]);
+        return Inertia::render('Agent/Settings');
     }
 
     public function updateNotifications(Request $request)

@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\User\UserDashboardController;
 use App\Http\Controllers\User\UserTicketController;
+use App\Http\Controllers\User\SettingsController;
 
 Route::middleware('role:user')
     ->prefix('user')
@@ -35,4 +36,7 @@ Route::middleware('role:user')
             Route::post('/tickets/{ticket}/attachments', [UserTicketController::class, 'storeAttachment'])
                 ->name('tickets.attachments.store');
         });
+
+        // Settings
+        Route::get('/settings', [SettingsController::class, 'index'])->name('settings');
     });

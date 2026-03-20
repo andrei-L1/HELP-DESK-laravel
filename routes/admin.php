@@ -141,6 +141,7 @@ Route::middleware('role:admin')
             Route::get('/', [SettingsController::class, 'index'])->name('index');
             Route::get('/general', [SettingsController::class, 'general'])->name('general');
             Route::post('/general', [SettingsController::class, 'updateGeneral'])->name('general.update');
+            Route::get('/notifications', [SettingsController::class, 'notifications'])->name('notifications');
             Route::get('/ticket', [SettingsController::class, 'ticket'])->name('ticket');
 
             Route::post('/ticket/priorities', [TicketSettingsController::class, 'storePriority'])->name('priorities.store');

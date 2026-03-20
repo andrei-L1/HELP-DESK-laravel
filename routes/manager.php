@@ -5,6 +5,7 @@ use App\Http\Controllers\Manager\ManagerDashboardController;
 use App\Http\Controllers\Manager\ManagerTeamController;
 use App\Http\Controllers\Manager\ManagerTicketController;
 use App\Http\Controllers\Manager\ManagerReportController;
+use App\Http\Controllers\Manager\SettingsController;
 
 Route::middleware(['role:manager'])
     ->prefix('manager')
@@ -47,4 +48,7 @@ Route::middleware(['role:manager'])
             Route::get('/', [ManagerReportController::class, 'index'])->name('index');
             Route::get('/export', [ManagerReportController::class, 'export'])->name('export');
         });
+
+        // Settings
+        Route::get('/settings', [SettingsController::class, 'index'])->name('settings');
     });

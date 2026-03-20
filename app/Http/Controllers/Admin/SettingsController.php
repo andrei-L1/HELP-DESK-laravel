@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Setting;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 
@@ -125,27 +126,27 @@ class SettingsController extends Controller
     /**
      * Email settings.
      */
-public function email()
-{
-    // Get email settings
-    $settings = [
-        'mail_mailer' => config('mail.default'),
-        'mail_host' => config('mail.mailers.smtp.host'),
-        'mail_port' => config('mail.mailers.smtp.port'),
-        'mail_username' => config('mail.mailers.smtp.username'),
-        'mail_password' => config('mail.mailers.smtp.password'),
-        'mail_encryption' => config('mail.mailers.smtp.encryption'),
-        'mail_from_address' => config('mail.from.address'),
-        'mail_from_name' => config('mail.from.name'),
-        'mail_reply_to_address' => config('mail.reply_to.address'),
-        'mail_reply_to_name' => config('mail.reply_to.name'),
-    ];
+    public function email()
+    {
+        // Get email settings from database, fallback to config
+        $settings = [
+            'mail_mailer' => Setting::get('mail_mailer', config('mail.default', 'smtp')),
+            'mail_host' => Setting::get('mail_host', config('mail.mailers.smtp.host', '')),
+            'mail_port' => Setting::get('mail_port', config('mail.mailers.smtp.port', 587)),
+            'mail_username' => Setting::get('mail_username', config('mail.mailers.smtp.username', '')),
+            'mail_password' => Setting::get('mail_password', config('mail.mailers.smtp.password', '')),
+            'mail_encryption' => Setting::get('mail_encryption', config('mail.mailers.smtp.encryption', 'tls')),
+            'mail_from_address' => Setting::get('mail_from_address', config('mail.from.address', '')),
+            'mail_from_name' => Setting::get('mail_from_name', config('mail.from.name', 'HelpDesk Support')),
+            'mail_reply_to_address' => Setting::get('mail_reply_to_address', config('mail.reply_to.address', '')),
+            'mail_reply_to_name' => Setting::get('mail_reply_to_name', config('mail.reply_to.name', '')),
+        ];
 
-    return Inertia::render('Admin/Settings/Email', [
-        'settings' => $settings,
-        'testEmailStatus' => session('test_email_status'),
-    ]);
-}
+        return Inertia::render('Admin/Settings/Email', [
+            'settings' => $settings,
+            'testEmailStatus' => session('test_email_status'),
+        ]);
+    }
 
     public function updateEmail(Request $request)
     {
@@ -155,17 +156,24 @@ public function email()
             'mail_port' => 'required|integer|min:1|max:65535',
             'mail_username' => 'nullable|string|max:255',
             'mail_password' => 'nullable|string|max:255',
-            'mail_encryption' => 'nullable|string|in:tls,ssl,',
+            'mail_encryption' => 'nullable|string',
             'mail_from_address' => 'required|email|max:255',
             'mail_from_name' => 'nullable|string|max:255',
             'mail_reply_to_address' => 'nullable|email|max:255',
             'mail_reply_to_name' => 'nullable|string|max:255',
         ]);
 
-        // Here you would save to database or .env file
-        // For now, we'll just show success message
+        // Save each setting to database
+        foreach ($validated as $key => $value) {
+            Setting::set($key, $value ?? '', 'string', 'email');
+        }
 
         return redirect()->back()->with('success', 'Email settings updated successfully.');
+    }
+
+    public function notifications()
+    {
+        return Inertia::render('Admin/Settings/Notifications');
     }
 
     public function testEmail(Request $request)
@@ -176,10 +184,31 @@ public function email()
             'message' => 'required|string',
         ]);
 
-        // Here you would actually send a test email
-        // For now, we'll simulate success
+        try {
+            // Apply current database settings to the config dynamically
+            config([
+                'mail.default' => Setting::get('mail_mailer', config('mail.default')),
+                'mail.mailers.smtp.host' => Setting::get('mail_host', config('mail.mailers.smtp.host')),
+                'mail.mailers.smtp.port' => Setting::get('mail_port', config('mail.mailers.smtp.port')),
+                'mail.mailers.smtp.username' => Setting::get('mail_username', config('mail.mailers.smtp.username')),
+                'mail.mailers.smtp.password' => Setting::get('mail_password', config('mail.mailers.smtp.password')),
+                'mail.mailers.smtp.encryption' => Setting::get('mail_encryption', config('mail.mailers.smtp.encryption')),
+                'mail.from.address' => Setting::get('mail_from_address', config('mail.from.address')),
+                'mail.from.name' => Setting::get('mail_from_name', config('mail.from.name')),
+            ]);
 
-        return redirect()->back()->with('test_email_status', 'Test email sent successfully! Check your inbox.');
+            // Re-initialize the default mailer with the new config
+            Mail::purge(config('mail.default'));
+
+            Mail::raw($request->message, function($msg) use ($request) {
+                $msg->to($request->to_email)
+                    ->subject($request->subject);
+            });
+
+            return redirect()->back()->with('test_email_status', "Test email sent successfully to {$request->to_email}!");
+        } catch (\Exception $e) {
+            return redirect()->back()->with('test_email_status', 'Failed to send test email: ' . $e->getMessage());
+        }
     }
 
     public function updateNotifications(Request $request)

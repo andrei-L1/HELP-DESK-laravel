@@ -4,7 +4,6 @@ import AdminNavigation from '@/Components/AdminNavigation.vue';
 import AgentNavigation from '@/Components/AgentNavigation.vue';
 import ManagerNavigation from '@/Components/ManagerNavigation.vue';
 import UserNavigation from '@/Components/UserNavigation.vue';
-import UpdateNotificationSettingsForm from './Partials/UpdateNotificationSettingsForm.vue';
 import DeleteUserForm from './Partials/DeleteUserForm.vue';
 import UpdateProfileInformationForm from './Partials/UpdateProfileInformationForm.vue';
 import { Head, usePage } from '@inertiajs/vue3';
@@ -181,10 +180,6 @@ const currentNavigation = computed(() => navigationComponents[user.role] || User
                                 :must-verify-email="mustVerifyEmail"
                                 :status="status"
                             />
-                        </div>
-                        
-                        <div class="bg-white shadow-xl shadow-slate-200/50 rounded-[2.5rem] border border-slate-200/50 overflow-hidden transition-all hover:shadow-2xl">
-                             <UpdateNotificationSettingsForm />
                         </div>
                         
                         <div class="bg-rose-50/50 rounded-[2.5rem] border border-rose-100 p-10 transition-all hover:bg-rose-50">
