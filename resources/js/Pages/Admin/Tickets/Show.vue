@@ -28,6 +28,9 @@ let internalTypingTimeout = null;
 let whisperThrottle = null;
 let publicEchoChannel = null;
 let internalEchoChannel = null;
+let presenceEchoChannel = null;
+const activeUsers = ref([]);
+const collisionWarning = ref(false);
 
 const scrollToBottom = async () => {
     await nextTick();
@@ -96,8 +99,34 @@ onMounted(() => {
         });
 
         console.log('[Echo] Connection state:', window.Echo.connector.pusher.connection.state);
+
+        // Join Presence Channel
+        presenceEchoChannel = window.Echo.join(`ticket.${props.ticket.id}.presence`)
+            .here((users) => {
+                activeUsers.value = users;
+                checkCollision();
+            })
+            .joining((user) => {
+                if (!activeUsers.value.find(u => u.id === user.id)) {
+                    activeUsers.value.push(user);
+                }
+                checkCollision();
+            })
+            .leaving((user) => {
+                activeUsers.value = activeUsers.value.filter(u => u.id !== user.id);
+                checkCollision();
+            })
+            .error((error) => {
+                console.error('[Echo] Presence channel error:', error);
+            });
     }
 });
+
+const checkCollision = () => {
+    // Collision exists if more than one user is viewing the ticket
+    // Since only staff can join this channel, any length > 1 is a collision
+    collisionWarning.value = activeUsers.value.length > 1;
+};
 
 const handleTyping = () => {
     const targetChannel = messageForm.is_internal ? internalEchoChannel : publicEchoChannel;
@@ -115,6 +144,7 @@ onUnmounted(() => {
     if (window.Echo) {
         window.Echo.leave(`ticket.${props.ticket.id}`);
         window.Echo.leave(`ticket.${props.ticket.id}.internal`);
+        window.Echo.leave(`ticket.${props.ticket.id}.presence`);
     }
 });
 
@@ -260,6 +290,36 @@ const showActivity = ref(false);
 
         <div class="py-6">
             <div class="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+
+                <!-- Real-time Presence Indicators & Collision Warning -->
+                <div v-if="activeUsers.length > 0" class="mb-6 flex flex-wrap items-center justify-between gap-4 p-4 bg-white rounded-xl shadow-sm border border-gray-100">
+                    <div class="flex items-center gap-3">
+                        <div class="flex -space-x-2 overflow-hidden">
+                            <div 
+                                v-for="user in activeUsers" 
+                                :key="user.id"
+                                class="inline-flex h-8 w-8 items-center justify-center rounded-full border-2 border-white bg-slate-100 text-[10px] font-bold text-slate-600 ring-2 ring-transparent transition-all hover:translate-y-[-2px] hover:z-10"
+                                :title="`${user.name} (${user.role})`"
+                                :class="{ 'ring-slate-700': user.id === $page.props.auth.user.id }"
+                            >
+                                {{ user.avatar_initials }}
+                            </div>
+                        </div>
+                        <span class="text-xs font-medium text-gray-400">
+                            <span v-if="activeUsers.length === 1">Only you are viewing this ticket</span>
+                            <span v-else>{{ activeUsers.length }} people are viewing this ticket</span>
+                        </span>
+                    </div>
+
+                    <!-- Collision Warning Banner -->
+                    <div v-if="collisionWarning && activeUsers.length > 1" class="flex items-center gap-2 px-3 py-1.5 bg-amber-50 rounded-lg border border-amber-200 animate-pulse">
+                        <svg class="h-4 w-4 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                        </svg>
+                        <span class="text-xs font-bold text-amber-800 uppercase tracking-wider">Collision Detected</span>
+                        <span class="text-xs text-amber-700 font-medium">Multiple staff are online. Coordinate before replying!</span>
+                    </div>
+                </div>
 
                 <!-- Breadcrumb -->
                 <nav class="flex items-center gap-2 text-sm text-gray-500 mb-6">
