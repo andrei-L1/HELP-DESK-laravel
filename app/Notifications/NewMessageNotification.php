@@ -28,7 +28,21 @@ class NewMessageNotification extends Notification implements ShouldQueue
      */
     public function via(object $notifiable): array
     {
-        return ['mail', 'database', 'broadcast'];
+        $channels = [];
+        
+        if ($notifiable->wantsNotification('new_message', 'mail')) {
+            $channels[] = 'mail';
+        }
+        
+        if ($notifiable->wantsNotification('new_message', 'database')) {
+            $channels[] = 'database';
+        }
+
+        if ($notifiable->wantsNotification('new_message', 'broadcast')) {
+            $channels[] = 'broadcast';
+        }
+        
+        return $channels;
     }
 
     /**

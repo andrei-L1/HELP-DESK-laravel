@@ -31,6 +31,7 @@ class ProfileUpdateRequest extends FormRequest
             'phone' => ['nullable', 'string', 'max:30'],
             'timezone' => ['nullable', 'string', 'max:40'],
             'avatar' => ['nullable', 'image', 'mimes:jpeg,png,jpg,gif', 'max:2048'], // 2MB max
+            'notification_settings' => ['nullable', 'array'],
         ];
     }
 

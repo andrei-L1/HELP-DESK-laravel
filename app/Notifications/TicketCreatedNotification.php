@@ -28,7 +28,22 @@ class TicketCreatedNotification extends Notification implements ShouldQueue
      */
     public function via(object $notifiable): array
     {
-        return ['mail', 'database', 'broadcast'];
+        $channels = [];
+        
+        if ($notifiable->wantsNotification('ticket_created', 'mail')) {
+            $channels[] = 'mail';
+        }
+        
+        if ($notifiable->wantsNotification('ticket_created', 'database')) {
+            $channels[] = 'database';
+        }
+
+        // Always broadcast for real-time UI effects unless user explicitly disables 'push/real-time'
+        if ($notifiable->wantsNotification('ticket_created', 'broadcast')) {
+            $channels[] = 'broadcast';
+        }
+        
+        return $channels;
     }
 
     /**

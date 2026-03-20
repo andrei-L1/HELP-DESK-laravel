@@ -28,7 +28,21 @@ class TicketStatusChangedNotification extends Notification implements ShouldQueu
      */
     public function via(object $notifiable): array
     {
-        return ['mail', 'database', 'broadcast'];
+        $channels = [];
+        
+        if ($notifiable->wantsNotification('status_changed', 'mail')) {
+            $channels[] = 'mail';
+        }
+        
+        if ($notifiable->wantsNotification('status_changed', 'database')) {
+            $channels[] = 'database';
+        }
+
+        if ($notifiable->wantsNotification('status_changed', 'broadcast')) {
+            $channels[] = 'broadcast';
+        }
+        
+        return $channels;
     }
 
     /**

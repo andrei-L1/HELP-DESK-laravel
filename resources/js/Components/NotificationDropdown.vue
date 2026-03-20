@@ -2,9 +2,49 @@
 import { ref, onMounted, onUnmounted, computed } from 'vue';
 import { Link, usePage, router } from '@inertiajs/vue3';
 import { formatDistanceToNow } from 'date-fns';
+import Swal from 'sweetalert2';
 
 const isOpen = ref(false);
 const page = usePage();
+
+const Toast = Swal.mixin({
+    toast: true,
+    position: 'top-end',
+    showConfirmButton: false,
+    timer: 4000,
+    timerProgressBar: true,
+    didOpen: (toast) => {
+        toast.addEventListener('mouseenter', Swal.stopTimer);
+        toast.addEventListener('mouseleave', Swal.resumeTimer);
+    }
+});
+
+const audioUnlocked = ref(false);
+
+const unlockAudio = () => {
+    if (audioUnlocked.value) return;
+    
+    // Play a short silent sound to unlock audio context on first interaction
+    const silentAudio = new Audio('https://assets.mixkit.co/active_storage/sfx/2358/2358-preview.mp3');
+    silentAudio.volume = 0; // Silent
+    silentAudio.play().then(() => {
+        audioUnlocked.value = true;
+        window.removeEventListener('click', unlockAudio);
+        window.removeEventListener('keydown', unlockAudio);
+        console.log('Audio context unlocked');
+    }).catch(() => {
+        // Still blocked, will try again on next click
+    });
+};
+
+const playNotificationSound = () => {
+    // Only attempt if unlocked or browser allows
+    const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2358/2358-preview.mp3');
+    audio.volume = 0.4;
+    audio.play().catch(e => {
+        console.log('Audio still blocked. User interaction required.');
+    });
+};
 
 const unreadCount = computed(() => page.props.auth.user.unread_notifications_count);
 const notifications = computed(() => page.props.auth.user.latest_notifications);
@@ -21,13 +61,30 @@ const closeDropdown = (e) => {
 
 onMounted(() => {
     window.addEventListener('click', closeDropdown);
+    
+    // Unlock audio context on first user interaction (Browser Requirement)
+    window.addEventListener('click', unlockAudio);
+    window.addEventListener('keydown', unlockAudio);
 
     // Listen for real-time notifications via Pusher/Echo
     if (page.props.auth.user) {
         window.Echo.private(`App.Models.User.${page.props.auth.user.id}`)
             .notification((notification) => {
-                // Play subtle sound if desired, or just update UI
-                console.log('New notification received:', notification);
+                // Play subtle sound and show premium toast
+                playNotificationSound();
+                
+                Toast.fire({
+                    icon: 'info',
+                    title: notification.subject || 'New Activity',
+                    text: notification.message || 'You have a new message.',
+                    background: '#ffffff',
+                    color: '#0f172a',
+                    customClass: {
+                        popup: 'rounded-2xl border-l-[6px] border-slate-900 shadow-2xl',
+                        title: 'text-sm font-black uppercase tracking-tight',
+                        htmlContainer: 'text-xs font-medium text-slate-500'
+                    }
+                });
                 
                 // Add to the list (top) if not already exists
                 const existingIndex = page.props.auth.user.latest_notifications.findIndex(n => n.id === notification.id);
@@ -54,6 +111,8 @@ onMounted(() => {
 
 onUnmounted(() => {
     window.removeEventListener('click', closeDropdown);
+    window.removeEventListener('click', unlockAudio);
+    window.removeEventListener('keydown', unlockAudio);
 });
 
 const markAllRead = () => {

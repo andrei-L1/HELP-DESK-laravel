@@ -1,10 +1,37 @@
 <script setup>
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import { Head, Link, router } from '@inertiajs/vue3';
+import { computed } from 'vue';
+import { Head, Link, router, usePage } from '@inertiajs/vue3';
 import { formatDistanceToNow } from 'date-fns';
+import AdminNavigation from '@/Components/AdminNavigation.vue';
+import AgentNavigation from '@/Components/AgentNavigation.vue';
+import ManagerNavigation from '@/Components/ManagerNavigation.vue';
+import UserNavigation from '@/Components/UserNavigation.vue';
+import { 
+    BellIcon, 
+    CheckCircleIcon, 
+    EnvelopeIcon, 
+    TicketIcon,
+    ExclamationTriangleIcon,
+    InformationCircleIcon,
+    ArrowRightIcon,
+    InboxIcon
+} from '@heroicons/vue/24/outline';
 
 const props = defineProps({
     notifications: Object
+});
+
+const page = usePage();
+const userRole = computed(() => page.props.auth?.user?.role || 'user');
+
+const Layout = computed(() => {
+    const roles = {
+        admin: AdminNavigation,
+        agent: AgentNavigation,
+        manager: ManagerNavigation,
+        user: UserNavigation,
+    };
+    return roles[userRole.value] || UserNavigation;
 });
 
 const markAsRead = (id) => {
@@ -22,96 +49,147 @@ const markAllAsRead = () => {
 const formatTime = (time) => {
     return formatDistanceToNow(new Date(time), { addSuffix: true });
 };
+
+const getNotifIcon = (type) => {
+    if (type === 'ticket_created') return TicketIcon;
+    if (type === 'new_message') return EnvelopeIcon;
+    if (type === 'urgent') return ExclamationTriangleIcon;
+    return BellIcon;
+};
+
+const getNotifColor = (type) => {
+    const colors = {
+        ticket_created: 'text-indigo-600 bg-indigo-50',
+        new_message: 'text-emerald-600 bg-emerald-50',
+        urgent: 'text-rose-600 bg-rose-50',
+        default: 'text-slate-600 bg-slate-50'
+    };
+    return colors[type] || colors.default;
+};
 </script>
 
 <template>
-    <Head title="Notifications" />
+    <Head title="Intelligence Center" />
 
-    <AuthenticatedLayout>
-        <template #header>
-            <div class="flex items-center justify-between">
-                <h2 class="text-xl font-black text-slate-900 uppercase tracking-widest">
-                    Your Intelligence Feed
-                </h2>
-                <button 
-                    v-if="notifications.data.some(n => !n.read_at)"
-                    @click="markAllAsRead" 
-                    class="text-[10px] font-black text-blue-600 hover:text-blue-700 uppercase tracking-widest transition-colors"
-                >
-                    Mark all as read
-                </button>
+    <component :is="Layout">
+        <template #header-title>
+            <div class="flex flex-col">
+                <h1 class="text-lg font-black text-slate-900 tracking-tight leading-none">Notifications</h1>
+                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Direct Activity Stream</p>
             </div>
         </template>
 
-        <div class="py-12">
-            <div class="mx-auto max-w-4xl sm:px-6 lg:px-8">
-                <div class="bg-white overflow-hidden shadow-2xl shadow-slate-900/5 sm:rounded-[2rem] border border-slate-100">
-                    <div class="p-8">
-                        <div v-if="notifications.data.length > 0" class="space-y-4">
-                            <div 
-                                v-for="notif in notifications.data" 
-                                :key="notif.id"
-                                @click="markAsRead(notif.id)"
-                                :class="{ 'bg-slate-50 border-transparent': notif.read_at, 'bg-white border-blue-100 shadow-lg shadow-blue-500/5': !notif.read_at }"
-                                class="group relative flex items-start gap-6 p-6 rounded-3xl border transition-all cursor-pointer hover:scale-[1.01]"
-                            >
-                                <div v-if="!notif.read_at" class="absolute left-0 top-1/2 -translate-y-1/2 w-1.5 h-12 bg-blue-600 rounded-r-full"></div>
-                                
-                                <div class="relative flex-shrink-0">
-                                    <div :class="{
-                                        'bg-rose-50 text-rose-600': notif.data.type === 'urgent',
-                                        'bg-amber-50 text-amber-600': notif.data.type === 'warning',
-                                        'bg-emerald-50 text-emerald-600': notif.data.type === 'success',
-                                        'bg-blue-50 text-blue-600': notif.data.type === 'ticket_created' || !notif.data.type,
-                                    }" class="h-14 w-14 rounded-2xl flex items-center justify-center font-bold text-xl ring-8 ring-white">
-                                        <svg v-if="notif.data.type === 'ticket_created'" class="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
-                                        <svg v-else class="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                                    </div>
-                                </div>
-
-                                <div class="flex-1 min-w-0">
-                                    <div class="flex items-center justify-between gap-4 mb-1">
-                                        <h4 class="text-lg font-black text-slate-900 truncate tracking-tight">{{ notif.data.subject || 'Notification' }}</h4>
-                                        <span class="text-xs font-bold text-slate-400 whitespace-nowrap">{{ formatTime(notif.created_at) }}</span>
-                                    </div>
-                                    <p class="text-sm font-medium text-slate-500 leading-relaxed mb-4">{{ notif.data.message }}</p>
-                                    
-                                    <div class="flex items-center gap-3">
-                                        <Link 
-                                            v-if="notif.data.url"
-                                            :href="notif.data.url" 
-                                            class="inline-flex items-center text-[10px] font-black text-blue-600 uppercase tracking-widest hover:text-blue-700 transition-colors"
-                                        >
-                                            View Related Resource
-                                            <svg class="w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M9 5l7 7-7 7" /></svg>
-                                        </Link>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div v-else class="py-20 text-center">
-                            <div class="inline-flex h-20 w-20 items-center justify-center rounded-full bg-slate-50 text-slate-300 mb-6">
-                                <svg class="h-10 w-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>
-                            </div>
-                            <h3 class="text-lg font-black text-slate-900 uppercase tracking-widest">Inbox Zero!</h3>
-                            <p class="text-sm font-medium text-slate-400 mt-2">You don't have any notifications at the moment.</p>
-                        </div>
-
-                        <!-- Pagination (Simple) -->
-                        <div v-if="notifications.links && notifications.links.length > 3" class="mt-12 flex justify-center gap-2">
-                             <Link 
-                                v-for="(link, k) in notifications.links" 
-                                :key="k" 
-                                :href="link.url || '#'" 
-                                v-html="link.label"
-                                :class="{ 'bg-slate-900 text-white shadow-xl shadow-slate-900/20': link.active, 'bg-white text-slate-500 hover:bg-slate-50': !link.active, 'opacity-50 pointer-events-none': !link.url }"
-                                class="px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest border border-slate-100 transition-all"
-                             />
-                        </div>
+        <div class="max-w-[1200px] mx-auto pb-20 pt-8 px-4">
+            <!-- Thinned Header Section -->
+            <div class="flex items-center justify-between mb-8 stagger-1 px-1">
+                <div>
+                    <h2 class="text-2xl font-black text-slate-900 tracking-tight">Recent Activity</h2>
+                    <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1 italic">Summary of your latest {{ notifications.total }} notifications</p>
+                </div>
+                
+                <div class="flex items-center gap-3">
+                    <div class="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-50 border border-slate-100">
+                        <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Unread:</span>
+                        <span class="text-xs font-black text-rose-600">{{ notifications.data.filter(n => !n.read_at).length }}</span>
                     </div>
+                    <button 
+                        v-if="notifications.data.some(n => !n.read_at)"
+                        @click="markAllAsRead" 
+                        class="px-4 py-2 rounded-xl bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 transition-all active:scale-95 shadow-lg shadow-slate-200"
+                    >
+                        Clear All Unread
+                    </button>
+                </div>
+            </div>
+
+            <!-- Thinned Notifications Feed -->
+            <div class="stagger-2">
+                <div v-if="notifications.data.length > 0" class="bg-white rounded-3xl border border-slate-100 shadow-xl shadow-slate-200/50 overflow-hidden">
+                    <div 
+                        v-for="(notif, index) in notifications.data" 
+                        :key="notif.id"
+                        @click="markAsRead(notif.id)"
+                        :class="[
+                            'group flex items-center gap-6 p-5 transition-all duration-300 cursor-pointer border-l-[4px]',
+                            !notif.read_at 
+                                ? 'bg-white border-slate-900' 
+                                : 'bg-slate-50/30 border-transparent opacity-80 hover:opacity-100 grayscale-[0.3] hover:grayscale-0',
+                            index !== notifications.data.length - 1 ? 'border-b border-slate-50' : ''
+                        ]"
+                    >
+                        <!-- Thinned Icon -->
+                        <div class="flex-shrink-0">
+                            <div :class="['h-11 w-11 rounded-xl flex items-center justify-center shadow-sm', getNotifColor(notif.data.type)]">
+                                <component :is="getNotifIcon(notif.data.type)" class="h-5 w-5 stroke-2" />
+                            </div>
+                        </div>
+
+                        <!-- Thinned Content -->
+                        <div class="flex-1 min-w-0">
+                            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-1">
+                                <div class="flex items-center gap-2">
+                                    <h4 class="text-sm font-black text-slate-900 tracking-tight">
+                                        {{ notif.data.subject || 'System Update' }}
+                                    </h4>
+                                    <div v-if="!notif.read_at" class="h-1.5 w-1.5 rounded-full bg-rose-500 animate-pulse"></div>
+                                </div>
+                                <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap">
+                                    {{ formatTime(notif.created_at) }}
+                                </span>
+                            </div>
+                            <p class="text-xs font-medium text-slate-500 line-clamp-1 group-hover:line-clamp-none transition-all duration-300">
+                                {{ notif.data.message }}
+                            </p>
+                        </div>
+
+                        <!-- Action Link -->
+                        <Link 
+                            v-if="notif.data.url"
+                            :href="notif.data.url" 
+                            class="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-50 text-slate-400 group-hover:bg-slate-900 group-hover:text-white transition-all transform group-hover:translate-x-1"
+                        >
+                            <ArrowRightIcon class="h-4 w-4" />
+                        </Link>
+                    </div>
+                </div>
+
+                <!-- Thinned Empty State -->
+                <div v-else class="py-24 text-center bg-white rounded-3xl border border-dashed border-slate-200 shadow-sm">
+                    <div class="inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-slate-50 text-slate-200 mb-4">
+                         <InboxIcon class="h-8 w-8" />
+                    </div>
+                    <h4 class="text-lg font-black text-slate-900 tracking-tight">No Active Signals</h4>
+                    <p class="text-xs text-slate-400 font-bold uppercase tracking-widest mt-1">Check back later for system updates</p>
+                </div>
+
+                <!-- Thinned Pagination -->
+                <div v-if="notifications.links && notifications.links.length > 3" class="mt-10 flex items-center justify-center gap-2">
+                    <Link 
+                        v-for="(link, k) in notifications.links" 
+                        :key="k" 
+                        :href="link.url || '#'" 
+                        v-html="link.label"
+                        :class="[
+                            'min-w-[36px] h-9 flex items-center justify-center px-3 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all',
+                            link.active 
+                                ? 'bg-slate-900 text-white shadow-lg shadow-slate-200' 
+                                : 'bg-white text-slate-500 border border-slate-100 hover:border-slate-900 hover:text-slate-900',
+                            !link.url ? 'opacity-30 cursor-not-allowed border-dashed' : ''
+                        ]"
+                    />
                 </div>
             </div>
         </div>
-    </AuthenticatedLayout>
+    </component>
 </template>
+
+<style scoped>
+.stagger-1 { animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.stagger-2 { animation: slideUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.1s both; }
+
+@keyframes slideUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+</style>
+

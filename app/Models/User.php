@@ -35,6 +35,7 @@ class User extends Authenticatable implements MustVerifyEmail, CanResetPasswordC
         'google_id',       
         'google_avatar',
         'hide_google_avatar',
+        'notification_settings',
     ];
 
     protected $hidden = [
@@ -46,9 +47,24 @@ class User extends Authenticatable implements MustVerifyEmail, CanResetPasswordC
         'email_verified' => 'boolean',
         'is_active'      => 'boolean',
         'last_login'     => 'datetime',
-        'email_verified_at' => 'datetime', // ← added (for compatibility with Laravel's built-in verification)
-        'role_id'        => 'integer',          // ← added (helps with comparisons)
+        'email_verified_at' => 'datetime',
+        'role_id'        => 'integer',
+        'notification_settings' => 'array',
     ];
+
+    /**
+     * Get the notification setting for a specific type and channel.
+     */
+    public function wantsNotification($type, $channel): bool
+    {
+        // Default to true if no settings exist
+        if (!$this->notification_settings) {
+            return true;
+        }
+
+        // Example structure: ['ticket_created' => ['database' => true, 'mail' => false]]
+        return $this->notification_settings[$type][$channel] ?? true;
+    }
     protected $appends = [
         'avatar_url'
     ];
