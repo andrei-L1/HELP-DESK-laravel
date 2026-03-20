@@ -173,19 +173,6 @@ class AdminTicketController extends Controller
 
             $ticket->priority_id = $request->priority_id;
             $this->logTicketActivity($ticket->id, 'priority_changed', $oldPriorityName, $newPriorityName);
-
-            // Recalculate SLA for the new priority
-            $newSlaPolicy = $this->findSlaPolicy($ticket->priority_id, $ticket->department_id);
-            if ($newSlaPolicy && $newSlaPolicy->id != $ticket->sla_policy_id) {
-                $oldSlaName = $ticket->sla_policy_id
-                    ? DB::table('sla_policies')->where('id', $ticket->sla_policy_id)->value('name') ?? 'Unknown'
-                    : 'None';
-
-                $ticket->sla_policy_id = $newSlaPolicy->id;
-                $ticket->due_at        = now()->addMinutes((int) $newSlaPolicy->resolution_time);
-
-                $this->logTicketActivity($ticket->id, 'sla_changed', $oldSlaName, $newSlaPolicy->name);
-            }
         }
 
         // ── Department change ────────────────────────────────────────────────
@@ -195,19 +182,6 @@ class AdminTicketController extends Controller
 
             $ticket->department_id = $newDepartmentId;
             $this->logTicketActivity($ticket->id, 'department_changed', $oldDeptName, $newDeptName);
-
-            // Recalculate SLA for the new department
-            $newSlaPolicy = $this->findSlaPolicy($ticket->priority_id, $newDepartmentId);
-            if ($newSlaPolicy && $newSlaPolicy->id != $ticket->sla_policy_id) {
-                $oldSlaName = $ticket->sla_policy_id
-                    ? DB::table('sla_policies')->where('id', $ticket->sla_policy_id)->value('name') ?? 'Unknown'
-                    : 'None';
-
-                $ticket->sla_policy_id = $newSlaPolicy->id;
-                $ticket->due_at        = now()->addMinutes((int) $newSlaPolicy->resolution_time);
-
-                $this->logTicketActivity($ticket->id, 'sla_changed', $oldSlaName, $newSlaPolicy->name);
-            }
         }
 
         $ticket->save();
@@ -302,17 +276,11 @@ class AdminTicketController extends Controller
         }
 
         $departmentId = isset($validated['department_id']) ? (int) $validated['department_id'] : null;
-        
-        // FIND THE SLA POLICY (you already have this method)
-        $slaPolicy = $this->findSlaPolicy($priorityId, $departmentId);
-        $slaPolicyId = $slaPolicy?->id;
-        
         $assignedTo = $this->pickAutoAssignUserId($departmentId);
-        $dueAt = $this->computeDueAtFromSla($priorityId, $departmentId);
 
         $year = date('Y');
-        $ticket = Cache::lock('ticket_number_' . $year, 10)->block(5, function () use ($validated, $statusId, $priorityId, $assignedTo, $dueAt, $slaPolicyId, $year) {
-            return DB::transaction(function () use ($validated, $statusId, $priorityId, $assignedTo, $dueAt, $slaPolicyId, $year) {
+        $ticket = Cache::lock('ticket_number_' . $year, 10)->block(5, function () use ($validated, $statusId, $priorityId, $assignedTo, $year) {
+            return DB::transaction(function () use ($validated, $statusId, $priorityId, $assignedTo, $year) {
                 $prefix = 'TICKET-' . $year . '-';
                 $lastTicket = DB::table('tickets')
                     ->where('ticket_number', 'like', $prefix . '%')
@@ -330,10 +298,8 @@ class AdminTicketController extends Controller
                     'priority_id'   => $priorityId,
                     'category_id'   => $validated['category_id'] ?? null,
                     'department_id' => $validated['department_id'] ?? null,
-                    'sla_policy_id' => $slaPolicyId, 
                     'created_by'    => Auth::id(),
                     'assigned_to'   => $assignedTo,
-                    'due_at'        => $dueAt,
                 ]);
 
                 $this->logTicketActivity($ticket->id, 'ticket_created', null, $ticketNumber);
@@ -347,12 +313,6 @@ class AdminTicketController extends Controller
                     $this->logTicketActivity($ticket->id, 'assignment_changed', 'Unassigned', $assigneeLabel);
                 }
 
-                // Log which SLA was applied with its name, not its ID
-                if ($slaPolicyId) {
-                    $slaName = \Illuminate\Support\Facades\DB::table('sla_policies')
-                        ->where('id', $slaPolicyId)->value('name') ?? "SLA #{$slaPolicyId}";
-                    $this->logTicketActivity($ticket->id, 'sla_applied', null, $slaName);
-                }
 
                 return $ticket;
             });
@@ -552,38 +512,7 @@ class AdminTicketController extends Controller
         ]);
     }
 
-    /**
-     * Find SLA policy: department-specific first, then global (department_id null).
-     */
-    protected function findSlaPolicy(int $priorityId, ?int $departmentId): ?object
-    {
-        if ($departmentId) {
-            $sla = DB::table('sla_policies')
-                ->where('priority_id', $priorityId)
-                ->where('department_id', $departmentId)
-                ->where('is_active', true)
-                ->whereNull('deleted_at')
-                ->first();
-            if ($sla) {
-                return $sla;
-            }
-        }
-        return DB::table('sla_policies')
-            ->where('priority_id', $priorityId)
-            ->whereNull('department_id')
-            ->where('is_active', true)
-            ->whereNull('deleted_at')
-            ->first();
-    }
 
-    private function computeDueAtFromSla(int $priorityId, ?int $departmentId = null): ?string
-    {
-        $sla = $this->findSlaPolicy($priorityId, $departmentId);
-        if (!$sla || !$sla->resolution_time) {
-            return null;
-        }
-        return now()->addMinutes((int) $sla->resolution_time)->toDateTimeString();
-    }
 
     private function logTicketActivity(int $ticketId, string $action, ?string $oldValue, ?string $newValue, ?array $details = null): void
     {

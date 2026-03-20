@@ -1,6 +1,6 @@
 <script setup>
 import { ref, onMounted, onUnmounted, computed, watch } from 'vue';
-import { differenceInSeconds, isPast, formatDuration, intervalToDuration } from 'date-fns';
+import { differenceInSeconds, isPast, formatDuration, intervalToDuration, parseISO } from 'date-fns';
 
 const props = defineProps({
     dueAt: {
@@ -22,14 +22,14 @@ let timer = null;
 
 const remainingSeconds = computed(() => {
     if (!props.dueAt) return 0;
-    const due = new Date(props.dueAt);
+    const due = parseISO(props.dueAt);
     return Math.max(0, differenceInSeconds(due, now.value));
 });
 
 const isBreachedNow = computed(() => {
     if (props.isBreached) return true;
     if (!props.dueAt) return false;
-    return isPast(new Date(props.dueAt));
+    return isPast(parseISO(props.dueAt));
 });
 
 const timeDisplay = computed(() => {
@@ -37,7 +37,7 @@ const timeDisplay = computed(() => {
     
     const duration = intervalToDuration({
         start: now.value,
-        end: new Date(props.dueAt)
+        end: parseISO(props.dueAt)
     });
 
     const parts = [];

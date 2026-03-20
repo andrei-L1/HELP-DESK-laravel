@@ -168,13 +168,11 @@ class UserTicketController extends Controller
         }
 
         $departmentId = isset($validated['department_id']) ? (int) $validated['department_id'] : null;
-        $slaPolicy    = $this->findSlaPolicy($priorityId, $departmentId);
-        $dueAt        = $slaPolicy ? now()->addMinutes((int) $slaPolicy->resolution_time)->toDateTimeString() : null;
         $assignedTo   = $this->pickAutoAssignUserId($departmentId);
 
         $year = date('Y');
-        $ticket = Cache::lock('ticket_number_' . $year, 10)->block(5, function () use ($validated, $statusId, $priorityId, $dueAt, $assignedTo, $slaPolicy, $year) {
-            return DB::transaction(function () use ($validated, $statusId, $priorityId, $dueAt, $assignedTo, $slaPolicy, $year) {
+        $ticket = Cache::lock('ticket_number_' . $year, 10)->block(5, function () use ($validated, $statusId, $priorityId, $assignedTo, $year) {
+            return DB::transaction(function () use ($validated, $statusId, $priorityId, $assignedTo, $year) {
                 $prefix   = 'TICKET-' . $year . '-';
                 $lastTicket = DB::table('tickets')->where('ticket_number', 'like', $prefix . '%')->orderByRaw('LENGTH(ticket_number) DESC')->orderBy('ticket_number', 'desc')->value('ticket_number');
                 $maxNum   = $lastTicket ? (int) Str::afterLast($lastTicket, '-') : 0;
@@ -187,10 +185,8 @@ class UserTicketController extends Controller
                     'priority_id'   => $priorityId,
                     'category_id'   => $validated['category_id'] ?? null,
                     'department_id' => $validated['department_id'] ?? null,
-                    'sla_policy_id' => $slaPolicy?->id,
                     'created_by'    => Auth::id(),
                     'assigned_to'   => $assignedTo,
-                    'due_at'        => $dueAt,
                 ]);
 
                 TicketActivityLog::create([
@@ -333,29 +329,6 @@ class UserTicketController extends Controller
         ]);
     }
 
-    // ─── Private helpers ────────────────────────────────────────────────
-
-    private function findSlaPolicy(int $priorityId, ?int $departmentId): ?object
-    {
-        if ($departmentId) {
-            $sla = DB::table('sla_policies')
-                ->where('priority_id', $priorityId)
-                ->where('department_id', $departmentId)
-                ->where('is_active', true)
-                ->whereNull('deleted_at')
-                ->first();
-            if ($sla) {
-                return $sla;
-            }
-        }
-
-        return DB::table('sla_policies')
-            ->where('priority_id', $priorityId)
-            ->whereNull('department_id')
-            ->where('is_active', true)
-            ->whereNull('deleted_at')
-            ->first();
-    }
 
     private function pickAutoAssignUserId(?int $departmentId = null): ?int
     {

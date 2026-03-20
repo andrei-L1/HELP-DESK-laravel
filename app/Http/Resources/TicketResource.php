@@ -35,16 +35,16 @@ class TicketResource extends JsonResource
             'assigned_to'        => $this->assignee ? trim($this->assignee->first_name . ' ' . $this->assignee->last_name) : 'Unassigned',
             'assigned_to_id'     => $this->assigned_to,
             'assigned_to_name'   => $this->assignee ? trim($this->assignee->first_name . ' ' . $this->assignee->last_name) : null,
-            'created_at'         => $this->created_at?->toDateTimeString(),
-            'updated_at'         => $this->updated_at?->toDateTimeString(),
+            'created_at'         => $this->created_at?->toIso8601String(),
+            'updated_at'         => $this->updated_at?->toIso8601String(),
             
             // Detailed fields (only for show pages)
             'description'        => $this->when($request->routeIs('*.show'), $this->description),
-            'due_at'             => $this->when($this->due_at, fn() => $this->due_at?->toDateTimeString()),
+            'due_at'             => $this->when($this->due_at, fn() => $this->due_at?->toIso8601String()),
             'is_sla_breached'    => $this->due_at && $this->due_at->isPast() && !$this->resolved_at && !$this->closed_at,
-            'first_response_at'  => $this->when($this->first_response_at, fn() => $this->first_response_at?->toDateTimeString()),
-            'resolved_at'        => $this->when($this->resolved_at, fn() => $this->resolved_at?->toDateTimeString()),
-            'closed_at'          => $this->when($this->closed_at, fn() => $this->closed_at?->toDateTimeString()),
+            'first_response_at'  => $this->when($this->first_response_at, fn() => $this->first_response_at?->toIso8601String()),
+            'resolved_at'        => $this->when($this->resolved_at, fn() => $this->resolved_at?->toIso8601String()),
+            'closed_at'          => $this->when($this->closed_at, fn() => $this->closed_at?->toIso8601String()),
             'sla_policy_id'      => $this->sla_policy_id,
 
             // Relationships
