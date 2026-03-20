@@ -40,6 +40,9 @@ return Application::configure(basePath: dirname(__DIR__))
             });
         });
     })
+    ->withSchedule(function (\Illuminate\Console\Scheduling\Schedule $schedule) {
+        $schedule->command('app:check-sla-breaches')->everyMinute();
+    })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->respond(function ($response, $e, $request) {
             if (in_array($response->getStatusCode(), [403, 404, 500, 503])) {

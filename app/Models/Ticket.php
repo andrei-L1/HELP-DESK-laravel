@@ -28,6 +28,9 @@ class Ticket extends Model
         'closed_at',
         'first_response_at',
         'sla_policy_id',
+        'sla_warning_sent_at',
+        'sla_breach_sent_at',
+        'is_sla_breached',
     ];
 
     protected $casts = [
@@ -35,6 +38,9 @@ class Ticket extends Model
         'resolved_at'       => 'datetime',
         'closed_at'         => 'datetime',
         'due_at'            => 'datetime',
+        'sla_warning_sent_at' => 'datetime',
+        'sla_breach_sent_at'  => 'datetime',
+        'is_sla_breached'    => 'boolean',
     ];
 
     public function creator(): BelongsTo
