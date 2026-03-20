@@ -72,7 +72,6 @@ Route::middleware(['role:agent'])
         // Settings (matches children under "Settings")
         // ────────────────────────────────────────────────
         Route::prefix('settings')->group(function () {
-
             Route::get('/notifications', [SettingsController::class, 'notifications'])
                 ->name('settings.notifications');
 

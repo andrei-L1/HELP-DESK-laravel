@@ -5,12 +5,19 @@ import { CheckCircleIcon } from '@heroicons/vue/24/solid';
 
 const user = usePage().props.auth.user;
 
+const defaultSettings = {
+    new_message: { mail: true, database: true, broadcast: true },
+    ticket_created: { mail: true, database: true, broadcast: true },
+    ticket_assigned: { mail: true, database: true, broadcast: true },
+    status_changed: { mail: true, database: true, broadcast: true },
+    sla_warning: { mail: true, database: true, broadcast: true },
+    sla_breach: { mail: true, database: true, broadcast: true },
+};
+
 const form = useForm({
-    notification_settings: user.notification_settings || {
-        new_message: { mail: true, database: true, broadcast: true },
-        ticket_created: { mail: true, database: true, broadcast: true },
-        ticket_assigned: { mail: true, database: true, broadcast: true },
-        status_changed: { mail: true, database: true, broadcast: true },
+    notification_settings: {
+        ...defaultSettings,
+        ...(user.notification_settings || {}),
     },
 });
 
@@ -28,6 +35,8 @@ const settingTypes = [
     { key: 'ticket_created', label: 'Ticket Creation', desc: 'When a new ticket is logged in the system.' },
     { key: 'ticket_assigned', label: 'Assignments', desc: 'When you are assigned to a new support case.' },
     { key: 'status_changed', label: 'Status Updates', desc: 'When a ticket status moves to Pending, Solved, etc.' },
+    { key: 'sla_warning', label: 'SLA Warning', desc: 'Get notified when a ticket reaches its resolution limit.' },
+    { key: 'sla_breach', label: 'SLA Breach', desc: 'Urgent alerts when a ticket exceeds its resolution deadline.' },
 ];
 
 const channels = [
@@ -75,12 +84,18 @@ const channels = [
                             <label class="relative inline-flex items-center cursor-pointer group/toggle">
                                 <input 
                                     type="checkbox" 
-                                    v-model="form.notification_settings[type.key][channel.key]"
+                                    :checked="form.notification_settings[type.key]?.[channel.key] ?? true"
+                                    @change="(e) => {
+                                        if (!form.notification_settings[type.key]) {
+                                            form.notification_settings[type.key] = { mail: true, database: true, broadcast: true };
+                                        }
+                                        form.notification_settings[type.key][channel.key] = e.target.checked;
+                                    }"
                                     class="sr-only peer"
                                 >
                                 <div :class="[
                                     'h-7 w-7 rounded-lg flex items-center justify-center border transition-all duration-200',
-                                    form.notification_settings[type.key][channel.key] 
+                                    form.notification_settings[type.key]?.[channel.key] 
                                         ? 'bg-slate-900 border-slate-900 text-white shadow-md' 
                                         : 'bg-white border-slate-200 text-slate-300 group-hover/toggle:border-slate-400'
                                 ]">
