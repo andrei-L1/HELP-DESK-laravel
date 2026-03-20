@@ -78,6 +78,7 @@ class AdminTicketController extends Controller
         $users = $this->getAssignableUsers($ticket->department_id);
         
         $statuses = DB::table('ticket_statuses')->where('is_active', true)->orderBy('sort_order')->get(['id', 'name', 'title']);
+        $priorities = DB::table('ticket_priorities')->orderBy('sort_order')->get(['id', 'name']);
         $departments = DB::table('departments')->whereNull('deleted_at')->where('is_active', true)->orderBy('name')->get(['id', 'name', 'short_code']);
 
         return Inertia::render('Admin/Tickets/Show', [
@@ -87,6 +88,7 @@ class AdminTicketController extends Controller
             'activity_logs' => TicketActivityLogResource::collection($ticket->activityLogs->take(50))->resolve(),
             'sla_policy'    => $ticket->slaPolicy ? (new SlaPolicyResource($ticket->slaPolicy))->resolve() : null,
             'statuses'      => $statuses,
+            'priorities'    => $priorities,
             'departments'   => $departments,
             'users'         => $users,
         ]);
@@ -115,6 +117,7 @@ class AdminTicketController extends Controller
             'assigned_to'   => ['nullable', 'integer', Rule::in($assignableIds)],
             'status_id'     => 'nullable|integer|exists:ticket_statuses,id',
             'department_id' => 'nullable|integer|exists:departments,id',
+            'priority_id'   => 'nullable|integer|exists:ticket_priorities,id',
         ]);
 
         $oldStatusId     = $ticket->status_id;
@@ -161,6 +164,28 @@ class AdminTicketController extends Controller
             }
 
             $this->logTicketActivity($ticket->id, 'status_changed', $oldStatusName ?? 'Unknown', $statusName ?? 'Unknown');
+        }
+
+        // ── Priority change ──────────────────────────────────────────────────
+        if ($request->filled('priority_id') && $request->priority_id != $ticket->priority_id) {
+            $oldPriorityName = DB::table('ticket_priorities')->where('id', $ticket->priority_id)->value('name') ?? 'Unknown';
+            $newPriorityName = DB::table('ticket_priorities')->where('id', $request->priority_id)->value('name') ?? 'Unknown';
+
+            $ticket->priority_id = $request->priority_id;
+            $this->logTicketActivity($ticket->id, 'priority_changed', $oldPriorityName, $newPriorityName);
+
+            // Recalculate SLA for the new priority
+            $newSlaPolicy = $this->findSlaPolicy($ticket->priority_id, $ticket->department_id);
+            if ($newSlaPolicy && $newSlaPolicy->id != $ticket->sla_policy_id) {
+                $oldSlaName = $ticket->sla_policy_id
+                    ? DB::table('sla_policies')->where('id', $ticket->sla_policy_id)->value('name') ?? 'Unknown'
+                    : 'None';
+
+                $ticket->sla_policy_id = $newSlaPolicy->id;
+                $ticket->due_at        = now()->addMinutes((int) $newSlaPolicy->resolution_time);
+
+                $this->logTicketActivity($ticket->id, 'sla_changed', $oldSlaName, $newSlaPolicy->name);
+            }
         }
 
         // ── Department change ────────────────────────────────────────────────

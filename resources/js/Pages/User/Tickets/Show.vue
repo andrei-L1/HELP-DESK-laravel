@@ -2,6 +2,7 @@
 import { ref, watch, onMounted, onUnmounted, nextTick } from 'vue';
 import { Head, Link, useForm, usePage } from '@inertiajs/vue3';
 import UserNavigation from '@/Components/UserNavigation.vue';
+import SlaTimer from '@/Components/SlaTimer.vue';
 
 const props = defineProps({
     ticket: { type: Object, required: true },
@@ -60,6 +61,11 @@ onMounted(() => {
                 }, 3000);
             });
         
+        echoChannel.listen('.TicketUpdated', (e) => {
+            console.log('[Echo] Received TicketUpdated:', e.ticket);
+            Object.assign(props.ticket, e.ticket);
+        });
+
         console.log('[Echo] Channel state:', window.Echo.connector.pusher.connection.state);
     }
 });
@@ -345,9 +351,13 @@ const showActivity = ref(false);
                                     <dt class="text-xs font-medium text-gray-500">Department</dt>
                                     <dd class="text-xs text-gray-700 font-medium">{{ ticket.department_name }}</dd>
                                 </div>
-                                <div v-if="ticket.due_at" class="flex justify-between px-5 py-3">
-                                    <dt class="text-xs font-medium text-gray-500">Due</dt>
-                                    <dd class="text-xs text-gray-700">{{ formatDate(ticket.due_at) }}</dd>
+                                <div v-if="ticket.due_at" class="px-5 py-4 border-b border-gray-50 bg-blue-50/20">
+                                    <div class="mb-2 text-[10px] font-bold text-blue-600 uppercase tracking-wider">Estimated Resolution</div>
+                                    <SlaTimer 
+                                        :due-at="ticket.due_at" 
+                                        :is-breached="!!ticket.is_sla_breached"
+                                        :status="ticket.status"
+                                    />
                                 </div>
                                 <div v-if="ticket.resolved_at" class="flex justify-between px-5 py-3">
                                     <dt class="text-xs font-medium text-gray-500">Resolved</dt>

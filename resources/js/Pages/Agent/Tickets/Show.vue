@@ -1,6 +1,7 @@
 <script setup>
 import { ref, onMounted, onUnmounted, watch, nextTick } from 'vue';
 import AgentNavigation from '@/Components/AgentNavigation.vue';
+import SlaTimer from '@/Components/SlaTimer.vue';
 import { Head, Link, useForm, router, usePage } from '@inertiajs/vue3';
 
 const props = defineProps({
@@ -86,6 +87,15 @@ onMounted(() => {
                 }, 3000);
             });
         
+        // Listen for general ticket updates (SLA changes, priority, etc.)
+        publicEchoChannel.listen('.TicketUpdated', (e) => {
+            console.log('[Echo] Received TicketUpdated:', e.ticket);
+            // We update the ticket prop selectively or just rely on the parent if needed, 
+            // but for Inertia we can just update local reactive state if we had it.
+            // Since props.ticket is the source of truth, we can manually trigger a reload or update a local copy.
+            Object.assign(props.ticket, e.ticket);
+        });
+
         console.log('[Echo] Connection state:', window.Echo.connector.pusher.connection.state);
     }
 });
@@ -412,9 +422,16 @@ const showActivity = ref(false);
                                     <dt class="text-xs font-medium text-gray-500">Customer Email</dt>
                                     <dd class="text-xs text-gray-700">{{ ticket.creator?.email || 'N/A' }}</dd>
                                 </div>
-                                <div v-if="ticket.due_at" class="flex justify-between px-5 py-3">
-                                    <dt class="text-xs font-medium text-gray-500">Due</dt>
-                                    <dd class="text-xs text-gray-700">{{ formatDate(ticket.due_at) }}</dd>
+                                <div v-if="ticket.due_at" class="px-5 py-4 border-b border-gray-50 bg-slate-50/30">
+                                    <SlaTimer 
+                                        :due-at="ticket.due_at" 
+                                        :is-breached="!!ticket.is_sla_breached"
+                                        :status="ticket.status?.name"
+                                    />
+                                    <div class="mt-2 text-[10px] text-gray-400 font-medium px-1 flex justify-between">
+                                        <span>Deadline:</span>
+                                        <span>{{ formatDate(ticket.due_at) }}</span>
+                                    </div>
                                 </div>
                                 <div class="flex justify-between px-5 py-3">
                                     <dt class="text-xs font-medium text-gray-500">Created</dt>

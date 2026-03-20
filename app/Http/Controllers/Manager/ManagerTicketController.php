@@ -177,7 +177,8 @@ class ManagerTicketController extends AdminTicketController
         }
 
         $statuses    = \Illuminate\Support\Facades\DB::table('ticket_statuses')->where('is_active', true)->orderBy('sort_order')->get(['id', 'name', 'title']);
-        $userDepartments = Auth::user()->departments()->pluck('departments.id')->toArray();
+        $priorities  = \Illuminate\Support\Facades\DB::table('ticket_priorities')->orderBy('sort_order')->get(['id', 'name']);
+        $userDepartments = \Illuminate\Support\Facades\Auth::user()->departments()->pluck('departments.id')->toArray();
         $departments = \Illuminate\Support\Facades\DB::table('departments')
             ->whereIn('id', $userDepartments)
             ->whereNull('deleted_at')
@@ -188,6 +189,7 @@ class ManagerTicketController extends AdminTicketController
         return \Inertia\Inertia::render('Manager/Tickets/Show', [
             'ticket'        => (new TicketResource($ticket))->resolve(),
             'statuses'      => $statuses,
+            'priorities'    => $priorities,
             'departments'   => $departments,
             'sla_policy'    => $ticket->slaPolicy ? (new SlaPolicyResource($ticket->slaPolicy))->resolve() : null,
             'messages'      => TicketMessageResource::collection($ticket->messages)->resolve(),

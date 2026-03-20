@@ -41,6 +41,7 @@ class TicketResource extends JsonResource
             // Detailed fields (only for show pages)
             'description'        => $this->when($request->routeIs('*.show'), $this->description),
             'due_at'             => $this->when($this->due_at, fn() => $this->due_at?->toDateTimeString()),
+            'is_sla_breached'    => $this->due_at && $this->due_at->isPast() && !$this->resolved_at && !$this->closed_at,
             'first_response_at'  => $this->when($this->first_response_at, fn() => $this->first_response_at?->toDateTimeString()),
             'resolved_at'        => $this->when($this->resolved_at, fn() => $this->resolved_at?->toDateTimeString()),
             'closed_at'          => $this->when($this->closed_at, fn() => $this->closed_at?->toDateTimeString()),

@@ -1,6 +1,7 @@
 <script setup>
 import { ref, watch, onMounted, onUnmounted, nextTick } from 'vue';
 import AdminNavigation from '@/Components/AdminNavigation.vue';
+import SlaTimer from '@/Components/SlaTimer.vue';
 import { Head, Link, useForm, usePage } from '@inertiajs/vue3';
 
 const props = defineProps({
@@ -87,6 +88,13 @@ onMounted(() => {
                 }, 3000);
             });
         
+        // Listen for general ticket updates (SLA changes, priority, etc.)
+        publicEchoChannel.listen('.TicketUpdated', (e) => {
+            console.log('[Echo] Received TicketUpdated:', e.ticket);
+            // Sync the ticket data
+            Object.assign(props.ticket, e.ticket);
+        });
+
         console.log('[Echo] Connection state:', window.Echo.connector.pusher.connection.state);
     }
 });
@@ -114,15 +122,17 @@ onUnmounted(() => {
 const adminForm = useForm({
     assigned_to: props.ticket.assigned_to_id ?? '',
     status_id: props.ticket.status_id ?? '',
+    priority_id: props.ticket.priority_id ?? '',
     department_id: props.ticket.department_id ?? '',
 });
 
 watch(
-    () => [props.ticket.assigned_to_id, props.ticket.status_id, props.ticket.department_id],
-    ([assignedTo, statusId, departmentId]) => {
+    () => [props.ticket.assigned_to_id, props.ticket.status_id, props.ticket.department_id, props.ticket.priority_id],
+    ([assignedTo, statusId, departmentId, priorityId]) => {
         adminForm.assigned_to = assignedTo ?? '';
         adminForm.status_id = statusId ?? '';
         adminForm.department_id = departmentId ?? '';
+        adminForm.priority_id = priorityId ?? '';
     },
     { immediate: true }
 );
@@ -131,6 +141,7 @@ const submitAdminControls = () => {
     adminForm.transform((data) => ({
         assigned_to: data.assigned_to === '' ? null : Number(data.assigned_to),
         status_id: data.status_id ? Number(data.status_id) : null,
+        priority_id: data.priority_id ? Number(data.priority_id) : null,
         department_id: data.department_id ? Number(data.department_id) : null,
     })).patch(route('admin.tickets.update', props.ticket.id));
 };
@@ -402,9 +413,16 @@ const showActivity = ref(false);
                                     <dt class="text-xs font-medium text-gray-500">Assigned To</dt>
                                     <dd class="text-xs text-gray-700 font-medium">{{ ticket.assigned_to_name || 'Unassigned' }}</dd>
                                 </div>
-                                <div v-if="ticket.due_at" class="flex justify-between px-5 py-3">
-                                    <dt class="text-xs font-medium text-gray-500">Due</dt>
-                                    <dd class="text-xs font-medium" :class="getDueDateClass()">{{ formatDate(ticket.due_at) }}</dd>
+                                <div v-if="ticket.due_at" class="px-5 py-4 border-b border-gray-50 bg-slate-50/30">
+                                    <SlaTimer 
+                                        :due-at="ticket.due_at" 
+                                        :is-breached="!!ticket.is_sla_breached"
+                                        :status="ticket.status"
+                                    />
+                                    <div class="mt-2 text-[10px] text-gray-400 font-medium px-1 flex justify-between">
+                                        <span>Deadline:</span>
+                                        <span>{{ formatDate(ticket.due_at) }}</span>
+                                    </div>
                                 </div>
                                 <div v-if="ticket.first_response_at" class="flex justify-between px-5 py-3">
                                     <dt class="text-xs font-medium text-gray-500">First Response</dt>
@@ -481,6 +499,17 @@ const showActivity = ref(false);
                                             <option v-for="d in departments" :key="d.id" :value="d.id">{{ d.name }}</option>
                                         </select>
                                         <p v-if="adminForm.errors.department_id" class="mt-1 text-xs text-red-600">{{ adminForm.errors.department_id }}</p>
+                                    </div>
+                                    <div v-if="$page.props.priorities && $page.props.priorities.length">
+                                        <label for="priority_id" class="block text-xs font-medium text-gray-600 mb-1">Priority</label>
+                                        <select
+                                            id="priority_id"
+                                            v-model="adminForm.priority_id"
+                                            class="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-slate-500 focus:ring-1 focus:ring-slate-500 focus:outline-none"
+                                        >
+                                            <option v-for="p in $page.props.priorities" :key="p.id" :value="p.id">{{ p.name }}</option>
+                                        </select>
+                                        <p v-if="adminForm.errors.priority_id" class="mt-1 text-xs text-red-600">{{ adminForm.errors.priority_id }}</p>
                                     </div>
                                     <div>
                                         <label for="assigned_to" class="block text-xs font-medium text-gray-600 mb-1">Assign To</label>
