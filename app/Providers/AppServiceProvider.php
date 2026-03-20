@@ -26,5 +26,7 @@ class AppServiceProvider extends ServiceProvider
         }
 
         Vite::prefetch(concurrency: 3);
+        \Illuminate\Http\Resources\Json\JsonResource::withoutWrapping();
+
     }
 }

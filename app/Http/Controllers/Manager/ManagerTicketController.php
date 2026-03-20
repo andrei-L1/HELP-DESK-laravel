@@ -5,6 +5,12 @@ namespace App\Http\Controllers\Manager;
 use App\Http\Controllers\Admin\AdminTicketController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use App\Http\Resources\TicketResource;
+use App\Http\Resources\TicketMessageResource;
+use App\Http\Resources\TicketAttachmentResource;
+use App\Http\Resources\TicketActivityLogResource;
+use App\Http\Resources\SlaPolicyResource;
+
 
 class ManagerTicketController extends AdminTicketController
 {
@@ -73,19 +79,10 @@ class ManagerTicketController extends AdminTicketController
 
         $tickets = $query->paginate(15)->withQueryString();
 
-        // Transform collection for the frontend
-        $tickets->getCollection()->transform(function ($ticket) {
-            return [
-            'id' => $ticket->id,
-            'ticket_number' => $ticket->ticket_number,
-            'subject' => $ticket->subject,
-            'status' => $ticket->status->name ?? 'Unknown',
-            'priority' => $ticket->priority->name ?? 'Unknown',
-            'created_by' => $ticket->creator ? trim($ticket->creator->first_name . ' ' . $ticket->creator->last_name) : 'Unknown',
-            'assigned_to' => $ticket->assignee ? trim($ticket->assignee->first_name . ' ' . $ticket->assignee->last_name) : 'Unassigned',
-            'created_at' => $ticket->created_at->toDateTimeString(),
-            ];
-        });
+        $tickets->setCollection(
+            TicketResource::collection($tickets->getCollection())->resource
+        );
+
 
         // Optimize stats query (filtered by user's departments)
         $statusCounts = \App\Models\Ticket::whereIn('department_id', $userDepartments)->select('status_id', \Illuminate\Support\Facades\DB::raw('count(*) as count'))->groupBy('status_id')->pluck('count', 'status_id');
@@ -189,57 +186,17 @@ class ManagerTicketController extends AdminTicketController
             ->get(['id', 'name', 'short_code']);
 
         return \Inertia\Inertia::render('Manager/Tickets/Show', [
-            'ticket' => [
-                'id'                => $ticket->id,
-                'ticket_number'     => $ticket->ticket_number,
-                'subject'           => $ticket->subject,
-                'description'       => $ticket->description,
-                'status'            => $ticket->status->name ?? 'Unknown',
-                'status_id'         => $ticket->status_id,
-                'status_color'      => $ticket->status->color_hex ?? '#64748b',
-                'priority'          => $ticket->priority->name ?? 'Unknown',
-                'priority_color'    => $ticket->priority->color_hex ?? '#64748b',
-                'category_id'       => $ticket->category_id,
-                'category_title'    => $ticket->category->title ?? null,
-                'department_id'     => $ticket->department_id,
-                'department_name'   => $ticket->department->name ?? null,
-                'created_by'        => $ticket->creator ? trim($ticket->creator->first_name . ' ' . $ticket->creator->last_name) : 'Unknown',
-                'assigned_to_id'    => $ticket->assigned_to,
-                'assigned_to_name'  => $ticket->assignee ? trim($ticket->assignee->first_name . ' ' . $ticket->assignee->last_name) : null,
-                'due_at'            => $ticket->due_at ? \Carbon\Carbon::parse($ticket->due_at)->toDateTimeString() : null,
-                'first_response_at' => $ticket->first_response_at ? \Carbon\Carbon::parse($ticket->first_response_at)->toDateTimeString() : null,
-                'resolved_at'       => $ticket->resolved_at ? \Carbon\Carbon::parse($ticket->resolved_at)->toDateTimeString() : null,
-                'closed_at'         => $ticket->closed_at ? \Carbon\Carbon::parse($ticket->closed_at)->toDateTimeString() : null,
-                'created_at'        => $ticket->created_at ? \Carbon\Carbon::parse($ticket->created_at)->toDateTimeString() : null,
-                'updated_at'        => $ticket->updated_at ? \Carbon\Carbon::parse($ticket->updated_at)->toDateTimeString() : null,
-                'sla_policy_id'     => $ticket->sla_policy_id,
-            ],
+            'ticket'        => (new TicketResource($ticket))->resolve(),
             'statuses'      => $statuses,
             'departments'   => $departments,
-            'sla_policy'    => $slaPolicy,
-            'messages'      => $ticket->messages->map(fn($m) => [
-                'id'          => $m->id,
-                'body'        => $m->body,
-                'is_internal' => $m->is_internal,
-                'author'      => $m->user ? trim($m->user->first_name . ' ' . $m->user->last_name) : 'Unknown',
-                'created_at'  => $m->created_at?->toDateTimeString(),
-            ]),
-            'attachments'   => $ticket->attachments->map(fn($a) => [
-                'id'          => $a->id,
-                'file_name'   => $a->file_name,
-                'file_size'   => $a->file_size,
-                'uploaded_at' => $a->uploaded_at?->toDateTimeString(),
-            ]),
-            'activity_logs' => $ticket->activityLogs->map(fn($l) => [
-                'id'         => $l->id,
-                'action'     => $l->action,
-                'old_value'  => $l->old_value,
-                'new_value'  => $l->new_value,
-                'user_name'  => $l->user ? trim($l->user->first_name . ' ' . $l->user->last_name) : 'Unknown',
-                'created_at' => $l->created_at?->toDateTimeString(),
-            ])->take(50),
+            'sla_policy'    => $ticket->slaPolicy ? (new SlaPolicyResource($ticket->slaPolicy))->resolve() : null,
+            'messages'      => TicketMessageResource::collection($ticket->messages)->resolve(),
+            'attachments'   => TicketAttachmentResource::collection($ticket->attachments)->resolve(),
+            'activity_logs' => TicketActivityLogResource::collection($ticket->activityLogs->take(50))->resolve(),
             'users'         => $users,
         ]);
+
+
     }
 
     public function update(Request $request, int $id)

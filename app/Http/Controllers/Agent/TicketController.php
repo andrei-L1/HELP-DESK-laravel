@@ -15,7 +15,13 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use App\Http\Resources\TicketResource;
+use App\Http\Resources\TicketMessageResource;
+use App\Http\Resources\TicketAttachmentResource;
+use App\Http\Resources\TicketActivityLogResource;
+use App\Http\Resources\SlaPolicyResource;
 use Inertia\Inertia;
+
 
 class TicketController extends Controller
 {
@@ -43,10 +49,16 @@ class TicketController extends Controller
             ->latest('updated_at')
             ->paginate(15);
 
+
+        $tickets->setCollection(
+            TicketResource::collection($tickets->getCollection())->resource
+        );
+
         return Inertia::render('Agent/Tickets/Index', [
             'tickets' => $tickets,
             'filters' => $request->only(['search', 'status', 'priority']),
         ]);
+
     }
 
     public function open()
@@ -79,10 +91,15 @@ class TicketController extends Controller
             ->latest('updated_at')
             ->paginate(15);
 
+        $tickets->setCollection(
+            TicketResource::collection($tickets->getCollection())->resource
+        );
+
         return Inertia::render('Agent/Tickets/Index', [
             'tickets' => $tickets,
             'currentStatus' => $statusName,
         ]);
+
     }
 
     public function create()
@@ -165,30 +182,17 @@ class TicketController extends Controller
     {
         $this->authorizeAgentAccess($ticket);
 
-        $ticket->load(['status', 'priority', 'creator', 'messages.user', 'attachments', 'activityLogs']);
-
-        // Load user names for logs if not already loaded via relationships
-        $userIds = $ticket->activityLogs->pluck('user_id')->filter()->unique();
-        $userNames = DB::table('users')->whereIn('id', $userIds)->get(['id', 'first_name', 'last_name'])
-            ->mapWithKeys(fn ($u) => [$u->id => trim($u->first_name . ' ' . $u->last_name) ?: "User #{$u->id}"]);
+        $ticket->load(['status', 'priority', 'category', 'department', 'creator', 'messages.user', 'attachments', 'activityLogs.user', 'slaPolicy']);
 
         return Inertia::render('Agent/Tickets/Show', [
-            'ticket' => $ticket,
-            'attachments' => $ticket->attachments->map(fn($a) => [
-                'id'          => $a->id,
-                'file_name'   => $a->file_name,
-                'file_size'   => $a->file_size,
-                'uploaded_at' => $a->uploaded_at?->toDateTimeString(),
-            ]),
-            'activity_logs' => $ticket->activityLogs->take(30)->map(fn ($l) => [
-                'id'         => $l->id,
-                'action'     => $l->action,
-                'old_value'  => $l->old_value,
-                'new_value'  => $l->new_value,
-                'user_name'  => $userNames[$l->user_id] ?? 'System',
-                'created_at' => $l->created_at?->toDateTimeString(),
-            ])->values(),
+            'ticket'        => (new TicketResource($ticket))->resolve(),
+            'messages'      => TicketMessageResource::collection($ticket->messages)->resolve(),
+            'attachments'   => TicketAttachmentResource::collection($ticket->attachments)->resolve(),
+            'activity_logs' => TicketActivityLogResource::collection($ticket->activityLogs->take(50))->resolve(),
+            'sla_policy'    => $ticket->slaPolicy ? (new SlaPolicyResource($ticket->slaPolicy))->resolve() : null,
         ]);
+
+
     }
 
     public function edit(Ticket $ticket)

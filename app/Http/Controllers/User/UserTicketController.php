@@ -14,7 +14,13 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use App\Http\Resources\TicketResource;
+use App\Http\Resources\TicketMessageResource;
+use App\Http\Resources\TicketAttachmentResource;
+use App\Http\Resources\TicketActivityLogResource;
+use App\Http\Resources\SlaPolicyResource;
 use Inertia\Inertia;
+
 
 class UserTicketController extends Controller
 {
@@ -49,19 +55,10 @@ class UserTicketController extends Controller
 
         $tickets = $query->paginate(5)->withQueryString();
 
-        $tickets->getCollection()->transform(function ($ticket) {
-            return [
-                'id'             => $ticket->id,
-                'ticket_number'  => $ticket->ticket_number,
-                'subject'        => $ticket->subject,
-                'status'         => $ticket->status->name ?? 'Unknown',
-                'status_color'   => $ticket->status->color_hex ?? '#64748b',
-                'priority'       => $ticket->priority->name ?? 'Unknown',
-                'priority_color' => $ticket->priority->color_hex ?? '#64748b',
-                'created_at'     => $ticket->created_at->toDateTimeString(),
-                'updated_at'     => $ticket->updated_at->toDateTimeString(),
-            ];
-        });
+        $tickets->setCollection(
+            TicketResource::collection($tickets->getCollection())->resource
+        );
+
 
         // Simple per-user stats
         $statusCounts = Ticket::select('status_id', DB::raw('count(*) as count'))
@@ -235,47 +232,13 @@ class UserTicketController extends Controller
             ->mapWithKeys(fn ($u) => [$u->id => trim($u->first_name . ' ' . $u->last_name) ?: "User #{$u->id}"]);
 
         return Inertia::render('User/Tickets/Show', [
-            'ticket' => [
-                'id'              => $ticket->id,
-                'ticket_number'   => $ticket->ticket_number,
-                'subject'         => $ticket->subject,
-                'description'     => $ticket->description,
-                'status'          => $ticket->status->name ?? 'Unknown',
-                'status_color'    => $ticket->status->color_hex ?? '#64748b',
-                'priority'        => $ticket->priority->name ?? 'Unknown',
-                'priority_color'  => $ticket->priority->color_hex ?? '#64748b',
-                'category_title'  => $ticket->category->title ?? null,
-                'department_name' => $ticket->department->name ?? null,
-                'due_at'          => $ticket->due_at?->toDateTimeString(),
-                'resolved_at'     => $ticket->resolved_at?->toDateTimeString(),
-                'closed_at'       => $ticket->closed_at?->toDateTimeString(),
-                'created_at'      => $ticket->created_at->toDateTimeString(),
-                'updated_at'      => $ticket->updated_at->toDateTimeString(),
-            ],
-            'messages' => $ticket->messages->map(fn ($m) => [
-                'id'          => $m->id,
-                'body'        => $m->body,
-                'is_internal' => (bool) $m->is_internal,
-                'is_mine'     => $m->user_id === $user->id,
-                'author'      => $userNames[$m->user_id] ?? 'Unknown',
-                'created_at'  => $m->created_at?->toDateTimeString(),
-            ]),
-            'attachments' => $ticket->attachments->map(fn ($a) => [
-                'id'             => $a->id,
-                'file_name'      => $a->file_name,
-                'file_size'      => $a->file_size,
-                'uploaded_at'    => $a->uploaded_at?->toDateTimeString(),
-                'download_url'   => route('user.tickets.attachments.download', [$ticket->id, $a->id]),
-            ]),
-            'activity_logs' => $ticket->activityLogs->take(30)->map(fn ($l) => [
-                'id'         => $l->id,
-                'action'     => $l->action,
-                'old_value'  => $l->old_value,
-                'new_value'  => $l->new_value,
-                'user_name'  => $userNames[$l->user_id] ?? 'System',
-                'created_at' => $l->created_at?->toDateTimeString(),
-            ]),
+            'ticket'        => (new TicketResource($ticket))->resolve(),
+            'messages'      => TicketMessageResource::collection($ticket->messages)->resolve(),
+            'attachments'   => TicketAttachmentResource::collection($ticket->attachments)->resolve(),
+            'activity_logs' => TicketActivityLogResource::collection($ticket->activityLogs->take(30))->resolve(),
         ]);
+
+
     }
 
     /**
