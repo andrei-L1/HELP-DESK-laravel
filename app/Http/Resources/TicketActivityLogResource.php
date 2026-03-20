@@ -20,7 +20,7 @@ class TicketActivityLogResource extends JsonResource
             'old_value'  => $this->old_value,
             'new_value'  => $this->new_value,
             'user_name'  => $this->user ? trim($this->user->first_name . ' ' . $this->user->last_name) : 'System',
-            'created_at' => $this->created_at?->toDateTimeString(),
+            'created_at' => $this->created_at?->toIso8601String(),
         ];
     }
 }

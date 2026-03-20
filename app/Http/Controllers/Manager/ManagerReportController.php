@@ -360,16 +360,14 @@ class ManagerReportController extends Controller
                 ->get();
         }
         
-        // SLA compliance (based on priority deadlines)
+        // SLA compliance (based on whether it was resolved before due_at or if resolved_at <= due_at for historic data)
         $slaCompliance = DB::table('tickets')
             ->select(
                 DB::raw('DATE(created_at) as date'),
                 DB::raw('COUNT(*) as total'),
                 DB::raw('SUM(CASE 
-                    WHEN ticket_priorities.name = "Urgent" AND TIMESTAMPDIFF(HOUR, tickets.created_at, COALESCE(tickets.resolved_at, NOW())) <= 4 THEN 1
-                    WHEN ticket_priorities.name = "High" AND TIMESTAMPDIFF(HOUR, tickets.created_at, COALESCE(tickets.resolved_at, NOW())) <= 8 THEN 1
-                    WHEN ticket_priorities.name = "Medium" AND TIMESTAMPDIFF(HOUR, tickets.created_at, COALESCE(tickets.resolved_at, NOW())) <= 24 THEN 1
-                    WHEN ticket_priorities.name = "Low" AND TIMESTAMPDIFF(HOUR, tickets.created_at, COALESCE(tickets.resolved_at, NOW())) <= 48 THEN 1
+                    WHEN resolved_at IS NOT NULL AND due_at IS NOT NULL AND resolved_at <= due_at THEN 1
+                    WHEN resolved_at IS NULL AND due_at IS NOT NULL AND due_at >= "' . now()->toDateTimeString() . '" THEN 1
                     ELSE 0 END) as within_sla')
             )
             ->join('ticket_priorities', 'tickets.priority_id', '=', 'ticket_priorities.id')
