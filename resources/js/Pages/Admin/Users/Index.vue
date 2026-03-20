@@ -265,7 +265,7 @@ const maxRoleCount = computed(() => {
             <!-- Distribution Grids & Analytical Insights -->
             <div class="grid lg:grid-cols-3 gap-8 px-1 stagger-2">
                 <!-- Role Distribution -->
-                <div class="lg:col-span-2 bg-white rounded-[2rem] border border-slate-200 shadow-sm p-8 flex flex-col justify-between overflow-hidden relative">
+                <div class="lg:col-span-2 bg-white rounded-3xl border border-slate-200 shadow-sm p-8 flex flex-col justify-between overflow-hidden relative">
                     <div class="absolute -right-8 -top-8 h-40 w-40 rounded-full bg-slate-50 -z-0"></div>
                     <div class="relative z-10">
                         <div class="flex items-center justify-between mb-8">
@@ -290,7 +290,7 @@ const maxRoleCount = computed(() => {
                 </div>
 
                 <!-- Security Access Score -->
-                <div class="bg-slate-900 rounded-[2rem] shadow-2xl shadow-slate-200/50 p-8 text-white relative flex flex-col justify-between overflow-hidden">
+                <div class="bg-slate-900 rounded-3xl shadow-xl shadow-slate-200/50 p-8 text-white relative flex flex-col justify-between overflow-hidden">
                     <div class="absolute inset-0 bg-gradient-to-br from-white/[0.05] to-transparent pointer-events-none"></div>
                     <div class="relative z-10">
                          <div class="flex items-center justify-between mb-8">
@@ -385,12 +385,12 @@ const maxRoleCount = computed(() => {
             </transition>
 
             <!-- Executive User Directory -->
-            <div class="bg-white rounded-[2.5rem] border border-slate-300/40 shadow-sm shadow-slate-200/60 overflow-hidden stagger-5 relative">
+            <div class="bg-white rounded-2xl border border-slate-300/40 shadow-sm shadow-slate-200/60 overflow-hidden stagger-5 relative">
                 <!-- Directory Control Header -->
-                <div class="bg-slate-50/50 border-b border-slate-100 px-8 py-5 flex items-center justify-between">
+                <div class="bg-slate-50/50 border-b border-slate-100 px-8 py-3 flex items-center justify-between">
                     <div class="flex items-center gap-3">
                         <input type="checkbox" :checked="selectedUsers.length === users.data.length && users.data.length > 0" @change="toggleAllUsers" class="rounded-lg border-slate-300 text-slate-900 focus:ring-slate-900/20" />
-                        <span class="text-[11px] font-black text-slate-900 uppercase tracking-[0.15em]">User List</span>
+                        <span class="text-[10px] font-black text-slate-900 uppercase tracking-widest">Active Users</span>
                     </div>
                 </div>
 
@@ -398,7 +398,7 @@ const maxRoleCount = computed(() => {
                     <div
                         v-for="(user, index) in users.data"
                         :key="user.id"
-                        class="flex flex-col lg:flex-row lg:items-center justify-between py-6 px-8 hover:bg-slate-50/50 transition-all cursor-pointer group relative"
+                        class="flex flex-col lg:flex-row lg:items-center justify-between py-4 px-8 hover:bg-slate-50/50 transition-all cursor-pointer group relative"
                         :class="[selectedUsers.includes(user.id) ? 'bg-slate-50/80 text-slate-900 shadow-sm' : '', `stagger-${Math.min(index + 5, 5)}`]"
                         @click="viewUser(user.id)"
                     >
@@ -411,35 +411,34 @@ const maxRoleCount = computed(() => {
                                 type="checkbox" 
                                 :checked="selectedUsers.includes(user.id)" 
                                 @change="toggleUserSelection(user.id)" 
-                                class="h-5 w-5 rounded-lg border-slate-300 text-slate-900 focus:ring-slate-900/20 cursor-pointer" 
+                                class="h-4 w-4 rounded-lg border-slate-300 text-slate-900 focus:ring-slate-900/20 cursor-pointer" 
                             />
                         </div>
 
                         <!-- User Profile -->
-                        <div class="flex items-center gap-6 min-w-0 flex-1">
+                        <div class="flex items-center gap-4 min-w-0 flex-1">
                             <div class="relative flex-shrink-0 group-hover:scale-105 transition-transform duration-500">
                                 <img
-                                    class="h-16 w-16 rounded-2xl object-cover ring-4 ring-white shadow-xl shadow-slate-200 group-hover:shadow-slate-300 transition-all"
+                                    class="h-12 w-12 rounded-xl object-cover ring-2 ring-white shadow-lg shadow-slate-200 group-hover:shadow-slate-300 transition-all"
                                     :src="user.avatar_url || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(user.display_name) + '&size=64&background=f1f5f9&color=64748b&bold=true'"
                                     :alt="user.display_name"
                                 />
-                                <div class="absolute -bottom-1 -right-1 h-4 w-4 rounded-full border-2 border-white flex items-center justify-center transition-all bg-white shadow-sm" 
+                                <div class="absolute -bottom-1 -right-1 h-3.5 w-3.5 rounded-full border-2 border-white flex items-center justify-center transition-all bg-white shadow-sm" 
                                      :class="user.is_active ? 'text-emerald-500' : 'text-slate-300'">
-                                    <div :class="user.is_active ? 'bg-emerald-500 animate-pulse' : 'bg-slate-300'" class="h-2 w-2 rounded-full"></div>
+                                    <div :class="user.is_active ? 'bg-emerald-500' : 'bg-slate-300'" class="h-1.5 w-1.5 rounded-full"></div>
                                 </div>
                             </div>
                             <div class="min-w-0">
                                 <div class="flex items-center gap-2">
-                                    <h4 class="text-lg font-black text-slate-900 truncate tracking-tight group-hover:text-slate-700 transition-colors">{{ user.display_name }}</h4>
-                                    <span v-if="user.email_verified" class="inline-flex items-center px-2 py-0.5 rounded-full bg-blue-50 text-[9px] font-black text-blue-600 uppercase border border-blue-100 tracking-tighter">Verified</span>
+                                    <h4 class="text-base font-black text-slate-900 truncate tracking-tight group-hover:text-slate-700 transition-colors">{{ user.display_name }}</h4>
+                                    <span v-if="user.email_verified" class="inline-flex items-center px-1.5 py-0.5 rounded bg-blue-50 text-[8px] font-black text-blue-600 uppercase border border-blue-100 tracking-tighter">Verified</span>
                                 </div>
-                                <div class="flex items-center gap-3 mt-1">
-                                    <button @click.stop="copyToClipboard(user.email)" class="text-xs font-bold text-slate-400 truncate hover:text-slate-900 transition-colors flex items-center gap-1.5 group/email">
+                                <div class="flex items-center gap-3 mt-0.5">
+                                    <button @click.stop="copyToClipboard(user.email)" class="text-[11px] font-bold text-slate-400 truncate hover:text-slate-900 transition-colors flex items-center gap-1 group/email">
                                         {{ user.email }}
-                                        <svg class="h-3 w-3 opacity-0 group-hover/email:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" /></svg>
                                     </button>
                                     <span class="h-1 w-1 rounded-full bg-slate-200"></span>
-                                    <span class="text-[10px] font-black uppercase tracking-widest text-slate-300">@{{ user.username }}</span>
+                                    <span class="text-[9px] font-black uppercase tracking-widest text-slate-300">@{{ user.username }}</span>
                                 </div>
                             </div>
                         </div>

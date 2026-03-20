@@ -57,15 +57,35 @@ const notificationForm = useForm({
     notify_manager_on_new_ticket: false,
 });
 
+const tabs = [
+    { id: 'smtp', label: 'SMTP Configuration', icon: 'M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z' },
+    { id: 'notifications', label: 'Email Notifications', icon: 'M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9' },
+    { id: 'templates', label: 'Email Templates', icon: 'M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z' },
+];
+
+const saveSuccess = ref(false);
+
 const submit = () => {
     form.post(route('admin.settings.email.update'), {
         preserveScroll: true,
+        onSuccess: () => {
+            saveSuccess.value = true;
+            setTimeout(() => {
+                saveSuccess.value = false;
+            }, 5000);
+        },
     });
 };
 
 const submitNotifications = () => {
     notificationForm.post(route('admin.settings.email.notifications.update'), {
         preserveScroll: true,
+        onSuccess: () => {
+            saveSuccess.value = true;
+            setTimeout(() => {
+                saveSuccess.value = false;
+            }, 5000);
+        },
     });
 };
 
@@ -104,15 +124,6 @@ const encryptionTypes = [
     { value: 'ssl', label: 'SSL' },
     { value: '', label: 'None' },
 ];
-
-const saveSuccess = ref(false);
-
-const showSuccessMessage = () => {
-    saveSuccess.value = true;
-    setTimeout(() => {
-        saveSuccess.value = false;
-    }, 3000);
-};
 </script>
 
 <template>
@@ -120,673 +131,377 @@ const showSuccessMessage = () => {
 
     <AdminNavigation>
         <template #header-title>
-            <div class="flex items-center gap-4">
-                <Link
-                    :href="route('admin.settings.index')"
-                    class="inline-flex items-center text-sm font-medium text-gray-600 hover:text-gray-900"
-                >
-                    <svg class="mr-1 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-                    </svg>
-                    Back to Settings
-                </Link>
-                <h1 class="text-xl font-semibold text-gray-900">Email Settings</h1>
+            <div class="flex flex-col">
+                <div class="flex items-center gap-2 text-xs font-bold text-slate-400 uppercase tracking-widest mb-1 stagger-1">
+                    <Link :href="route('admin.settings.index')" class="hover:text-slate-900 transition-colors">Settings</Link>
+                    <span>/</span>
+                    <span class="text-slate-900">Email</span>
+                </div>
+                <h1 class="text-xl font-black text-slate-900 tracking-tight stagger-1">Email Configuration</h1>
             </div>
         </template>
 
-        <div class="p-6">
-            <!-- Test Email Modal -->
-            <Teleport to="body">
-                <div
-                    v-if="showTestModal"
-                    class="fixed inset-0 z-50 overflow-y-auto"
-                    aria-labelledby="Test email"
-                    role="dialog"
-                    aria-modal="true"
-                >
-                    <div class="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
-                        <div
-                            class="fixed inset-0 bg-gray-500/75 transition-opacity"
-                            aria-hidden="true"
-                            @click="closeTestModal"
-                        />
-                        <div
-                            class="relative transform overflow-hidden rounded-lg bg-white text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg"
-                        >
-                            <form @submit.prevent="sendTestEmail" class="p-6 space-y-4">
-                                <h3 class="text-lg font-semibold text-gray-900">Send Test Email</h3>
+        <div class="max-w-[1400px] mx-auto space-y-8 pb-20 pt-4">
+            <!-- Navigation Protocol & Success Messages -->
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-6 px-2 stagger-1">
+                <div class="flex flex-wrap items-center gap-2">
+                    <button
+                        v-for="tab in tabs"
+                        :key="tab.id"
+                        @click="activeTab = tab.id"
+                        :class="[
+                            'group flex items-center gap-2.5 px-5 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all duration-300',
+                            activeTab === tab.id 
+                                ? 'bg-slate-900 text-white shadow-lg shadow-slate-200' 
+                                : 'bg-white text-slate-400 hover:text-slate-900 border border-slate-200 hover:border-slate-300 shadow-sm'
+                        ]"
+                    >
+                        <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" :d="tab.icon" />
+                        </svg>
+                        {{ tab.label }}
+                    </button>
+                    <button
+                        v-if="activeTab === 'smtp'"
+                        @click="openTestModal"
+                        class="px-5 py-3 rounded-xl bg-white border border-slate-900 text-slate-900 font-black text-[10px] uppercase tracking-widest hover:bg-slate-900 hover:text-white transition-all shadow-sm"
+                    >
+                        Send Test
+                    </button>
+                </div>
+
+                <div class="flex items-center gap-3">
+                    <Transition
+                        enter-active-class="transition duration-500 ease-out"
+                        enter-from-class="opacity-0 translate-x-4"
+                        enter-to-class="opacity-100 translate-x-0"
+                        leave-active-class="transition duration-300 ease-in"
+                        leave-from-class="opacity-100"
+                        leave-to-class="opacity-0"
+                    >
+                        <div v-if="saveSuccess" class="flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-50 border border-emerald-100 text-emerald-700 text-xs font-bold">
+                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" /></svg>
+                            Changes saved successfully
+                        </div>
+                    </Transition>
+                    <Transition
+                        enter-active-class="transition duration-500 ease-out"
+                        enter-from-class="opacity-0 translate-x-4"
+                        enter-to-class="opacity-100 translate-x-0"
+                        leave-active-class="transition duration-300 ease-in"
+                        leave-from-class="opacity-100"
+                        leave-to-class="opacity-0"
+                    >
+                        <div v-if="testEmailStatus" 
+                             :class="testEmailStatus.includes('success') ? 'bg-indigo-50 border-indigo-100 text-indigo-700' : 'bg-rose-50 border-rose-100 text-rose-700'"
+                             class="flex items-center gap-2 px-4 py-2 rounded-xl border text-xs font-bold">
+                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                            {{ testEmailStatus }}
+                        </div>
+                    </Transition>
+                </div>
+            </div>
+
+            <!-- SMTP Configuration -->
+            <div v-if="activeTab === 'smtp'" class="stagger-2 space-y-8">
+                <div class="bg-white rounded-3xl border border-slate-300/40 shadow-sm shadow-slate-200/60 overflow-hidden">
+                    <form @submit.prevent="submit" class="divide-y divide-slate-100">
+                        <div class="grid grid-cols-1 lg:grid-cols-12">
+                            <!-- Sidebar Info -->
+                            <div class="lg:col-span-4 p-8 lg:p-10 bg-slate-50/30 space-y-6">
+                                <div class="h-12 w-12 rounded-xl bg-slate-900 text-white flex items-center justify-center shadow-lg shadow-slate-200">
+                                    <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+                                </div>
+                                <div class="space-y-2 text-wrap">
+                                    <h3 class="text-xl font-bold text-slate-900 tracking-tight">Postmaster Configuration</h3>
+                                    <p class="text-sm text-slate-500 font-medium leading-relaxed font-serif italic">Establish the connection parameters for outbound system communications.</p>
+                                </div>
                                 
-                                <div>
-                                    <label for="to_email" class="block text-sm font-medium text-gray-700">
-                                        Send To <span class="text-red-500">*</span>
-                                    </label>
-                                    <input
-                                        id="to_email"
-                                        v-model="testEmailForm.to_email"
-                                        type="email"
-                                        required
-                                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm"
-                                        placeholder="test@example.com"
-                                    />
-                                    <p v-if="testEmailForm.errors.to_email" class="mt-1 text-sm text-red-600">
-                                        {{ testEmailForm.errors.to_email }}
-                                    </p>
-                                </div>
-
-                                <div>
-                                    <label for="test_subject" class="block text-sm font-medium text-gray-700">
-                                        Subject
-                                    </label>
-                                    <input
-                                        id="test_subject"
-                                        v-model="testEmailForm.subject"
-                                        type="text"
-                                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm"
-                                    />
-                                </div>
-
-                                <div>
-                                    <label for="test_message" class="block text-sm font-medium text-gray-700">
-                                        Message
-                                    </label>
-                                    <textarea
-                                        id="test_message"
-                                        v-model="testEmailForm.message"
-                                        rows="3"
-                                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm"
-                                    ></textarea>
-                                </div>
-
-                                <div class="bg-blue-50 p-3 rounded-md">
-                                    <p class="text-xs text-blue-700">
-                                        <strong>Note:</strong> This will send a test email using your current SMTP settings. 
-                                        Make sure you've saved your settings first.
-                                    </p>
-                                </div>
-
-                                <div class="flex gap-3 justify-end pt-2">
+                                <div class="p-5 rounded-2xl bg-white border border-slate-200/60 shadow-sm space-y-4">
+                                    <p class="text-[10px] font-black uppercase tracking-widest text-slate-400">Verified Connection</p>
+                                    <p class="text-[11px] text-slate-600 font-medium leading-relaxed italic font-serif">You can validate your SMTP settings immediately after saving.</p>
                                     <button
                                         type="button"
-                                        class="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50"
-                                        @click="closeTestModal"
+                                        @click="openTestModal"
+                                        class="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-slate-50 text-slate-900 border border-slate-200 font-black text-[10px] uppercase tracking-widest hover:bg-white hover:border-slate-900 hover:shadow-md transition-all shadow-sm"
                                     >
-                                        Cancel
-                                    </button>
-                                    <button
-                                        type="submit"
-                                        class="inline-flex justify-center rounded-md bg-slate-700 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-slate-800 disabled:opacity-50"
-                                        :disabled="testEmailForm.processing"
-                                    >
-                                        {{ testEmailForm.processing ? 'Sending...' : 'Send Test Email' }}
+                                        Connection Probe
                                     </button>
                                 </div>
-                            </form>
-                        </div>
-                    </div>
-                </div>
-            </Teleport>
-
-            <!-- Tabs -->
-            <div class="border-b border-gray-200 mb-6">
-                <nav class="-mb-px flex space-x-8">
-                    <button
-                        @click="activeTab = 'smtp'"
-                        class="whitespace-nowrap border-b-2 px-1 py-2 text-sm font-medium"
-                        :class="activeTab === 'smtp' 
-                            ? 'border-slate-500 text-slate-600' 
-                            : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'"
-                    >
-                        SMTP Configuration
-                    </button>
-                    <button
-                        @click="activeTab = 'notifications'"
-                        class="whitespace-nowrap border-b-2 px-1 py-2 text-sm font-medium"
-                        :class="activeTab === 'notifications' 
-                            ? 'border-slate-500 text-slate-600' 
-                            : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'"
-                    >
-                        Notifications
-                    </button>
-                    <button
-                        @click="activeTab = 'templates'"
-                        class="whitespace-nowrap border-b-2 px-1 py-2 text-sm font-medium"
-                        :class="activeTab === 'templates' 
-                            ? 'border-slate-500 text-slate-600' 
-                            : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'"
-                    >
-                        Email Templates
-                    </button>
-                </nav>
-            </div>
-
-            <!-- Success Message -->
-            <div
-                v-if="saveSuccess"
-                class="mb-4 rounded-md bg-green-50 p-4"
-            >
-                <div class="flex">
-                    <div class="flex-shrink-0">
-                        <svg class="h-5 w-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                    </div>
-                    <div class="ml-3">
-                        <p class="text-sm font-medium text-green-800">
-                            Settings saved successfully!
-                        </p>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Test Email Status -->
-            <div
-                v-if="testEmailStatus"
-                class="mb-4 rounded-md p-4"
-                :class="testEmailStatus.includes('success') ? 'bg-green-50' : 'bg-red-50'"
-            >
-                <div class="flex">
-                    <div class="flex-shrink-0">
-                        <svg 
-                            class="h-5 w-5" 
-                            :class="testEmailStatus.includes('success') ? 'text-green-400' : 'text-red-400'"
-                            fill="none" 
-                            stroke="currentColor" 
-                            viewBox="0 0 24 24"
-                        >
-                            <path 
-                                v-if="testEmailStatus.includes('success')"
-                                stroke-linecap="round" 
-                                stroke-linejoin="round" 
-                                stroke-width="2" 
-                                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" 
-                            />
-                            <path 
-                                v-else
-                                stroke-linecap="round" 
-                                stroke-linejoin="round" 
-                                stroke-width="2" 
-                                d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" 
-                            />
-                        </svg>
-                    </div>
-                    <div class="ml-3">
-                        <p class="text-sm font-medium" :class="testEmailStatus.includes('success') ? 'text-green-800' : 'text-red-800'">
-                            {{ testEmailStatus }}
-                        </p>
-                    </div>
-                </div>
-            </div>
-
-            <!-- SMTP Configuration Tab -->
-            <div v-if="activeTab === 'smtp'" class="space-y-4">
-                <div class="rounded-lg border border-gray-200 bg-white shadow-sm">
-                    <div class="border-b border-gray-200 px-6 py-4 bg-gray-50 flex justify-between items-center">
-                        <div>
-                            <h2 class="text-sm font-semibold text-gray-700">SMTP Configuration</h2>
-                            <p class="text-xs text-gray-500 mt-1">Configure your email server settings</p>
-                        </div>
-                        <button
-                            @click="openTestModal"
-                            class="inline-flex items-center rounded-md bg-white border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50"
-                        >
-                            <svg class="-ml-0.5 mr-1.5 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                            </svg>
-                            Send Test Email
-                        </button>
-                    </div>
-                    
-                    <form @submit.prevent="submit" class="px-6 py-4 space-y-4">
-                        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                            <div>
-                                <label for="mail_mailer" class="block text-sm font-medium text-gray-700">
-                                    Mail Driver <span class="text-red-500">*</span>
-                                </label>
-                                <select
-                                    id="mail_mailer"
-                                    v-model="form.mail_mailer"
-                                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm"
-                                >
-                                    <option v-for="mailer in mailers" :key="mailer.value" :value="mailer.value">
-                                        {{ mailer.label }}
-                                    </option>
-                                </select>
                             </div>
 
-                            <div>
-                                <label for="mail_host" class="block text-sm font-medium text-gray-700">
-                                    SMTP Host <span class="text-red-500">*</span>
-                                </label>
-                                <input
-                                    id="mail_host"
-                                    v-model="form.mail_host"
-                                    type="text"
-                                    required
-                                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm"
-                                    placeholder="smtp.gmail.com"
-                                />
-                                <p v-if="form.errors.mail_host" class="mt-1 text-sm text-red-600">
-                                    {{ form.errors.mail_host }}
-                                </p>
-                            </div>
-                        </div>
+                            <!-- Form Fields -->
+                            <div class="lg:col-span-8 p-8 lg:p-10 space-y-10">
+                                <!-- Connection Parameters -->
+                                <div class="space-y-8">
+                                    <div class="flex items-center gap-3">
+                                        <div class="h-8 w-1.5 rounded-full bg-slate-900"></div>
+                                        <h4 class="text-[11px] font-black uppercase tracking-[0.2em] text-slate-900">Host Infrastructure</h4>
+                                    </div>
+                                    
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                        <div class="space-y-2">
+                                            <label class="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">Protocol / Driver</label>
+                                            <div class="relative group">
+                                                <select v-model="form.mail_mailer" class="w-full appearance-none rounded-2xl border-slate-200 bg-slate-50/50 px-5 py-4 text-sm font-bold text-slate-900 focus:bg-white focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 transition-all">
+                                                    <option v-for="item in mailers" :key="item.value" :value="item.value">{{ item.label }}</option>
+                                                </select>
+                                                <div class="absolute right-5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                                                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M19 9l-7 7-7-7" /></svg>
+                                                </div>
+                                            </div>
+                                        </div>
 
-                        <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                            <div>
-                                <label for="mail_port" class="block text-sm font-medium text-gray-700">
-                                    Port <span class="text-red-500">*</span>
-                                </label>
-                                <input
-                                    id="mail_port"
-                                    v-model="form.mail_port"
-                                    type="number"
-                                    required
-                                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm"
-                                    placeholder="587"
-                                />
-                            </div>
+                                        <div class="space-y-2">
+                                            <label class="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">SMTP Hostname</label>
+                                            <input v-model="form.mail_host" type="text" class="w-full rounded-2xl border-slate-200 bg-slate-50/50 px-5 py-4 text-sm font-bold text-slate-900 focus:bg-white focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 transition-all placeholder:text-slate-300" placeholder="smtp.relay.com">
+                                        </div>
 
-                            <div>
-                                <label for="mail_encryption" class="block text-sm font-medium text-gray-700">
-                                    Encryption
-                                </label>
-                                <select
-                                    id="mail_encryption"
-                                    v-model="form.mail_encryption"
-                                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm"
-                                >
-                                    <option v-for="enc in encryptionTypes" :key="enc.value" :value="enc.value">
-                                        {{ enc.label }}
-                                    </option>
-                                </select>
-                            </div>
+                                        <div class="space-y-2 text-wrap">
+                                            <label class="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">Port</label>
+                                            <input v-model="form.mail_port" type="number" class="w-full rounded-2xl border-slate-200 bg-slate-50/50 px-5 py-4 text-sm font-bold text-slate-900 focus:bg-white focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 transition-all" placeholder="587">
+                                        </div>
 
-                            <div>
-                                <label for="mail_username" class="block text-sm font-medium text-gray-700">
-                                    Username
-                                </label>
-                                <input
-                                    id="mail_username"
-                                    v-model="form.mail_username"
-                                    type="text"
-                                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm"
-                                    placeholder="your-email@gmail.com"
-                                />
-                            </div>
-                        </div>
-
-                        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                            <div>
-                                <label for="mail_password" class="block text-sm font-medium text-gray-700">
-                                    Password / App Password
-                                </label>
-                                <input
-                                    id="mail_password"
-                                    v-model="form.mail_password"
-                                    type="password"
-                                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm"
-                                    placeholder="••••••••"
-                                />
-                                <p class="mt-1 text-xs text-gray-500">
-                                    For Gmail, use an <a href="https://support.google.com/accounts/answer/185833" target="_blank" class="text-slate-600 hover:underline">App Password</a>
-                                </p>
-                            </div>
-                        </div>
-
-                        <div class="border-t border-gray-200 pt-4">
-                            <h3 class="text-sm font-medium text-gray-700 mb-3">From Address</h3>
-                            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                                <div>
-                                    <label for="mail_from_address" class="block text-sm font-medium text-gray-700">
-                                        From Email <span class="text-red-500">*</span>
-                                    </label>
-                                    <input
-                                        id="mail_from_address"
-                                        v-model="form.mail_from_address"
-                                        type="email"
-                                        required
-                                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm"
-                                        placeholder="noreply@helpdesk.com"
-                                    />
+                                        <div class="space-y-2">
+                                            <label class="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">Security</label>
+                                            <div class="relative group">
+                                                <select v-model="form.mail_encryption" class="w-full appearance-none rounded-2xl border-slate-200 bg-slate-50/50 px-5 py-4 text-sm font-bold text-slate-900 focus:bg-white focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 transition-all">
+                                                    <option v-for="enc in encryptionTypes" :key="enc.value" :value="enc.value">{{ enc.label }}</option>
+                                                </select>
+                                                <div class="absolute right-5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                                                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M19 9l-7 7-7-7" /></svg>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
 
-                                <div>
-                                    <label for="mail_from_name" class="block text-sm font-medium text-gray-700">
-                                        From Name
-                                    </label>
-                                    <input
-                                        id="mail_from_name"
-                                        v-model="form.mail_from_name"
-                                        type="text"
-                                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm"
-                                        placeholder="HelpDesk System"
-                                    />
+                                <!-- Security Credentials -->
+                                <div class="space-y-8">
+                                    <div class="flex items-center gap-3">
+                                        <div class="h-8 w-1.5 rounded-full bg-slate-400"></div>
+                                        <h4 class="text-[11px] font-black uppercase tracking-[0.2em] text-slate-900">Credentials</h4>
+                                    </div>
+                                    
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                        <div class="space-y-2">
+                                            <label class="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">Username</label>
+                                            <input v-model="form.mail_username" type="text" class="w-full rounded-2xl border-slate-200 bg-slate-50/50 px-5 py-4 text-sm font-bold text-slate-900 focus:bg-white focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 transition-all placeholder:text-slate-300" placeholder="e.g. support@domain.com">
+                                        </div>
+
+                                        <div class="space-y-2">
+                                            <label class="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">Password</label>
+                                            <input v-model="form.mail_password" type="password" class="w-full rounded-2xl border-slate-200 bg-slate-50/50 px-5 py-4 text-sm font-bold text-slate-900 focus:bg-white focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 transition-all placeholder:text-slate-300" placeholder="••••••••••••">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Sender Info -->
+                                <div class="space-y-8">
+                                    <div class="flex items-center gap-3">
+                                        <div class="h-8 w-1.5 rounded-full bg-slate-400"></div>
+                                        <h4 class="text-[11px] font-black uppercase tracking-[0.2em] text-slate-900 text-wrap">Identification</h4>
+                                    </div>
+                                    
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                        <div class="space-y-2 text-wrap">
+                                            <label class="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">Outbound Address</label>
+                                            <input v-model="form.mail_from_address" type="email" class="w-full rounded-2xl border-slate-200 bg-slate-50/50 px-5 py-4 text-sm font-bold text-slate-900 focus:bg-white focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 transition-all placeholder:text-slate-300" placeholder="noreply@helpdesk.com">
+                                        </div>
+
+                                        <div class="space-y-2">
+                                            <label class="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">Display Name</label>
+                                            <input v-model="form.mail_from_name" type="text" class="w-full rounded-2xl border-slate-200 bg-slate-50/50 px-5 py-4 text-sm font-bold text-slate-900 focus:bg-white focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 transition-all placeholder:text-slate-300" placeholder="System Automations">
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
 
-                        <div class="border-t border-gray-200 pt-4">
-                            <h3 class="text-sm font-medium text-gray-700 mb-3">Reply-To Address (Optional)</h3>
-                            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                                <div>
-                                    <label for="mail_reply_to_address" class="block text-sm font-medium text-gray-700">
-                                        Reply-To Email
-                                    </label>
-                                    <input
-                                        id="mail_reply_to_address"
-                                        v-model="form.mail_reply_to_address"
-                                        type="email"
-                                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm"
-                                        placeholder="support@helpdesk.com"
-                                    />
-                                </div>
-
-                                <div>
-                                    <label for="mail_reply_to_name" class="block text-sm font-medium text-gray-700">
-                                        Reply-To Name
-                                    </label>
-                                    <input
-                                        id="mail_reply_to_name"
-                                        v-model="form.mail_reply_to_name"
-                                        type="text"
-                                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm"
-                                        placeholder="Support Team"
-                                    />
-                                </div>
+                        <!-- Form Actions -->
+                        <div class="p-8 lg:p-10 flex items-center justify-between gap-6 bg-slate-50/50">
+                            <div class="hidden sm:flex items-center gap-3 text-slate-400">
+                                 <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                 <p class="text-[10px] font-bold uppercase tracking-widest italic leading-tight max-w-[200px]">Server restart may be required for some drivers.</p>
                             </div>
-                        </div>
-
-                        <div class="bg-blue-50 p-3 rounded-md">
-                            <div class="flex">
-                                <div class="flex-shrink-0">
-                                    <svg class="h-5 w-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                    </svg>
-                                </div>
-                                <div class="ml-3">
-                                    <p class="text-xs text-blue-700">
-                                        <strong>Common SMTP Settings:</strong><br>
-                                        • Gmail: smtp.gmail.com, Port 587, TLS, Use App Password<br>
-                                        • Outlook/Hotmail: smtp-mail.outlook.com, Port 587, TLS<br>
-                                        • Yahoo: smtp.mail.yahoo.com, Port 587, TLS<br>
-                                        • Office 365: smtp.office365.com, Port 587, TLS
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="flex justify-end pt-4 border-t border-gray-200">
-                            <button
-                                type="submit"
-                                class="inline-flex justify-center rounded-md bg-slate-700 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-slate-800 disabled:opacity-50"
-                                :disabled="form.processing"
-                            >
-                                {{ form.processing ? 'Saving...' : 'Save SMTP Settings' }}
+                            <button type="submit" :disabled="form.processing"
+                                class="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-10 py-4 rounded-2xl bg-slate-900 text-white text-sm font-black shadow-xl shadow-slate-200 hover:bg-slate-800 transition-all disabled:opacity-50 active:scale-95">
+                                <svg v-if="form.processing" class="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                <span>{{ form.processing ? 'Persisting...' : 'Save Configuration' }}</span>
                             </button>
                         </div>
                     </form>
                 </div>
             </div>
 
-            <!-- Notifications Tab -->
-            <div v-if="activeTab === 'notifications'" class="space-y-4">
-                <div class="rounded-lg border border-gray-200 bg-white shadow-sm">
-                    <div class="border-b border-gray-200 px-6 py-4 bg-gray-50">
-                        <h2 class="text-sm font-semibold text-gray-700">Email Notifications</h2>
-                        <p class="text-xs text-gray-500 mt-1">Configure who receives email notifications</p>
-                    </div>
-                    
-                    <form @submit.prevent="submitNotifications" class="px-6 py-4 space-y-4">
-                        <div class="space-y-3">
-                            <h3 class="text-sm font-medium text-gray-700">Ticket Notifications</h3>
-                            
-                            <div class="flex items-center">
-                                <label class="flex items-center text-sm text-gray-700">
-                                    <input
-                                        v-model="notificationForm.new_ticket_notification"
-                                        type="checkbox"
-                                        class="rounded border-gray-300 text-slate-600 focus:ring-slate-500"
-                                    />
-                                    <span class="ml-2">Notify when new ticket is created</span>
-                                </label>
+            <div v-if="activeTab === 'notifications'" class="stagger-2 space-y-8">
+                <div class="bg-white rounded-3xl border border-slate-300/40 shadow-sm shadow-slate-200/60 overflow-hidden">
+                    <form @submit.prevent="submitNotifications">
+                        <div class="grid grid-cols-1 lg:grid-cols-12">
+                            <!-- Sidebar Info -->
+                            <div class="lg:col-span-4 p-8 lg:p-10 bg-slate-50/30 space-y-6">
+                                <div class="h-12 w-12 rounded-xl bg-slate-900 text-white flex items-center justify-center shadow-lg shadow-slate-200">
+                                    <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>
+                                </div>
+                                <div class="space-y-2 text-wrap">
+                                    <h3 class="text-xl font-bold text-slate-900 tracking-tight">Notification Logic</h3>
+                                    <p class="text-sm text-slate-500 font-medium leading-relaxed font-serif italic">Define which system events should trigger email dispatches to users and staff.</p>
+                                </div>
                             </div>
 
-                            <div class="flex items-center">
-                                <label class="flex items-center text-sm text-gray-700">
-                                    <input
-                                        v-model="notificationForm.ticket_assigned_notification"
-                                        type="checkbox"
-                                        class="rounded border-gray-300 text-slate-600 focus:ring-slate-500"
-                                    />
-                                    <span class="ml-2">Notify when ticket is assigned</span>
-                                </label>
-                            </div>
-
-                            <div class="flex items-center">
-                                <label class="flex items-center text-sm text-gray-700">
-                                    <input
-                                        v-model="notificationForm.ticket_updated_notification"
-                                        type="checkbox"
-                                        class="rounded border-gray-300 text-slate-600 focus:ring-slate-500"
-                                    />
-                                    <span class="ml-2">Notify when ticket is updated</span>
-                                </label>
-                            </div>
-
-                            <div class="flex items-center">
-                                <label class="flex items-center text-sm text-gray-700">
-                                    <input
-                                        v-model="notificationForm.new_message_notification"
-                                        type="checkbox"
-                                        class="rounded border-gray-300 text-slate-600 focus:ring-slate-500"
-                                    />
-                                    <span class="ml-2">Notify when new message is added</span>
-                                </label>
+                            <!-- List of Switches -->
+                            <div class="lg:col-span-8 divide-y divide-slate-100">
+                                <div 
+                                    v-for="(label, key) in {
+                                        new_ticket_notification: 'New Ticket Customer Receipt',
+                                        ticket_assigned_notification: 'Agent Assignment Notification',
+                                        ticket_updated_notification: 'Status Change Alert',
+                                        new_message_notification: 'Message Thread Updates',
+                                        notify_admin_on_new_ticket: 'Global Administrator Dispatch',
+                                        notify_manager_on_new_ticket: 'Managerial Escalation'
+                                    }" 
+                                    :key="key"
+                                    class="p-6 lg:px-10 flex items-center justify-between group hover:bg-slate-50/50 transition-all"
+                                >
+                                    <div class="space-y-1">
+                                        <p class="text-[10px] font-black uppercase tracking-widest text-slate-400">{{ key.includes('admin') ? 'Staff Alert' : 'Standard Response' }}</p>
+                                        <h4 class="text-sm font-bold text-slate-900">{{ label }}</h4>
+                                    </div>
+                                    <label class="relative inline-flex items-center cursor-pointer">
+                                        <input type="checkbox" v-model="notificationForm[key]" class="sr-only peer">
+                                        <div class="w-12 h-6 bg-slate-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-slate-900 shadow-inner"></div>
+                                    </label>
+                                </div>
                             </div>
                         </div>
 
-                        <div class="space-y-3 pt-4 border-t border-gray-200">
-                            <h3 class="text-sm font-medium text-gray-700">Summary Reports</h3>
-                            
-                            <div class="flex items-center">
-                                <label class="flex items-center text-sm text-gray-700">
-                                    <input
-                                        v-model="notificationForm.daily_summary"
-                                        type="checkbox"
-                                        class="rounded border-gray-300 text-slate-600 focus:ring-slate-500"
-                                    />
-                                    <span class="ml-2">Send daily summary (end of day)</span>
-                                </label>
+                        <!-- Form Actions -->
+                        <div class="p-8 lg:p-10 flex items-center justify-between gap-6 bg-slate-50/50 border-t border-slate-100">
+                            <div class="hidden sm:flex items-center gap-3 text-slate-400 text-wrap">
+                                 <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                 <p class="text-[10px] font-bold uppercase tracking-widest italic leading-tight max-w-[200px]">Notification delays may occur during high system load.</p>
                             </div>
-
-                            <div class="flex items-center">
-                                <label class="flex items-center text-sm text-gray-700">
-                                    <input
-                                        v-model="notificationForm.weekly_summary"
-                                        type="checkbox"
-                                        class="rounded border-gray-300 text-slate-600 focus:ring-slate-500"
-                                    />
-                                    <span class="ml-2">Send weekly summary (every Monday)</span>
-                                </label>
-                            </div>
-                        </div>
-
-                        <div class="space-y-3 pt-4 border-t border-gray-200">
-                            <h3 class="text-sm font-medium text-gray-700">Admin Notifications</h3>
-                            
-                            <div class="flex items-center">
-                                <label class="flex items-center text-sm text-gray-700">
-                                    <input
-                                        v-model="notificationForm.notify_admin_on_new_ticket"
-                                        type="checkbox"
-                                        class="rounded border-gray-300 text-slate-600 focus:ring-slate-500"
-                                    />
-                                    <span class="ml-2">Notify all admins on new ticket</span>
-                                </label>
-                            </div>
-
-                            <div class="flex items-center">
-                                <label class="flex items-center text-sm text-gray-700">
-                                    <input
-                                        v-model="notificationForm.notify_manager_on_new_ticket"
-                                        type="checkbox"
-                                        class="rounded border-gray-300 text-slate-600 focus:ring-slate-500"
-                                    />
-                                    <span class="ml-2">Notify department managers on new ticket</span>
-                                </label>
-                            </div>
-                        </div>
-
-                        <div class="flex justify-end pt-4 border-t border-gray-200">
-                            <button
-                                type="submit"
-                                class="inline-flex justify-center rounded-md bg-slate-700 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-slate-800 disabled:opacity-50"
-                                :disabled="notificationForm.processing"
-                            >
-                                {{ notificationForm.processing ? 'Saving...' : 'Save Notification Settings' }}
+                            <button type="submit" :disabled="notificationForm.processing"
+                                class="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-10 py-4 rounded-2xl bg-slate-900 text-white text-sm font-black shadow-xl shadow-slate-200 hover:bg-slate-800 transition-all disabled:opacity-50">
+                                <span>{{ notificationForm.processing ? 'Persisting...' : 'Save Dispatch Rules' }}</span>
                             </button>
                         </div>
                     </form>
                 </div>
             </div>
 
-            <!-- Email Templates Tab -->
-            <div v-if="activeTab === 'templates'" class="space-y-4">
-                <div class="rounded-lg border border-gray-200 bg-white shadow-sm">
-                    <div class="border-b border-gray-200 px-6 py-4 bg-gray-50">
-                        <h2 class="text-sm font-semibold text-gray-700">Email Templates</h2>
-                        <p class="text-xs text-gray-500 mt-1">Customize email templates for different events</p>
-                    </div>
-                    
-                    <div class="px-6 py-4">
-                        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                            <!-- New Ticket Template -->
-                            <div class="border border-gray-200 rounded-lg p-4 hover:shadow-sm transition-shadow">
-                                <div class="flex items-center justify-between mb-3">
-                                    <div class="flex items-center gap-2">
-                                        <div class="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center">
-                                            <svg class="h-4 w-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                                            </svg>
-                                        </div>
-                                        <h3 class="text-sm font-medium text-gray-900">New Ticket</h3>
-                                    </div>
-                                    <span class="inline-flex rounded-full bg-green-100 px-2 py-1 text-xs font-semibold text-green-800">
-                                        Active
-                                    </span>
-                                </div>
-                                <p class="text-xs text-gray-500 mb-3">Sent when a new ticket is created</p>
-                                <div class="flex justify-end">
-                                    <button class="text-xs text-slate-600 hover:text-slate-900 font-medium">
-                                        Edit Template
-                                    </button>
-                                </div>
+            <div v-if="activeTab === 'templates'" class="stagger-3 space-y-8">
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <div 
+                        v-for="template in [
+                            { name: 'New Ticket Confirmation', category: 'TICKET', status: 'ACTIVE', desc: 'Sent to customers when they create a new ticket.', icon: 'M12 6v6m0 0v6m0-6h6m-6 0H6', color: 'indigo' },
+                            { name: 'Agent Assignment', category: 'ASSIGNMENT', status: 'ACTIVE', desc: 'Sent to agents when a ticket is assigned to them.', icon: 'M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z', color: 'slate' },
+                            { name: 'New Reply Notification', category: 'MESSAGING', status: 'ACTIVE', desc: 'Sent when a new reply is added to a ticket.', icon: 'M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z', color: 'emerald' },
+                            { name: 'Ticket Resolved', category: 'CLOSURE', status: 'DRAFT', desc: 'Sent when a ticket is marked as resolved.', icon: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z', color: 'rose' }
+                        ]"
+                        :key="template.name"
+                        class="group bg-white rounded-2xl border border-slate-300/40 shadow-sm shadow-slate-200/60 p-8 hover:shadow-xl hover:shadow-slate-200/50 hover:border-slate-400/40 transition-all duration-300 flex flex-col gap-6"
+                    >
+                        <div class="flex items-center justify-between">
+                            <div :class="{
+                                'bg-indigo-100 text-indigo-600': template.color === 'indigo',
+                                'bg-slate-100 text-slate-600': template.color === 'slate',
+                                'bg-emerald-100 text-emerald-600': template.color === 'emerald',
+                                'bg-rose-100 text-rose-600': template.color === 'rose',
+                            }" class="h-10 w-10 rounded-xl flex items-center justify-center shadow-sm">
+                                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" :d="template.icon" /></svg>
                             </div>
-
-                            <!-- Ticket Assigned Template -->
-                            <div class="border border-gray-200 rounded-lg p-4 hover:shadow-sm transition-shadow">
-                                <div class="flex items-center justify-between mb-3">
-                                    <div class="flex items-center gap-2">
-                                        <div class="h-8 w-8 rounded-full bg-amber-100 flex items-center justify-center">
-                                            <svg class="h-4 w-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                                            </svg>
-                                        </div>
-                                        <h3 class="text-sm font-medium text-gray-900">Ticket Assigned</h3>
-                                    </div>
-                                    <span class="inline-flex rounded-full bg-green-100 px-2 py-1 text-xs font-semibold text-green-800">
-                                        Active
-                                    </span>
-                                </div>
-                                <p class="text-xs text-gray-500 mb-3">Sent when a ticket is assigned to an agent</p>
-                                <div class="flex justify-end">
-                                    <button class="text-xs text-slate-600 hover:text-slate-900 font-medium">
-                                        Edit Template
-                                    </button>
-                                </div>
-                            </div>
-
-                            <!-- New Message Template -->
-                            <div class="border border-gray-200 rounded-lg p-4 hover:shadow-sm transition-shadow">
-                                <div class="flex items-center justify-between mb-3">
-                                    <div class="flex items-center gap-2">
-                                        <div class="h-8 w-8 rounded-full bg-green-100 flex items-center justify-center">
-                                            <svg class="h-4 w-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
-                                            </svg>
-                                        </div>
-                                        <h3 class="text-sm font-medium text-gray-900">New Message</h3>
-                                    </div>
-                                    <span class="inline-flex rounded-full bg-green-100 px-2 py-1 text-xs font-semibold text-green-800">
-                                        Active
-                                    </span>
-                                </div>
-                                <p class="text-xs text-gray-500 mb-3">Sent when a new message is added to a ticket</p>
-                                <div class="flex justify-end">
-                                    <button class="text-xs text-slate-600 hover:text-slate-900 font-medium">
-                                        Edit Template
-                                    </button>
-                                </div>
-                            </div>
-
-                            <!-- Ticket Resolved Template -->
-                            <div class="border border-gray-200 rounded-lg p-4 hover:shadow-sm transition-shadow">
-                                <div class="flex items-center justify-between mb-3">
-                                    <div class="flex items-center gap-2">
-                                        <div class="h-8 w-8 rounded-full bg-purple-100 flex items-center justify-center">
-                                            <svg class="h-4 w-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                            </svg>
-                                        </div>
-                                        <h3 class="text-sm font-medium text-gray-900">Ticket Resolved</h3>
-                                    </div>
-                                    <span class="inline-flex rounded-full bg-gray-100 px-2 py-1 text-xs font-semibold text-gray-800">
-                                        Draft
-                                    </span>
-                                </div>
-                                <p class="text-xs text-gray-500 mb-3">Sent when a ticket is marked as resolved</p>
-                                <div class="flex justify-end">
-                                    <button class="text-xs text-slate-600 hover:text-slate-900 font-medium">
-                                        Create Template
-                                    </button>
-                                </div>
-                            </div>
-
-                            <!-- Daily Summary Template -->
-                            <div class="border border-gray-200 rounded-lg p-4 hover:shadow-sm transition-shadow">
-                                <div class="flex items-center justify-between mb-3">
-                                    <div class="flex items-center gap-2">
-                                        <div class="h-8 w-8 rounded-full bg-indigo-100 flex items-center justify-center">
-                                            <svg class="h-4 w-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                            </svg>
-                                        </div>
-                                        <h3 class="text-sm font-medium text-gray-900">Daily Summary</h3>
-                                    </div>
-                                    <span class="inline-flex rounded-full bg-gray-100 px-2 py-1 text-xs font-semibold text-gray-800">
-                                        Draft
-                                    </span>
-                                </div>
-                                <p class="text-xs text-gray-500 mb-3">Daily report of ticket activity</p>
-                                <div class="flex justify-end">
-                                    <button class="text-xs text-slate-600 hover:text-slate-900 font-medium">
-                                        Create Template
-                                    </button>
-                                </div>
-                            </div>
+                            <span :class="template.status === 'ACTIVE' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-slate-50 text-slate-400 border-slate-100'" class="px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border">
+                                {{ template.status }}
+                            </span>
                         </div>
-
-                        <div class="mt-4 flex justify-end">
-                            <button class="inline-flex items-center rounded-md bg-slate-700 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-slate-800">
-                                <svg class="-ml-0.5 mr-1.5 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                                </svg>
-                                New Template
+                        <div class="space-y-2">
+                            <h4 class="text-[10px] font-black uppercase tracking-widest text-slate-400 opacity-80">{{ template.category }}</h4>
+                            <h3 class="text-xl font-bold text-slate-900 tracking-tight leading-tight">{{ template.name }}</h3>
+                            <p class="text-xs text-slate-500 font-medium leading-relaxed italic font-serif">{{ template.desc }}</p>
+                        </div>
+                        <div class="pt-6 border-t border-slate-50 mt-auto flex items-center justify-between">
+                            <button class="text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-900 transition-colors">Clone</button>
+                            <button class="text-[10px] font-black uppercase tracking-widest text-slate-900 flex items-center gap-1.5 group/btn">
+                                Edit Blueprint
+                                <svg class="h-3 w-3 transition-transform group-hover/btn:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M17.25 8.25L21 12m0 0l-3.75 3.75M21 12H3" /></svg>
                             </button>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
+
+        <!-- Send Test Email Modal -->
+        <Teleport to="body">
+            <Transition
+                enter-active-class="transition duration-300 ease-out"
+                enter-from-class="opacity-0 scale-95"
+                enter-to-class="opacity-100 scale-100"
+                leave-active-class="transition duration-200 ease-in"
+                leave-from-class="opacity-100 scale-100"
+                leave-to-class="opacity-0 scale-95"
+            >
+                <div v-if="showTestModal" class="fixed inset-0 z-[100] flex items-center justify-center p-4 min-h-screen">
+                    <div class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm" @click="closeTestModal"></div>
+                    
+                    <div class="relative w-full max-w-xl bg-white rounded-[2.5rem] shadow-2xl shadow-slate-900/20 overflow-hidden">
+                        <div class="p-8 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                            <div class="flex items-center gap-4 text-wrap">
+                                <div class="h-10 w-10 rounded-2xl bg-slate-900 flex items-center justify-center shadow-lg shadow-slate-200">
+                                    <svg class="h-5 w-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+                                </div>
+                                <div class="text-wrap">
+                                    <h3 class="text-lg font-black text-slate-900 tracking-tight text-wrap">Send Test Email</h3>
+                                    <p class="text-[10px] font-black uppercase tracking-widest text-slate-400 text-wrap line-clamp-1">SMTP Connection Test</p>
+                                </div>
+                            </div>
+                            <button @click="closeTestModal" class="h-10 w-10 rounded-2xl hover:bg-slate-100 flex items-center justify-center transition-colors text-slate-400 hover:text-slate-900">
+                                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M6 18L18 6M6 6l12 12" /></svg>
+                            </button>
+                        </div>
+
+                        <form @submit.prevent="sendTestEmail" class="p-10 space-y-8">
+                            <div class="space-y-6">
+                                <div class="space-y-2">
+                                    <label class="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">Recipient Email</label>
+                                    <input v-model="testEmailForm.to_email" type="email" required class="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-5 py-4 text-sm font-bold text-slate-900 placeholder:text-slate-300 focus:bg-white focus:border-slate-900 focus:ring-0 transition-all" placeholder="your-email@example.com">
+                                    <p v-if="testEmailForm.errors.to_email" class="text-[10px] font-bold text-rose-500 mt-1 uppercase tracking-wider">{{ testEmailForm.errors.to_email }}</p>
+                                </div>
+
+                                <div class="space-y-2">
+                                    <label class="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">Subject</label>
+                                    <input v-model="testEmailForm.subject" type="text" class="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-5 py-4 text-sm font-bold text-slate-900 placeholder:text-slate-300 focus:bg-white focus:border-slate-900 focus:ring-0 transition-all">
+                                </div>
+
+                                <div class="space-y-2">
+                                    <label class="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">Message Body</label>
+                                    <textarea v-model="testEmailForm.message" rows="3" class="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-5 py-4 text-sm font-bold text-slate-900 placeholder:text-slate-300 focus:bg-white focus:border-slate-900 focus:ring-0 transition-all resize-none"></textarea>
+                                </div>
+                            </div>
+
+                            <div class="p-6 rounded-3xl bg-emerald-50 border-2 border-emerald-100/50">
+                                <p class="text-[11px] text-emerald-900 font-bold italic font-serif leading-relaxed">
+                                    <span class="font-black not-italic block mb-1 uppercase tracking-widest text-[9px] opacity-70">Important:</span>
+                                    This test uses your current SMTP settings. Make sure you have saved any recent changes before sending the test.
+                                </p>
+                            </div>
+
+                            <div class="pt-6 flex items-center justify-end gap-4">
+                                <button type="button" @click="closeTestModal" class="px-8 py-4 rounded-xl font-black text-[10px] uppercase tracking-widest text-slate-400 hover:text-slate-900 transition-colors">Cancel</button>
+                                <button
+                                    type="submit"
+                                    :disabled="testEmailForm.processing"
+                                    class="bg-slate-900 text-white px-10 py-5 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] hover:bg-slate-800 transition-all shadow-xl shadow-slate-200 disabled:opacity-50 flex items-center gap-3"
+                                >
+                                    <svg v-if="testEmailForm.processing" class="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                    {{ testEmailForm.processing ? 'Sending...' : 'Send Test Email' }}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </Transition>
+        </Teleport>
     </AdminNavigation>
 </template>

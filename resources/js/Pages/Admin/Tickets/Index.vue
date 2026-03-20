@@ -248,7 +248,7 @@ const maxPriorityCount = computed(() => {
             <!-- Distribution Grids & Analytical Insights -->
             <div class="grid lg:grid-cols-3 gap-8 px-1 stagger-2">
                 <!-- Priority Breakdown -->
-                <div class="lg:col-span-2 bg-white rounded-[2rem] border border-slate-200 shadow-sm p-8 flex flex-col justify-between overflow-hidden relative">
+                <div class="lg:col-span-2 bg-white rounded-3xl border border-slate-200 shadow-sm p-8 flex flex-col justify-between overflow-hidden relative">
                     <div class="absolute -right-8 -top-8 h-40 w-40 rounded-full bg-slate-50 -z-0 border border-slate-100/50"></div>
                     <div class="relative z-10">
                         <div class="flex items-center justify-between mb-8">
@@ -281,7 +281,7 @@ const maxPriorityCount = computed(() => {
                 </div>
 
                 <!-- Service Velocity Monitor -->
-                <div class="bg-indigo-600 rounded-[2rem] shadow-2xl shadow-indigo-200/50 p-8 text-white relative flex flex-col justify-between overflow-hidden">
+                <div class="bg-indigo-600 rounded-3xl shadow-xl shadow-indigo-200/50 p-8 text-white relative flex flex-col justify-between overflow-hidden">
                     <div class="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-stops))] from-white/10 to-transparent pointer-events-none"></div>
                     <div class="relative z-10">
                         <div class="flex items-center justify-between mb-8">
@@ -380,12 +380,12 @@ const maxPriorityCount = computed(() => {
             </transition>
 
             <!-- Executive Ticket Directory -->
-            <div class="bg-white rounded-[2.5rem] border border-slate-300/40 shadow-sm shadow-slate-200/60 overflow-hidden stagger-5 relative">
+            <div class="bg-white rounded-2xl border border-slate-300/40 shadow-sm shadow-slate-200/60 overflow-hidden stagger-5 relative">
                 <!-- Directory Control Header -->
-                <div class="bg-slate-50/50 border-b border-slate-100 px-8 py-5 flex items-center justify-between">
+                <div class="bg-slate-50/50 border-b border-slate-100 px-8 py-3 flex items-center justify-between">
                     <div class="flex items-center gap-3">
                         <input type="checkbox" :checked="selectedTickets.length === tickets.data.length && tickets.data.length > 0" @change="toggleAllTickets" class="rounded-lg border-slate-300 text-slate-900 focus:ring-slate-900/20" />
-                        <span class="text-[11px] font-black text-slate-900 uppercase tracking-[0.15em]">Ticket List</span>
+                        <span class="text-[10px] font-black text-slate-900 uppercase tracking-widest">Active Tickets</span>
                     </div>
                 </div>
 
@@ -393,7 +393,7 @@ const maxPriorityCount = computed(() => {
                     <div
                         v-for="(ticket, index) in tickets.data"
                         :key="ticket.id"
-                        class="flex flex-col lg:flex-row lg:items-center justify-between py-6 px-8 hover:bg-slate-50/50 transition-all cursor-pointer group relative"
+                        class="flex flex-col lg:flex-row lg:items-center justify-between py-4 px-8 hover:bg-slate-50/50 transition-all cursor-pointer group relative"
                         :class="[selectedTickets.includes(ticket.id) ? 'bg-slate-50/80 text-slate-900 shadow-sm' : '', `stagger-${Math.min(index + 5, 5)}`]"
                         @click="viewTicket(ticket.id)"
                     >
@@ -406,34 +406,32 @@ const maxPriorityCount = computed(() => {
                                 type="checkbox" 
                                 :checked="selectedTickets.includes(ticket.id)" 
                                 @change="toggleTicketSelection(ticket.id)" 
-                                class="h-5 w-5 rounded-lg border-slate-300 text-slate-900 focus:ring-slate-900/20 cursor-pointer" 
+                                class="h-4 w-4 rounded-lg border-slate-300 text-slate-900 focus:ring-slate-900/20 cursor-pointer" 
                             />
                         </div>
 
                         <!-- Ticket Profile Card -->
-                        <div class="flex items-center gap-6 min-w-0 flex-1">
+                        <div class="flex items-center gap-4 min-w-0 flex-1">
                             <div class="relative flex-shrink-0 group-hover:scale-105 transition-transform duration-500">
-                                <div class="h-16 w-16 rounded-2xl bg-white border border-slate-200 flex items-center justify-center shadow-xl shadow-slate-200 group-hover:shadow-slate-300 transition-all overflow-hidden">
-                                     <span class="text-[10px] font-black text-slate-400 rotate-0 group-hover:-rotate-12 transition-transform">#{{ ticket.ticket_number.split('-').pop() }}</span>
-                                     <div class="absolute inset-0 bg-gradient-to-br from-slate-50/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                                <div class="h-12 w-12 rounded-xl bg-white border border-slate-200 flex items-center justify-center shadow-lg shadow-slate-200 group-hover:shadow-slate-300 transition-all overflow-hidden">
+                                     <span class="text-[9px] font-black text-slate-400">#{{ ticket.ticket_number.split('-').pop() }}</span>
                                 </div>
-                                <div class="absolute -bottom-1 -right-1 h-5 w-5 rounded-full border-2 border-white flex items-center justify-center transition-all shadow-sm"
+                                <div class="absolute -bottom-1 -right-1 h-3.5 w-3.5 rounded-full border-2 border-white flex items-center justify-center transition-all shadow-sm"
                                      :class="getStatusClass(ticket.status)">
-                                    <div class="h-2 w-2 rounded-full bg-current"></div>
+                                    <div class="h-1.5 w-1.5 rounded-full bg-current"></div>
                                 </div>
                             </div>
                             <div class="min-w-0">
                                 <div class="flex items-center gap-2">
-                                    <h4 class="text-lg font-black text-slate-900 truncate tracking-tight group-hover:text-slate-700 transition-colors">{{ ticket.subject }}</h4>
-                                    <span :class="getPriorityClass(ticket.priority)" class="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-black uppercase border tracking-tighter">{{ ticket.priority }}</span>
+                                    <h4 class="text-base font-black text-slate-900 truncate tracking-tight group-hover:text-slate-700 transition-colors">{{ ticket.subject }}</h4>
+                                    <span :class="getPriorityClass(ticket.priority)" class="inline-flex items-center px-1.5 py-0.5 rounded text-[8px] font-black uppercase border tracking-tighter">{{ ticket.priority }}</span>
                                 </div>
-                                <div class="flex items-center gap-3 mt-1">
-                                    <span class="text-xs font-bold text-slate-500 flex items-center gap-1.5">
-                                        <svg class="h-3 w-3 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+                                <div class="flex items-center gap-3 mt-0.5">
+                                    <span class="text-[11px] font-bold text-slate-500 flex items-center gap-1">
                                         {{ ticket.created_by }}
                                     </span>
                                     <span class="h-1 w-1 rounded-full bg-slate-200"></span>
-                                    <span class="text-[10px] font-black uppercase tracking-widest text-slate-300">{{ ticket.ticket_number }}</span>
+                                    <span class="text-[9px] font-black uppercase tracking-widest text-slate-300">{{ ticket.ticket_number }}</span>
                                 </div>
                             </div>
                         </div>
