@@ -29,6 +29,7 @@ class DatabaseSeeder extends Seeder
             TicketCategorySeeder::class,
             SlaPolicySeeder::class,
             TicketSeeder::class,
+            KbSeeder::class,
         ]);
     }
 }

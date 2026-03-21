@@ -52,7 +52,10 @@ onMounted(() => {
                     </div>
 
                     <!-- Navigation Links -->
-                    <div class="flex items-center gap-4">
+                    <div class="flex items-center gap-6">
+                        <Link :href="route('public.kb.index')" class="text-sm font-bold text-slate-600 hover:text-slate-900 transition-colors">
+                            Knowledge Base
+                        </Link>
                         <template v-if="$page.props.auth.user">
                             <Link
                                 :href="dashboardRoute"

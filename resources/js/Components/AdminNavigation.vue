@@ -124,6 +124,16 @@ const navigation = [
         description: 'Manage departments and teams'
     },
     {
+        name: 'Knowledge Base',
+        route: 'staff.kb.articles.index',
+        href: route('staff.kb.articles.index'),
+        icon: 'M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253',
+        children: [
+            { name: 'Articles', route: 'staff.kb.articles.index', href: route('staff.kb.articles.index') },
+            { name: 'Categories', route: 'staff.kb.categories.index', href: route('staff.kb.categories.index') },
+        ],
+    },
+    {
         name: 'Settings',
         route: 'admin.settings.index',
         href: route('admin.settings.index'),
@@ -266,8 +276,8 @@ const showTooltip = ref(null);
                 <div class="space-y-6">
                     <div v-for="section in [
                         { label: 'Platform', items: filteredNavigation.slice(0, 3) },
-                        { label: 'Management', items: filteredNavigation.slice(3, 5) },
-                        { label: 'System', items: filteredNavigation.slice(5) }
+                        { label: 'Management', items: filteredNavigation.slice(3, 6) },
+                        { label: 'System', items: filteredNavigation.slice(6) }
                     ]" :key="section.label">
                         <h3 v-if="section.items.length > 0" class="px-4 text-[11px] font-bold text-slate-400 uppercase tracking-[0.15em] mb-3">{{ section.label }}</h3>
                         <ul class="space-y-1">

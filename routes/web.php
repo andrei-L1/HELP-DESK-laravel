@@ -29,6 +29,13 @@ Route::put('/password/update', [NoPasswordController::class, 'update'])
 Route::post('/password/set', [NoPasswordController::class, 'set'])
     ->name('password.set');
 
+// Public Knowledge Base
+Route::group(['prefix' => 'kb'], function () {
+    Route::get('/', [\App\Http\Controllers\PublicKbController::class, 'index'])->name('public.kb.index');
+    Route::get('/category/{slug}', [\App\Http\Controllers\PublicKbController::class, 'category'])->name('public.kb.category');
+    Route::get('/article/{slug}', [\App\Http\Controllers\PublicKbController::class, 'show'])->name('public.kb.show');
+});
+
 // Authenticated + Verified Routes
 Route::middleware(['auth', 'verified'])->group(function () {
 
@@ -52,6 +59,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
     require __DIR__ . '/admin.php';
     require __DIR__ . '/manager.php';
     require __DIR__ . '/agent.php';
+
+    // Staff Knowledge Base Routes (Admin & Agent)
+    Route::middleware(['role:admin|manager|agent'])->prefix('staff/kb')->name('staff.kb.')->group(function () {
+        Route::resource('categories', \App\Http\Controllers\Staff\KbCategoryController::class)->except(['show']);
+        Route::resource('articles', \App\Http\Controllers\Staff\KbArticleController::class)->except(['show']);
+    });
 
     // Pusher Test Routes
     Route::get('/pusher-test', fn () => Inertia::render('PusherTest'))

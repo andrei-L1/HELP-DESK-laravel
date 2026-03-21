@@ -57,15 +57,8 @@ Route::middleware(['role:agent'])
 
 
         // ────────────────────────────────────────────────
-        // Knowledge Base (matches "Knowledge Base" menu item)
+        // Knowledge Base is now handled in web.php under /staff/kb
         // ────────────────────────────────────────────────
-        Route::prefix('kb')->group(function () {
-            Route::get('/', [KnowledgeBaseController::class, 'index'])
-                ->name('kb.index');
-
-            Route::get('/{article}', [KnowledgeBaseController::class, 'show'])
-                ->name('kb.show');
-        });
 
 
         // ────────────────────────────────────────────────
