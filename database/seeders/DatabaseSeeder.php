@@ -30,6 +30,7 @@ class DatabaseSeeder extends Seeder
             SlaPolicySeeder::class,
             TicketSeeder::class,
             KbSeeder::class,
+            CannedResponseSeeder::class,
         ]);
     }
 }
