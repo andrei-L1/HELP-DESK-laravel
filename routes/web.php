@@ -60,10 +60,26 @@ Route::middleware(['auth', 'verified'])->group(function () {
     require __DIR__ . '/manager.php';
     require __DIR__ . '/agent.php';
 
-    // Staff Knowledge Base Routes (Admin & Agent)
+    // Staff Knowledge Base Routes (Admin, Manager & Agent)
     Route::middleware(['role:admin|manager|agent'])->prefix('staff/kb')->name('staff.kb.')->group(function () {
         Route::resource('categories', \App\Http\Controllers\Staff\KbCategoryController::class)->except(['show']);
         Route::resource('articles', \App\Http\Controllers\Staff\KbArticleController::class)->except(['show']);
+    });
+
+    // Staff Canned Responses (management UI)
+    Route::middleware(['role:admin|manager|agent'])->prefix('staff/canned-responses')->name('staff.canned-responses.')->group(function () {
+        Route::get('/',           [\App\Http\Controllers\Staff\CannedResponseController::class, 'index'])  ->name('index');
+        Route::get('/create',     [\App\Http\Controllers\Staff\CannedResponseController::class, 'create']) ->name('create');
+        Route::post('/',          [\App\Http\Controllers\Staff\CannedResponseController::class, 'store'])  ->name('store');
+        Route::get('/{cannedResponse}/edit',  [\App\Http\Controllers\Staff\CannedResponseController::class, 'edit'])   ->name('edit');
+        Route::patch('/{cannedResponse}',     [\App\Http\Controllers\Staff\CannedResponseController::class, 'update']) ->name('update');
+        Route::delete('/{cannedResponse}',    [\App\Http\Controllers\Staff\CannedResponseController::class, 'destroy'])->name('destroy');
+    });
+
+    // Canned Responses JSON API (used by the in-reply picker)
+    Route::middleware(['role:admin|manager|agent'])->prefix('api/canned-responses')->name('api.canned-responses.')->group(function () {
+        Route::get('/search',          [\App\Http\Controllers\Staff\CannedResponseController::class, 'search'])       ->name('search');
+        Route::post('/{cannedResponse}/use', [\App\Http\Controllers\Staff\CannedResponseController::class, 'incrementUse'])->name('use');
     });
 
     // Pusher Test Routes

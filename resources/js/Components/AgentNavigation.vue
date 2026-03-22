@@ -115,6 +115,13 @@ const navigation = [
         description: 'Access solution articles and documentation'
     },
     {
+        name: 'Canned Responses',
+        route: 'staff.canned-responses.index',
+        href: route('staff.canned-responses.index'),
+        icon: 'M13 2L4.09 12.96A1 1 0 005 14.5h6.5L11 22l8.91-10.96A1 1 0 0019 9.5H12.5L13 2z',
+        description: 'Pre-written reply templates for faster support'
+    },
+    {
         name: 'Settings',
         route: 'agent.settings.notifications',
         href: route('agent.settings.notifications'),

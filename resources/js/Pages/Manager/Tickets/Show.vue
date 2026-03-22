@@ -2,6 +2,7 @@
 import { ref, watch, onMounted, onUnmounted, nextTick } from 'vue';
 import ManagerNavigation from '@/Components/ManagerNavigation.vue';
 import SlaTimer from '@/Components/SlaTimer.vue';
+import CannedResponsePicker from '@/Components/CannedResponsePicker.vue';
 import { Head, Link, useForm, usePage } from '@inertiajs/vue3';
 
 const props = defineProps({
@@ -414,17 +415,20 @@ const showActivity = ref(false);
                                             <input v-model="messageForm.is_internal" type="checkbox" class="rounded border-gray-300 text-slate-600 focus:ring-slate-500 mr-2" />
                                             <span>Internal note (not visible to customer)</span>
                                         </label>
-                                        <button
-                                            type="submit"
-                                            class="inline-flex items-center gap-2 rounded-lg bg-slate-700 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-50 transition-colors"
-                                            :disabled="messageForm.processing || !messageForm.body?.trim()"
-                                        >
-                                            <svg v-if="messageForm.processing" class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
-                                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
-                                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                                            </svg>
-                                            {{ messageForm.processing ? 'Sending…' : 'Send Reply' }}
-                                        </button>
+                                        <div class="flex items-center gap-2">
+                                            <CannedResponsePicker @insert="(text) => messageForm.body = text" />
+                                            <button
+                                                type="submit"
+                                                class="inline-flex items-center gap-2 rounded-lg bg-slate-700 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-50 transition-colors"
+                                                :disabled="messageForm.processing || !messageForm.body?.trim()"
+                                            >
+                                                <svg v-if="messageForm.processing" class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+                                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                                                </svg>
+                                                {{ messageForm.processing ? 'Sending…' : 'Send Reply' }}
+                                            </button>
+                                        </div>
                                     </div>
                                 </form>
                             </div>

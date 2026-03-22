@@ -51,7 +51,7 @@ class GoogleSocialiteController extends Controller
 
                 Auth::login($existingUser);
 
-                return $this->redirectUser($existingUser);
+                return $this->redirectUserWithFlash($existingUser);
             }
 
             /*
@@ -108,7 +108,7 @@ class GoogleSocialiteController extends Controller
 
             session()->flash('status', 'Welcome to HelpDesk! Your account has been created successfully.');
 
-            return $this->redirectUser($user);
+            return $this->redirectUser($user); // flash already set above for new users
 
         } catch (\Exception $e) {
 
@@ -121,6 +121,33 @@ class GoogleSocialiteController extends Controller
         }
     }
 
+    /**
+     * Redirect existing OAuth users with a role-based welcome flash message.
+     */
+    private function redirectUserWithFlash(User $user)
+    {
+        if ($user->isAdmin()) {
+            session()->flash('status', 'Welcome, Administrator!');
+            return redirect()->intended(route('admin.dashboard'));
+        }
+
+        if ($user->isManager()) {
+            session()->flash('status', 'Welcome back, Manager!');
+            return redirect()->intended(route('manager.dashboard'));
+        }
+
+        if ($user->isAgent()) {
+            session()->flash('status', 'Welcome back!');
+            return redirect()->intended(route('agent.dashboard'));
+        }
+
+        session()->flash('status', 'Welcome back!');
+        return redirect()->intended(route('user.dashboard'));
+    }
+
+    /**
+     * Redirect user without overriding an already-set flash message (for new signups).
+     */
     private function redirectUser(User $user)
     {
         if ($user->isAdmin()) {
