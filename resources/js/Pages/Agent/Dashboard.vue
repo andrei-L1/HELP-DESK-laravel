@@ -1,11 +1,8 @@
 <!-- resources/js/Pages/Agent/Dashboard.vue -->
 <script setup>
-import AgentNavigation from '@/Components/AgentNavigation.vue'; // ← assuming you created AgentLayout or renamed to AgentNavigation
-import { Head, Link, router } from '@inertiajs/vue3';
-import { computed } from 'vue';
-import { usePage } from '@inertiajs/vue3';
-
-const page = usePage();
+import { Head, Link } from '@inertiajs/vue3';
+import AgentNavigation from '@/Components/AgentNavigation.vue';
+import TrendCard from '@/Components/TrendCard.vue';
 
 const props = defineProps({
     stats: {
@@ -24,48 +21,27 @@ const props = defineProps({
     },
 });
 
-// Navigation / redirect helpers
-const viewMyTickets = (status = null) => {
-    const query = status ? { status } : {};
-    router.visit(route('agent.tickets.index', query));
-};
-
-const createNewTicket = () => {
-    router.visit(route('agent.tickets.create'));
-};
-
-const viewTicket = (ticketId) => {
-    router.visit(route('agent.tickets.show', ticketId));
-};
-
-const viewAllMyTickets = () => {
-    router.visit(route('agent.tickets.index'));
-};
-
-const viewKnowledgeBase = () => {
-    router.visit(route('agent.kb.index')); // adjust route name if different
-};
-
-// Status & priority badge helpers (same as manager)
-const getStatusColor = (status) => {
-    const colors = {
-        'open': 'bg-blue-100 text-blue-800',
-        'pending': 'bg-yellow-100 text-yellow-800',
-        'resolved': 'bg-green-100 text-green-800',
-        'closed': 'bg-gray-100 text-gray-800',
-        'urgent': 'bg-red-100 text-red-800',
+// Since Agent backend is using text-based status/priority instead of objects,
+// we provide hex mapping for the generic strings so they fit the minimalist UI perfectly.
+const getStatusHex = (status) => {
+    const map = {
+        'open': '#3b82f6',     // Blue
+        'pending': '#f59e0b',  // Amber
+        'resolved': '#10b981', // Emerald
+        'closed': '#64748b',   // Slate
+        'urgent': '#ef4444',   // Red
     };
-    return colors[status?.toLowerCase()] || 'bg-gray-100 text-gray-800';
+    return map[status?.toLowerCase()] || '#64748b';
 };
 
-const getPriorityColor = (priority) => {
-    const colors = {
-        'high': 'bg-red-100 text-red-800',
-        'urgent': 'bg-red-100 text-red-800',
-        'medium': 'bg-yellow-100 text-yellow-800',
-        'low': 'bg-green-100 text-green-800',
+const getPriorityHex = (priority) => {
+    const map = {
+        'high': '#ef4444',     // Red
+        'urgent': '#ef4444',   // Red
+        'medium': '#f59e0b',   // Amber
+        'low': '#10b981',      // Emerald
     };
-    return colors[priority?.toLowerCase()] || 'bg-gray-100 text-gray-800';
+    return map[priority?.toLowerCase()] || '#64748b';
 };
 </script>
 
@@ -74,208 +50,162 @@ const getPriorityColor = (priority) => {
 
     <AgentNavigation>
         <template #header-title>
-            <h1 class="text-xl font-semibold text-gray-900">My Dashboard</h1>
+            <div class="flex items-center gap-2">
+                <span class="text-xl font-bold tracking-tight text-emerald-950">Agent Workspace</span>
+            </div>
         </template>
 
-        <div class="p-6">
-            <!-- Welcome -->
-            <div class="mb-8">
-                <h2 class="text-3xl font-bold text-gray-900">
-                    Hi {{ page.props.auth.user.first_name }}!
-                </h2>
-                <p class="mt-2 text-gray-600">
-                    Here's a quick overview of your assigned tickets and activity.
-                </p>
-            </div>
-
-            <!-- Stats Cards -->
-            <div class="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-                <!-- Total My Tickets -->
-                <button
-                    @click="viewMyTickets"
-                    class="rounded-lg border border-gray-200 bg-white p-6 text-left shadow-sm transition-all hover:border-emerald-300 hover:shadow-md cursor-pointer"
-                >
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <p class="text-sm font-medium text-gray-600">My Tickets</p>
-                            <p class="mt-2 text-3xl font-bold text-gray-900">{{ stats.total_my_tickets }}</p>
-                        </div>
-                        <div class="flex h-12 w-12 items-center justify-center rounded-lg bg-emerald-100">
-                            <svg class="h-6 w-6 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                            </svg>
-                        </div>
-                    </div>
-                </button>
-
-                <!-- Open Tickets -->
-                <button
-                    @click="viewMyTickets('open')"
-                    class="rounded-lg border border-gray-200 bg-white p-6 text-left shadow-sm transition-all hover:border-blue-300 hover:shadow-md cursor-pointer"
-                >
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <p class="text-sm font-medium text-gray-600">Open</p>
-                            <p class="mt-2 text-3xl font-bold text-gray-900">{{ stats.my_open_tickets }}</p>
-                        </div>
-                        <div class="flex h-12 w-12 items-center justify-center rounded-lg bg-blue-100">
-                            <svg class="h-6 w-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                        </div>
-                    </div>
-                </button>
-
-                <!-- Pending Tickets -->
-                <button
-                    @click="viewMyTickets('pending')"
-                    class="rounded-lg border border-gray-200 bg-white p-6 text-left shadow-sm transition-all hover:border-yellow-300 hover:shadow-md cursor-pointer"
-                >
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <p class="text-sm font-medium text-gray-600">Pending Reply</p>
-                            <p class="mt-2 text-3xl font-bold text-gray-900">{{ stats.my_pending_tickets }}</p>
-                        </div>
-                        <div class="flex h-12 w-12 items-center justify-center rounded-lg bg-yellow-100">
-                            <svg class="h-6 w-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                        </div>
-                    </div>
-                </button>
-
-                <!-- Avg Response Time -->
-                <div class="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <p class="text-sm font-medium text-gray-600">Avg Response Time</p>
-                            <p class="mt-2 text-3xl font-bold text-gray-900">{{ stats.avg_response_time }}</p>
-                        </div>
-                        <div class="flex h-12 w-12 items-center justify-center rounded-lg bg-purple-100">
-                            <svg class="h-6 w-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
-                            </svg>
-                        </div>
-                    </div>
+        <div class="max-w-[1400px] mx-auto space-y-12 pb-20 pt-4">
+            <!-- New Minimalist Welcome -->
+            <div class="flex flex-col md:flex-row md:items-end justify-between gap-6 px-2">
+                <div class="space-y-1">
+                    <h2 class="text-3xl font-bold tracking-tight text-emerald-950">Welcome, {{ $page.props.auth.user.first_name }}.</h2>
+                    <p class="font-medium text-emerald-900/60">Here's the summary of your support queue.</p>
+                </div>
+                <div class="flex items-center gap-3">
+                    <Link :href="route('agent.tickets.create')" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-bold shadow-lg shadow-emerald-200 hover:bg-emerald-700 transition-all active:scale-95">
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4" /></svg>
+                        New Ticket
+                    </Link>
+                    <Link :href="route('agent.tickets.index')" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-white text-emerald-950 text-sm font-bold border border-emerald-100 shadow-sm hover:border-emerald-200 transition-all active:scale-95">
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
+                        All Tickets
+                    </Link>
                 </div>
             </div>
 
-            <!-- Quick Actions -->
-            <div class="mt-8">
-                <h3 class="text-lg font-semibold text-gray-900">Quick Actions</h3>
-                <div class="mt-4 grid gap-4 md:grid-cols-3">
-                    <button
-                        @click="createNewTicket"
-                        class="flex w-full items-center gap-3 rounded-lg border border-gray-200 bg-white p-4 text-left shadow-sm transition-all hover:border-emerald-300 hover:shadow-md"
-                    >
-                        <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-100">
-                            <svg class="h-5 w-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                            </svg>
-                        </div>
-                        <div>
-                            <p class="font-medium text-gray-900">New Ticket</p>
-                            <p class="text-sm text-gray-500">Create a new support request</p>
-                        </div>
-                    </button>
-
-                    <button
-                        @click="viewMyTickets"
-                        class="flex w-full items-center gap-3 rounded-lg border border-gray-200 bg-white p-4 text-left shadow-sm transition-all hover:border-emerald-300 hover:shadow-md"
-                    >
-                        <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-100">
-                            <svg class="h-5 w-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                            </svg>
-                        </div>
-                        <div>
-                            <p class="font-medium text-gray-900">My Tickets</p>
-                            <p class="text-sm text-gray-500">View all assigned tickets</p>
-                        </div>
-                    </button>
-
-                    <button
-                        @click="viewKnowledgeBase"
-                        class="flex w-full items-center gap-3 rounded-lg border border-gray-200 bg-white p-4 text-left shadow-sm transition-all hover:border-emerald-300 hover:shadow-md"
-                    >
-                        <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-100">
-                            <svg class="h-5 w-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                            </svg>
-                        </div>
-                        <div>
-                            <p class="font-medium text-gray-900">Knowledge Base</p>
-                            <p class="text-sm text-gray-500">Search solutions & articles</p>
-                        </div>
-                    </button>
-                </div>
+            <!-- Stats Using TrendCard -->
+            <div class="grid gap-8 md:grid-cols-2 lg:grid-cols-4 px-1">
+                <Link :href="route('agent.tickets.index')">
+                    <TrendCard 
+                        label="My Assignments" 
+                        :value="stats.total_my_tickets" 
+                        :trend="[2, 4, 3, 5, 2, 6, 8]" 
+                        percentage="+12%"
+                        color="slate"
+                        class="cursor-pointer hover:-translate-y-1 transition-transform duration-300"
+                    />
+                </Link>
+                <Link :href="route('agent.tickets.index', { status: 'open' })">
+                    <TrendCard 
+                        label="Open Tasks" 
+                        :value="stats.my_open_tickets" 
+                        :trend="[5, 4, 3, 6, 4, 3, 2]" 
+                        percentage="-5%"
+                        color="emerald"
+                        class="cursor-pointer hover:-translate-y-1 transition-transform duration-300"
+                    />
+                </Link>
+                <Link :href="route('agent.tickets.index', { status: 'pending' })">
+                    <TrendCard 
+                        label="Pending Reply" 
+                        :value="stats.my_pending_tickets" 
+                        :trend="[1, 2, 4, 2, 3, 1, 3]" 
+                        percentage="+8%"
+                        color="amber"
+                        class="cursor-pointer hover:-translate-y-1 transition-transform duration-300"
+                    />
+                </Link>
+                <!-- Replacing traditional stat with average response time inside TrendCard -->
+                <TrendCard 
+                    label="Response Time" 
+                    :value="stats.avg_response_time" 
+                    :trend="[8, 7, 7, 6, 5, 5, 4]" 
+                    percentage="-10%"
+                    color="cyan"
+                />
             </div>
 
-            <!-- Recent / Assigned Tickets -->
-            <div class="mt-8">
-                <div class="mb-4 flex items-center justify-between">
-                    <h3 class="text-lg font-semibold text-gray-900">Recent / Assigned Tickets</h3>
-                    <button
-                        @click="viewAllMyTickets"
-                        class="text-sm font-medium text-emerald-700 hover:text-emerald-900"
-                    >
-                        View All →
-                    </button>
+            <!-- Main Content Area -->
+            <div class="grid gap-10 lg:grid-cols-12 px-1">
+                
+                <!-- Left: Quick Info & Actions -->
+                <div class="lg:col-span-4 space-y-8">
+                    <!-- Shift Metrics -->
+                    <div class="bg-white rounded-2xl p-8 border border-emerald-100 shadow-sm">
+                        <h3 class="text-sm font-black text-emerald-900/60 uppercase tracking-widest mb-6 transition-colors hover:text-emerald-900">Shift Metrics</h3>
+                        <div class="space-y-4">
+                            <div class="flex items-center justify-between p-4 rounded-xl bg-emerald-50/50 border border-emerald-50 hover:bg-white hover:border-emerald-100 hover:shadow-md transition-all group">
+                                <div class="flex items-center gap-4">
+                                    <div class="bg-emerald-100 text-emerald-600 h-10 w-10 rounded-lg flex items-center justify-center font-bold text-xs uppercase transition-transform group-hover:scale-110">
+                                        R
+                                    </div>
+                                    <span class="text-sm font-bold text-emerald-600 group-hover:text-emerald-900 transition-colors">Resolved Today</span>
+                                </div>
+                                <span class="text-lg font-black text-emerald-950">{{ stats.my_resolved_tickets }}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Quick Navigation -->
+                    <div class="space-y-4">
+                        <Link :href="route('staff.kb.categories.index')" class="flex items-center justify-between p-5 rounded-2xl bg-white border border-emerald-100 shadow-sm hover:border-emerald-200 hover:shadow-xl transition-all group block">
+                            <div class="flex items-center gap-4">
+                                <div class="h-12 w-12 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white transition-all">
+                                    <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>
+                                </div>
+                                <span class="font-bold text-emerald-950">Knowledge Base</span>
+                            </div>
+                            <svg class="h-5 w-5 text-emerald-300 group-hover:translate-x-1 group-hover:text-emerald-500 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+                        </Link>
+                    </div>
                 </div>
 
-                <div v-if="recent_tickets.length > 0" class="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
-                    <table class="min-w-full divide-y divide-gray-200">
-                        <thead class="bg-gray-50">
-                            <tr>
-                                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Ticket #</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Subject</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Status</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Priority</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Created</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-gray-200 bg-white">
-                            <tr v-for="ticket in recent_tickets" :key="ticket.id" class="hover:bg-gray-50">
-                                <td class="whitespace-nowrap px-6 py-4 text-sm font-medium text-gray-900">
-                                    {{ ticket.ticket_number }}
-                                </td>
-                                <td class="px-6 py-4 text-sm text-gray-900">
-                                    {{ ticket.subject }}
-                                </td>
-                                <td class="whitespace-nowrap px-6 py-4 text-sm">
-                                    <span class="inline-flex rounded-full px-2 py-1 text-xs font-semibold" :class="getStatusColor(ticket.status)">
+                <!-- Right: Recent Tickets -->
+                <div class="lg:col-span-8 space-y-6">
+                    <div class="flex items-center justify-between px-2">
+                        <h3 class="text-xl font-bold tracking-tight text-emerald-950">Assigned To Me</h3>
+                        <Link :href="route('agent.tickets.index')" class="text-xs font-bold text-emerald-400 hover:text-emerald-600 transition-colors">View all assigned</Link>
+                    </div>
+
+                    <div class="bg-white rounded-2xl border border-emerald-100 shadow-sm overflow-hidden">
+                        <div v-if="recent_tickets.length > 0" class="divide-y divide-emerald-50">
+                            <Link v-for="ticket in recent_tickets" :key="ticket.id" :href="route('agent.tickets.show', ticket.id)" 
+                                class="flex flex-col sm:flex-row sm:items-center justify-between py-5 px-7 hover:bg-emerald-50/30 transition-all group block">
+                                <div class="flex items-start gap-5">
+                                    <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-emerald-50/50 text-[10px] font-black text-emerald-400 border border-emerald-100 group-hover:border-emerald-200 group-hover:bg-white group-hover:text-emerald-600 transition-all shadow-sm">
+                                        #{{ ticket.ticket_number.toString().slice(-3) }}
+                                    </div>
+                                    <div class="min-w-0">
+                                        <h4 class="text-sm font-bold text-emerald-950 truncate mb-1 group-hover:text-emerald-700 transition-colors">{{ ticket.subject }}</h4>
+                                        <div class="flex items-center gap-3 text-[11px] font-medium text-emerald-900/40">
+                                            <span>Received {{ ticket.created_at }}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="mt-4 sm:mt-0 flex items-center gap-4">
+                                     <div class="flex items-center gap-1">
+                                        <span class="h-2 w-2 rounded-full" :style="{ backgroundColor: getPriorityHex(ticket.priority) }"></span>
+                                        <span class="text-[10px] font-bold text-slate-500 uppercase tracking-widest hidden sm:block">Priority</span>
+                                    </div>
+                                    <div class="h-8 w-px bg-emerald-50 hidden sm:block"></div>
+                                    <span class="px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest border" :style="{ color: getStatusHex(ticket.status), backgroundColor: getStatusHex(ticket.status) + '10', borderColor: getStatusHex(ticket.status) + '20' }">
                                         {{ ticket.status }}
                                     </span>
-                                </td>
-                                <td class="whitespace-nowrap px-6 py-4 text-sm">
-                                    <span class="inline-flex rounded-full px-2 py-1 text-xs font-semibold" :class="getPriorityColor(ticket.priority)">
-                                        {{ ticket.priority }}
-                                    </span>
-                                </td>
-                                <td class="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
-                                    {{ ticket.created_at }}
-                                </td>
-                                <td class="whitespace-nowrap px-6 py-4 text-sm">
-                                    <button @click="viewTicket(ticket.id)" class="text-emerald-600 hover:text-emerald-900">
-                                        View
-                                    </button>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
+                                </div>
+                            </Link>
+                        </div>
 
-                <div v-else class="rounded-lg border border-gray-200 bg-white p-12 text-center shadow-sm">
-                    <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
-                    <h3 class="mt-4 text-sm font-medium text-gray-900">No tickets assigned yet</h3>
-                    <p class="mt-2 text-sm text-gray-500">
-                        When new tickets are assigned to you, they will appear here.
-                    </p>
+                        <!-- Empty State -->
+                        <div v-else class="py-24 flex flex-col items-center text-center px-4">
+                            <div class="relative mb-8">
+                                <div class="absolute inset-0 bg-emerald-50 rounded-full blur-3xl opacity-50 scale-150"></div>
+                                <div class="relative flex h-20 w-20 items-center justify-center rounded-2xl bg-white shadow-xl shadow-emerald-100/50 border border-emerald-50">
+                                     <svg class="h-10 w-10 text-emerald-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                    </svg>
+                                </div>
+                            </div>
+                            <h4 class="text-xl font-black text-emerald-950 tracking-tight mb-2">Queue is clear</h4>
+                            <p class="text-emerald-900/50 max-w-xs font-medium italic">You have no tickets currently assigned to you.</p>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
     </AgentNavigation>
 </template>
+
+<style scoped>
+/* Inherit cleanly */
+</style>
