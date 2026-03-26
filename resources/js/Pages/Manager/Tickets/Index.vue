@@ -1,7 +1,7 @@
 <script setup>
 import ManagerNavigation from '@/Components/ManagerNavigation.vue';
 import { Head, Link, router } from '@inertiajs/vue3';
-import { ref, onMounted, onUnmounted, watch } from 'vue';
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 
 const props = defineProps({
     tickets: {
