@@ -104,7 +104,7 @@ class TicketObserver
         // 3. Trigger Real-time Update via Pusher
         // We broadcast if major fields change that affect the UI (SLA, status, assignment)
         if ($ticket->wasChanged(['status_id', 'priority_id', 'assigned_to', 'due_at', 'sla_policy_id', 'is_sla_breached'])) {
-            broadcast(new \App\Events\TicketUpdated($ticket));
+            broadcast(new \App\Events\TicketUpdated('updated', $ticket->id, $ticket->created_by));
         }
     }
 
