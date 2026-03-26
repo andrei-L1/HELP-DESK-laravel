@@ -201,6 +201,8 @@ class UserTicketController extends Controller
             });
         });
 
+        event(new \App\Events\TicketUpdated('created', $ticket->id, Auth::id()));
+
         return redirect()->route('user.tickets.show', $ticket->id)
             ->with('success', 'Ticket created successfully!');
     }
@@ -263,6 +265,8 @@ class UserTicketController extends Controller
             'old_value' => null,
             'new_value' => 'User reply',
         ]);
+
+        event(new \App\Events\TicketUpdated('replied', $ticket->id, $user->id));
 
         return redirect()->route('user.tickets.show', $ticket->id);
     }

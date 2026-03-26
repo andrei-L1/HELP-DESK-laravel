@@ -3,7 +3,6 @@
 namespace App\Events;
 
 use App\Models\Ticket;
-use Illuminate\Broadcasting\Channel;
 use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
@@ -14,41 +13,35 @@ class TicketUpdated implements ShouldBroadcastNow
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
-    public $ticket;
+    public string $action;
+    public int $ticketId;
+    public ?int $creatorId;
 
     /**
      * Create a new event instance.
+     *
+     * @param string   $action    The action that occurred: 'created', 'updated', 'replied', etc.
+     * @param int      $ticketId  The ticket that was affected
+     * @param int|null $creatorId The user who originally created the ticket
      */
-    public function __construct(Ticket $ticket)
+    public function __construct(string $action, int $ticketId, ?int $creatorId = null)
     {
-        // Load relationships needed for the frontend display
-        $this->ticket = $ticket->load(['status', 'priority', 'assignee', 'department', 'category', 'creator']);
-    }
-
-    /**
-     * Data to broadcast.
-     */
-    public function broadcastWith(): array
-    {
-        return [
-            'ticket' => (new \App\Http\Resources\TicketResource($this->ticket))->resolve()
-        ];
+        $this->action = $action;
+        $this->ticketId = $ticketId;
+        $this->creatorId = $creatorId;
     }
 
     /**
      * Get the channels the event should broadcast on.
-     *
-     * @return array<int, \Illuminate\Broadcasting\Channel>
      */
     public function broadcastOn(): array
     {
         $channels = [
-            new PrivateChannel('ticket.' . $this->ticket->id),
-            new PrivateChannel('staff.tickets')
+            new PrivateChannel('staff.tickets'),
         ];
 
-        if ($this->ticket->created_by) {
-            $channels[] = new PrivateChannel('user.' . $this->ticket->created_by . '.tickets');
+        if ($this->creatorId) {
+            $channels[] = new PrivateChannel("user.{$this->creatorId}.tickets");
         }
 
         return $channels;
@@ -59,6 +52,18 @@ class TicketUpdated implements ShouldBroadcastNow
      */
     public function broadcastAs(): string
     {
-        return 'TicketUpdated';
+        return 'ticket.updated';
+    }
+
+    /**
+     * Get the data to broadcast.
+     */
+    public function broadcastWith(): array
+    {
+        return [
+            'action' => $this->action,
+            'ticket_id' => $this->ticketId,
+            'timestamp' => now()->toIso8601String(),
+        ];
     }
 }

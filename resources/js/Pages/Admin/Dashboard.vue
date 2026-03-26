@@ -2,6 +2,7 @@
 import AdminNavigation from '@/Components/AdminNavigation.vue';
 import { Head, Link, router } from '@inertiajs/vue3';
 import TrendCard from '@/Components/TrendCard.vue';
+import { useRealtimeDashboard } from '@/Composables/useRealtimeDashboard';
 
 const props = defineProps({
     stats: {
@@ -22,6 +23,8 @@ const props = defineProps({
         default: () => [],
     },
 });
+
+const { isLive, lastUpdated } = useRealtimeDashboard('staff.tickets', ['stats', 'recent_tickets', 'tickets_by_status']);
 
 const viewAllTickets = () => {
     router.visit(route('admin.tickets.index'));
@@ -50,6 +53,10 @@ const viewTicket = (ticketId) => {
         <template #header-title>
             <div class="flex items-center gap-2">
                 <span class="text-xl font-bold text-slate-900 tracking-tight">Dashboard</span>
+                <div v-if="isLive" class="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-100/80 border border-emerald-200/80 ml-2" title="Real-time updates active">
+                    <div class="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
+                    <span class="text-[10px] font-bold text-emerald-700 uppercase tracking-wider">Live</span>
+                </div>
             </div>
         </template>
 

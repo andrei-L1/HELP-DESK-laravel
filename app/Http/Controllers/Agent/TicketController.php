@@ -170,6 +170,8 @@ class TicketController extends Controller
             });
         });
 
+        event(new \App\Events\TicketUpdated('created', $ticket->id, $ticket->created_by));
+
         return redirect()->route('agent.tickets.show', $ticket->id)
             ->with('success', 'Ticket created successfully.');
     }
@@ -205,6 +207,7 @@ class TicketController extends Controller
         $this->authorizeAgentAccess($ticket);
 
         // Validation + update logic
+        event(new \App\Events\TicketUpdated('updated', $ticket->id, $ticket->created_by));
 
         return redirect()->route('agent.tickets.show', $ticket)
             ->with('success', 'Ticket updated.');
@@ -255,6 +258,8 @@ class TicketController extends Controller
             'new_value' => $isInternal ? 'Internal note' : 'Reply',
         ]);
 
+        event(new \App\Events\TicketUpdated('replied', $ticket->id, $ticket->created_by));
+
         return back()->with('success', 'Reply added.');
     }
 
@@ -266,6 +271,8 @@ class TicketController extends Controller
             'status_id' => TicketStatus::where('name', 'Resolved')->firstOrFail()->id,
         ]);
 
+        event(new \App\Events\TicketUpdated('resolved', $ticket->id, $ticket->created_by));
+
         return back()->with('success', 'Ticket marked as resolved.');
     }
 
@@ -276,6 +283,8 @@ class TicketController extends Controller
         $ticket->update([
             'status_id' => TicketStatus::where('name', 'Open')->firstOrFail()->id,
         ]);
+
+        event(new \App\Events\TicketUpdated('reopened', $ticket->id, $ticket->created_by));
 
         return back()->with('success', 'Ticket reopened.');
     }

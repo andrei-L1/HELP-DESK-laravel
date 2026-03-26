@@ -4,6 +4,7 @@ import TrendCard from '@/Components/TrendCard.vue';
 import { Head, Link, router } from '@inertiajs/vue3';
 import { computed } from 'vue';
 import { usePage } from '@inertiajs/vue3';
+import { useRealtimeDashboard } from '@/Composables/useRealtimeDashboard';
 
 const page = usePage();
 
@@ -36,6 +37,8 @@ const hasPermission = (permission) => {
     const userPermissions = page.props.auth?.user?.permissions || [];
     return userPermissions.includes(permission);
 };
+
+const { isLive, lastUpdated } = useRealtimeDashboard('staff.tickets', ['stats', 'recent_tickets', 'team_performance', 'tickets_by_status']);
 
 const canEditTickets = computed(() => hasPermission('edit_ticket'));
 const canManageUsers = computed(() => hasPermission('manage_users'));
@@ -70,6 +73,10 @@ const getPriorityHex = (priority) => {
         <template #header-title>
             <div class="flex items-center gap-2">
                 <span class="text-xl font-bold tracking-tight text-violet-950">Team Dashboard</span>
+                <div v-if="isLive" class="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-violet-100/80 border border-violet-200/80 ml-2" title="Real-time updates active">
+                    <div class="h-1.5 w-1.5 rounded-full bg-violet-500 animate-pulse"></div>
+                    <span class="text-[10px] font-bold text-violet-700 uppercase tracking-wider">Live</span>
+                </div>
             </div>
         </template>
 
