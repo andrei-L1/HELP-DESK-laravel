@@ -80,6 +80,7 @@ const viewTicket = (ticketId) => {
                     :trend="[20, 35, 30, 45, 40, 60, 55]" 
                     percentage="+18%"
                     color="slate"
+                    subtitle="all time total"
                     @click="viewAllTickets"
                     class="cursor-pointer"
                 />
@@ -89,6 +90,7 @@ const viewTicket = (ticketId) => {
                     :trend="[10, 15, 8, 12, 20, 14, 18]" 
                     percentage="+4%"
                     color="rose"
+                    subtitle="currently unresolved"
                     @click="viewAllTickets"
                     class="cursor-pointer"
                 />
@@ -98,6 +100,7 @@ const viewTicket = (ticketId) => {
                     :trend="[50, 52, 55, 54, 58, 60, 62]" 
                     percentage="+12%"
                     color="emerald"
+                    subtitle="active this week"
                     @click="addUser"
                     class="cursor-pointer"
                 />
@@ -107,6 +110,7 @@ const viewTicket = (ticketId) => {
                     :trend="[8, 8, 9, 9, 9, 10, 10]" 
                     percentage="+2%"
                     color="violet"
+                    subtitle="total departments"
                 />
             </div>
 

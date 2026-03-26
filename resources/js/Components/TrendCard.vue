@@ -7,6 +7,7 @@ const props = defineProps({
     trend: { type: Array, default: () => [10, 25, 45, 30, 55, 70, 85] },
     color: { type: String, default: 'slate' },
     percentage: { type: String, default: '+12%' },
+    subtitle: { type: String, default: 'vs. last period' },
 });
 
 // Generate SVG Path for the trend line
@@ -59,7 +60,7 @@ const colorClasses = {
             <div class="flex items-end justify-between gap-4 mt-auto">
                 <div class="flex flex-col gap-0.5">
                     <span class="text-4xl font-black text-slate-900 tracking-tighter leading-none">{{ value }}</span>
-                    <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">Growth Indicator</span>
+                    <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">{{ subtitle }}</span>
                 </div>
 
                 <!-- SVG Sparkline -->

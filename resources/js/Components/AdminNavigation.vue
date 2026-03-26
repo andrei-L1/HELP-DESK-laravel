@@ -227,6 +227,7 @@ const isImpersonating = computed(() => !!impersonation.value);
 
 // Tooltip helper
 const showTooltip = ref(null);
+const isMac = /Mac|iPhone|iPad|iPod/.test(navigator.platform);
 </script>
 
 <template>
@@ -257,13 +258,13 @@ const showTooltip = ref(null);
                     <input
                         v-model="searchQuery"
                         type="text"
-                        placeholder="Search... (Ctrl+K)"
+                        :placeholder="isMac ? 'Search... (⌘K)' : 'Search... (Ctrl+K)'"
                         class="w-full rounded-xl border-none bg-slate-100/80 px-4 py-2.5 pl-10 text-sm placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-slate-900/5 transition-all duration-300"
                         @focus="isSearchFocused = true"
                         @blur="isSearchFocused = false"
                     />
                     <div class="absolute right-3.5 top-2.5 hidden lg:flex items-center gap-1 opacity-40 group-focus-within:opacity-0 transition-opacity">
-                        <span class="px-1.5 py-0.5 rounded-lg border border-slate-300 text-[9px] font-black text-slate-500 uppercase">CMD</span>
+                        <span class="px-1.5 py-0.5 rounded-lg border border-slate-300 text-[9px] font-black text-slate-500">{{ isMac ? '⌘' : 'Ctrl' }}</span>
                         <span class="px-1.5 py-0.5 rounded-lg border border-slate-300 text-[9px] font-black text-slate-500 uppercase">K</span>
                     </div>
                     <svg

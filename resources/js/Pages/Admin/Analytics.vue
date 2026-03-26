@@ -155,7 +155,8 @@ const exportData = () => {
                         </div>
                     </div>
                     
-                    <div class="flex items-end justify-between h-48 gap-4 pb-2">
+                    <!-- Chart or Empty State -->
+                    <div v-if="volume_data.length > 0 && volume_data.some(d => d.count > 0)" class="flex items-end justify-between h-48 gap-4 pb-2">
                         <div v-for="data in volume_data" :key="data.day" class="flex-1 flex flex-col items-center group">
                             <div 
                                 class="w-full bg-slate-100 rounded-t-xl hover:bg-slate-900 transition-all duration-500 relative cursor-pointer" 
@@ -166,6 +167,19 @@ const exportData = () => {
                                 </div>
                             </div>
                             <span class="mt-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">{{ data.day }}</span>
+                        </div>
+                    </div>
+
+                    <!-- Empty State -->
+                    <div v-else class="flex flex-col items-center justify-center h-48 gap-4 text-center">
+                        <div class="flex h-16 w-16 items-center justify-center rounded-2xl bg-slate-50 border border-slate-100">
+                            <svg class="h-8 w-8 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 17v-2a4 4 0 10-8 0v2m8-2V7a2 2 0 012-2h2a2 2 0 012 2v8m4 0v-4a2 2 0 012-2h2a2 2 0 012 2v4" />
+                            </svg>
+                        </div>
+                        <div>
+                            <p class="text-sm font-black text-slate-400 uppercase tracking-widest">No ticket data</p>
+                            <p class="text-xs font-medium text-slate-300 mt-1">No tickets were created in this period</p>
                         </div>
                     </div>
                 </div>
