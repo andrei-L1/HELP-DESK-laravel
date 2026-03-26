@@ -1,6 +1,6 @@
 <script setup>
 import { ref, watch, onMounted, onUnmounted, nextTick } from 'vue';
-import { Head, Link, useForm, usePage } from '@inertiajs/vue3';
+import { Head, Link, useForm, router, usePage } from '@inertiajs/vue3';
 import UserNavigation from '@/Components/UserNavigation.vue';
 import SlaTimer from '@/Components/SlaTimer.vue';
 
@@ -61,9 +61,11 @@ onMounted(() => {
                 }, 3000);
             });
         
-        echoChannel.listen('.TicketUpdated', (e) => {
-            console.log('[Echo] Received TicketUpdated:', e.ticket);
-            Object.assign(props.ticket, e.ticket);
+        echoChannel.listen('.ticket.updated', (e) => {
+            console.log('[Echo] Received TicketUpdated signal:', e);
+            if (e.ticket_id === props.ticket.id) {
+                router.reload({ only: ['ticket', 'sla_policy', 'activity_logs'] });
+            }
         });
 
         console.log('[Echo] Channel state:', window.Echo.connector.pusher.connection.state);

@@ -22,7 +22,7 @@ class TicketMessageObserver
 
         // 2a. Update Ticket's updated_at and broadcast update to refresh lists
         $ticket->touch();
-        broadcast(new \App\Events\TicketUpdated($ticket));
+        broadcast(new \App\Events\TicketUpdated('replied', $ticket->id, $ticket->created_by));
 
         // Determine recipients
         $recipients = collect();

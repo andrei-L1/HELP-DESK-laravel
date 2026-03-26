@@ -186,6 +186,8 @@ class AdminTicketController extends Controller
 
         $ticket->save();
 
+        event(new \App\Events\TicketUpdated('updated', $ticket->id, $ticket->created_by));
+
         return redirect()->route('admin.tickets.show', $ticket->id);
     }
 
@@ -214,6 +216,8 @@ class AdminTicketController extends Controller
         }
 
         $this->logTicketActivity($ticket->id, 'message_added', null, $isInternal ? 'Internal note' : 'Reply');
+
+        event(new \App\Events\TicketUpdated('replied', $ticket->id, $ticket->created_by));
 
         return redirect()->route('admin.tickets.show', $ticket->id);
     }
@@ -313,6 +317,7 @@ class AdminTicketController extends Controller
                     $this->logTicketActivity($ticket->id, 'assignment_changed', 'Unassigned', $assigneeLabel);
                 }
 
+                event(new \App\Events\TicketUpdated('created', $ticket->id, $ticket->created_by));
 
                 return $ticket;
             });
@@ -539,6 +544,11 @@ class AdminTicketController extends Controller
 
         Ticket::whereIn('id', $ids)->delete();
 
+        foreach ($ids as $id) {
+            // We don't have the creator ID handy without querying, but broadcasting to staff is enough for bulk deletes
+            event(new \App\Events\TicketUpdated('deleted', $id, null));
+        }
+
         return redirect()->back()->with('success', count($ids) . ' tickets deleted successfully.');
     }
 
@@ -556,6 +566,9 @@ class AdminTicketController extends Controller
 
         if ($statusId) {
             Ticket::whereIn('id', $ids)->update(['status_id' => $statusId]);
+            foreach ($ids as $id) {
+                event(new \App\Events\TicketUpdated('updated', $id, null));
+            }
         }
 
         return redirect()->back()->with('success', count($ids) . ' tickets updated successfully.');

@@ -1,7 +1,8 @@
 <script setup>
-import { Head, Link } from '@inertiajs/vue3';
+import { Head, Link, usePage } from '@inertiajs/vue3';
 import UserNavigation from '@/Components/UserNavigation.vue';
 import TrendCard from '@/Components/TrendCard.vue';
+import { useRealtimeDashboard } from '@/Composables/useRealtimeDashboard';
 
 const props = defineProps({
     stats: {
@@ -13,6 +14,10 @@ const props = defineProps({
         required: true,
     },
 });
+
+const page = usePage();
+const userId = page.props.auth.user.id;
+const { isLive, lastUpdated } = useRealtimeDashboard(`user.${userId}.tickets`, ['stats', 'recent_tickets']);
 
 // Helper function to convert hex to RGB
 const hexToRgb = (hex) => {
@@ -32,6 +37,10 @@ const hexToRgb = (hex) => {
         <template #header-title>
             <div class="flex items-center gap-2">
                 <span class="text-xl font-bold tracking-tight text-blue-950">My Dashboard</span>
+                <div v-if="isLive" class="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-blue-100/80 border border-blue-200/80 ml-2" title="Real-time updates active">
+                    <div class="h-1.5 w-1.5 rounded-full bg-blue-500 animate-pulse"></div>
+                    <span class="text-[10px] font-bold text-blue-700 uppercase tracking-wider">Live</span>
+                </div>
             </div>
         </template>
 

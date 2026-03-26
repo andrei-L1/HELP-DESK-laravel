@@ -92,12 +92,11 @@ onMounted(() => {
             });
         
         // Listen for general ticket updates (SLA changes, priority, etc.)
-        publicEchoChannel.listen('.TicketUpdated', (e) => {
-            console.log('[Echo] Received TicketUpdated:', e.ticket);
-            // We update the ticket prop selectively or just rely on the parent if needed, 
-            // but for Inertia we can just update local reactive state if we had it.
-            // Since props.ticket is the source of truth, we can manually trigger a reload or update a local copy.
-            Object.assign(props.ticket, e.ticket);
+        publicEchoChannel.listen('.ticket.updated', (e) => {
+            console.log('[Echo] Received TicketUpdated signal:', e);
+            if (e.ticket_id === props.ticket.id) {
+                router.reload({ only: ['ticket', 'sla_policy', 'activity_logs'] });
+            }
         });
 
         console.log('[Echo] Connection state:', window.Echo.connector.pusher.connection.state);
@@ -397,47 +396,78 @@ const showActivity = ref(false);
                             </div>
 
                             <!-- Reply Box -->
-                            <div class="px-6 py-4 border-t border-gray-100 bg-gray-50">
-                                <form @submit.prevent="submitMessage" class="space-y-3">
-                                    <div class="flex items-center justify-between">
-                                        <label for="message-body" class="block text-sm font-medium text-gray-700">Reply to Customer</label>
-                                        <div v-if="typingUser || internalTypingUser" class="text-xs animate-pulse font-medium">
-                                            <span v-if="internalTypingUser" class="text-amber-600">Staff: {{ internalTypingUser }} is typing a note...</span>
-                                            <span v-else-if="typingUser" class="text-emerald-600">{{ typingUser }} is typing...</span>
+                            <div class="border-t border-gray-100 flex flex-col bg-gray-50">
+                                <!-- Tabs -->
+                                <div class="flex px-6 pt-4 gap-2">
+                                    <button 
+                                        type="button" 
+                                        @click="messageForm.is_internal = false; messageForm.clearErrors()"
+                                        class="px-4 py-2 text-sm font-medium rounded-t-lg transition-colors border-b-2"
+                                        :class="!messageForm.is_internal ? 'bg-white border-emerald-600 text-emerald-800' : 'bg-transparent border-transparent text-gray-500 hover:bg-gray-200'"
+                                    >
+                                        Reply to Customer
+                                    </button>
+                                    <button 
+                                        type="button" 
+                                        @click="messageForm.is_internal = true; messageForm.clearErrors()"
+                                        class="px-4 py-2 text-sm font-medium rounded-t-lg transition-colors border-b-2 flex items-center gap-1.5"
+                                        :class="messageForm.is_internal ? 'bg-amber-50 border-amber-500 text-amber-800' : 'bg-transparent border-transparent text-gray-500 hover:bg-gray-200'"
+                                    >
+                                        <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                                        </svg>
+                                        Internal Note
+                                    </button>
+                                </div>
+                                <div class="px-6 pb-4 pt-4 border-t border-gray-200" :class="messageForm.is_internal ? 'bg-amber-50' : 'bg-white'">
+                                    <form @submit.prevent="submitMessage" class="space-y-3">
+                                        <div class="flex items-center justify-between">
+                                            <label for="message-body" class="block text-sm font-medium" :class="messageForm.is_internal ? 'text-amber-800' : 'text-gray-700'">
+                                                {{ messageForm.is_internal ? 'Add Internal Note (Hidden from Customer)' : 'Reply to Customer' }}
+                                            </label>
+                                            <div v-if="typingUser || internalTypingUser" class="text-xs animate-pulse font-medium">
+                                                <span v-if="internalTypingUser" class="text-amber-600">Staff: {{ internalTypingUser }} is typing a note...</span>
+                                                <span v-else-if="typingUser" class="text-emerald-600">{{ typingUser }} is typing...</span>
+                                            </div>
                                         </div>
-                                    </div>
-                                    <textarea
-                                        id="message-body"
-                                        v-model="messageForm.body"
-                                        @input="handleTyping"
-                                        rows="4"
-                                        required
-                                        placeholder="Type your response here…"
-                                        class="block w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm placeholder-gray-400 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 focus:outline-none resize-y"
-                                        :class="{ 'border-red-400': messageForm.errors.body }"
-                                    />
-                                    <p v-if="messageForm.errors.body" class="text-sm text-red-600">{{ messageForm.errors.body }}</p>
-                                     <div class="flex items-center justify-between pt-2">
-                                        <label class="inline-flex items-center text-sm text-gray-700">
-                                            <input v-model="messageForm.is_internal" type="checkbox" class="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500 mr-2" />
-                                            <span>Internal note (not visible to customer)</span>
-                                        </label>
-                                        <div class="flex items-center gap-2">
-                                            <CannedResponsePicker @insert="(text) => messageForm.body = text" />
-                                            <button
-                                                type="submit"
-                                                class="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50 transition-colors"
-                                                :disabled="messageForm.processing || !messageForm.body?.trim()"
-                                            >
-                                                <svg v-if="messageForm.processing" class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
-                                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
-                                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                                                </svg>
-                                                {{ messageForm.processing ? 'Sending...' : 'Send Reply' }}
-                                            </button>
+                                        <textarea
+                                            id="message-body"
+                                            v-model="messageForm.body"
+                                            @input="handleTyping"
+                                            rows="4"
+                                            required
+                                            :placeholder="messageForm.is_internal ? 'Type your internal note here (hidden from customer)...' : 'Type your response here…'"
+                                            class="block w-full rounded-lg border px-4 py-2.5 text-sm focus:outline-none resize-y transition-colors"
+                                            :class="[
+                                                messageForm.is_internal 
+                                                    ? 'border-amber-300 bg-amber-50/50 text-amber-900 placeholder-amber-400 focus:border-amber-500 focus:ring-1 focus:ring-amber-500' 
+                                                    : 'border-gray-300 bg-white placeholder-gray-400 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500',
+                                                messageForm.errors.body ? 'border-red-400 focus:border-red-500 focus:ring-red-500' : ''
+                                            ]"
+                                        />
+                                        <p v-if="messageForm.errors.body" class="text-sm text-red-600">{{ messageForm.errors.body }}</p>
+                                        <div class="flex items-center justify-end pt-2">
+                                            <div class="flex items-center gap-2">
+                                                <CannedResponsePicker @insert="(text) => messageForm.body = text" />
+                                                <button
+                                                    type="submit"
+                                                    class="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold text-white disabled:opacity-50 transition-colors"
+                                                    :class="messageForm.is_internal ? 'bg-amber-600 hover:bg-amber-700' : 'bg-emerald-600 hover:bg-emerald-700'"
+                                                    :disabled="messageForm.processing || !messageForm.body?.trim()"
+                                                >
+                                                    <svg v-if="messageForm.processing" class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+                                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                                                    </svg>
+                                                    <svg v-if="messageForm.is_internal && !messageForm.processing" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                                                    </svg>
+                                                    {{ messageForm.processing ? (messageForm.is_internal ? 'Saving Note…' : 'Sending...') : (messageForm.is_internal ? 'Add Internal Note' : 'Send Reply') }}
+                                                </button>
+                                            </div>
                                         </div>
-                                    </div>
-                                </form>
+                                    </form>
+                                </div>
                             </div>
                         </div>
 
